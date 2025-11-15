@@ -17,29 +17,63 @@ enum AvailabilityMode {
   preorder // 預訂（顯示備貨天數）
 }
 
+enum SupplyStatus {
+  IN_STOCK
+  PREORDER
+  DISCONTINUED
+}
+
+enum WorkshopRole {
+  ADMIN
+  WORKSHOP_OWNER
+  STAFF
+}
+
+enum WorkshopSpecialty {
+  EURO_BMW_MBENZ
+  JP_TOYOTA
+  DOMESTIC
+  EV_TESLA
+  PERFORMANCE
+  OTHER
+}
+
 // ---------- Tables / Models ----------
 model parts {
   id                Int               @id @default(autoincrement())
   sku               String            @unique
   name              String
   brand             String?
+  brand_id          Int?
   category          String? // 舊主分類字串（仍保留，建議逐步改為 parts_on_categories 關聯）
   msrp_twd          Int?
   wholesale_twd     Int?
+  msrp              Int?
+  wholesale_price   Int?
   image_url         String?
   description       String?
   stock_qty         Int               @default(0)
   availability_mode AvailabilityMode?
   lead_time_days    Int               @default(0)
+  supply_status     SupplyStatus?
+  preorder_days     Int               @default(21)
+  subcategory_id    Int?
+  is_active         Boolean           @default(true)
+  created_at        DateTime          @default(now())
+  updated_at        DateTime          @updatedAt
 
   // relations
   parts_on_categories  parts_on_categories[]
   part_compatibilities part_compatibilities[]
+  brand_ref            brands?                @relation(fields: [brand_id], references: [id])
+  subcategory          subcategories?         @relation(fields: [subcategory_id], references: [id])
 
   // 適度輔助查詢的索引（選配）
   @@index([name])
   @@index([brand])
   @@index([category])
+  @@index([brand_id])
+  @@index([subcategory_id])
   @@map("parts")
 }
 
@@ -47,18 +81,35 @@ model categories {
   id         Int     @id @default(autoincrement())
   name       String
   slug       String?
-  parent_id  Int?
   sort_order Int     @default(0)
   is_active  Boolean @default(true)
   is_nav     Boolean @default(true)
 
   // relations
+  subcategories       subcategories[]
   parts_on_categories parts_on_categories[]
 
   // 供分類樹與清單排序使用的索引
-  @@index([parent_id, sort_order])
   @@index([is_active])
   @@map("categories")
+}
+
+model subcategories {
+  id          Int     @id @default(autoincrement())
+  category_id Int
+  name        String
+  slug        String?
+  sort_order  Int     @default(0)
+  is_active   Boolean @default(true)
+
+  // relations
+  category categories @relation(fields: [category_id], references: [id])
+  parts    parts[]
+
+  @@unique([category_id, name], name: "ux_category_subcategory_name")
+  @@index([category_id])
+  @@index([is_active])
+  @@map("subcategories")
 }
 
 model parts_on_categories {
@@ -131,6 +182,10 @@ model vehicle_variants {
   year_from     Int?
   year_to       Int?
   fuel_type     String?
+  displacement  Int?
+  power_hp      Int?
+  drivetrain    String?
+  transmission  String?
 
   // relations
   model                models                 @relation(fields: [model_id], references: [id])
@@ -143,6 +198,24 @@ model vehicle_variants {
   @@index([engine_code])
   @@index([year_from, year_to])
   @@map("vehicle_variants")
+}
+
+model brands {
+  id         Int      @id @default(autoincrement())
+  name       String
+  slug       String?
+  logo_url   String?
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // relations
+  parts parts[]
+
+  @@unique([slug])
+  @@index([name])
+  @@index([is_active])
+  @@map("brands")
 }
 
 model part_compatibilities {
@@ -160,4 +233,106 @@ model part_compatibilities {
   @@index([part_id])
   @@index([vehicle_variant_id])
   @@map("part_compatibilities")
+}
+
+model workshops {
+  id               Int      @id @default(autoincrement())
+  name             String
+  tax_id           String?
+  business_type    String?
+  line_id          String
+  mobile           String
+  contact_person   String
+  title            String?
+  address          String
+  technician_count Int?
+  lift_count       Int?
+  photos           Json?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  // relations
+  users        users[]
+  specialties  workshop_specialties[]
+  plan         workshop_plans?
+  query_usages workshop_query_usage[]
+  status       workshop_status?
+
+  @@index([name])
+  @@index([tax_id])
+  @@map("workshops")
+}
+
+model workshop_specialties {
+  id          Int               @id @default(autoincrement())
+  workshop_id Int
+  specialty   WorkshopSpecialty
+  created_at  DateTime          @default(now())
+
+  workshop workshops @relation(fields: [workshop_id], references: [id])
+
+  @@unique([workshop_id, specialty], name: "ux_workshop_specialty")
+  @@index([workshop_id])
+  @@map("workshop_specialties")
+}
+
+model users {
+  id            Int          @id @default(autoincrement())
+  email         String       @unique
+  password_hash String
+  role          WorkshopRole @default(STAFF)
+  workshop_id   Int?
+  is_active     Boolean      @default(true)
+  last_login_at DateTime?
+  created_at    DateTime     @default(now())
+  updated_at    DateTime     @updatedAt
+
+  workshop workshops? @relation(fields: [workshop_id], references: [id])
+
+  @@index([workshop_id])
+  @@map("users")
+}
+
+model workshop_plans {
+  id                  Int      @id @default(autoincrement())
+  workshop_id         Int      @unique
+  monthly_query_limit Int?
+  is_unlimited        Boolean  @default(false)
+  notes               String?
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  workshop workshops @relation(fields: [workshop_id], references: [id])
+
+  @@map("workshop_plans")
+}
+
+model workshop_query_usage {
+  id            Int       @id @default(autoincrement())
+  workshop_id   Int
+  year_month    String
+  query_count   Int       @default(0)
+  rows_returned Int       @default(0)
+  last_query_at DateTime?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  workshop workshops @relation(fields: [workshop_id], references: [id])
+
+  @@unique([workshop_id, year_month], name: "ux_workshop_usage_month")
+  @@index([workshop_id])
+  @@map("workshop_query_usage")
+}
+
+model workshop_status {
+  workshop_id       Int      @id
+  is_verified_buyer Boolean  @default(false)
+  is_active         Boolean  @default(true)
+  onboarding_notes  String?
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  workshop workshops @relation(fields: [workshop_id], references: [id])
+
+  @@map("workshop_status")
 }

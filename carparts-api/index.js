@@ -59,6 +59,91 @@ function normalizeMode(val, stockQty = null) {
   return stockQty != null ? (toIntNonNeg(stockQty, 0) > 0 ? "stock" : "preorder") : null;
 }
 
+function toBoolean(val, defaultValue = true) {
+  if (val == null || val === "") return defaultValue;
+  if (typeof val === "boolean") return val;
+  const normalized = String(val).trim().toLowerCase();
+  if (!normalized) return defaultValue;
+  if (["1", "true", "yes", "y", "on"].includes(normalized)) return true;
+  if (["0", "false", "no", "n", "off"].includes(normalized)) return false;
+  return defaultValue;
+}
+
+const SUPPLY_STATUS = new Set(["IN_STOCK", "PREORDER", "DISCONTINUED"]);
+const DEFAULT_PREORDER_DAYS = 21;
+const DEFAULT_TRIAL_MONTHLY_LIMIT = 100;
+const DEFAULT_MAX_ROWS_PER_QUERY = 50;
+
+function normalizeSupplyStatus(val, stockQty) {
+  if (val != null && val !== "") {
+    const up = String(val).trim().toUpperCase();
+    if (SUPPLY_STATUS.has(up)) return up;
+  }
+  const qty = toIntNonNeg(stockQty, 0);
+  return qty > 0 ? "IN_STOCK" : "PREORDER";
+}
+
+function parseWorkshopId(req) {
+  const fromHeader = req.headers["x-workshop-id"] ?? req.headers["x-workshop"];
+  const raw = fromHeader ?? req.query.workshopId ?? req.query.workshop_id;
+  if (raw == null || raw === "") return null;
+  const id = Number(raw);
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+async function prepareWorkshopQuota(workshopId) {
+  if (!workshopId) return null;
+  const now = new Date();
+  const yearMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+
+  const plan = await prisma.workshop_plans.findUnique({ where: { workshop_id: workshopId } });
+  const limit = plan?.is_unlimited
+    ? null
+    : (plan?.monthly_query_limit ?? DEFAULT_TRIAL_MONTHLY_LIMIT);
+
+  const usage = await prisma.workshop_query_usage.upsert({
+    where: { workshop_id_year_month: { workshop_id: workshopId, year_month: yearMonth } },
+    create: {
+      workshop_id: workshopId,
+      year_month: yearMonth,
+      query_count: 0,
+      rows_returned: 0,
+    },
+    update: {},
+  });
+
+  if (limit != null && usage.query_count >= limit) {
+    return {
+      allowed: false,
+      limit,
+      remaining: 0,
+      usageKey: { workshop_id: workshopId, year_month: yearMonth },
+      maxRowsPerQuery: DEFAULT_MAX_ROWS_PER_QUERY,
+    };
+  }
+
+  return {
+    allowed: true,
+    limit,
+    remaining: limit != null ? Math.max(0, limit - usage.query_count) : null,
+    usageKey: { workshop_id: workshopId, year_month: yearMonth },
+    maxRowsPerQuery: plan?.is_unlimited ? Number.POSITIVE_INFINITY : DEFAULT_MAX_ROWS_PER_QUERY,
+  };
+}
+
+async function finalizeWorkshopQuota(quotaCtx, rowsReturned) {
+  if (!quotaCtx?.usageKey) return;
+  const count = Math.max(0, rowsReturned != null ? Number(rowsReturned) : 0);
+  await prisma.workshop_query_usage.update({
+    where: { workshop_id_year_month: quotaCtx.usageKey },
+    data: {
+      query_count: { increment: 1 },
+      rows_returned: { increment: count },
+      last_query_at: new Date(),
+    },
+  });
+}
+
 /* ====== 補充資訊（不綁死 include 名稱） ====== */
 async function decorateParts(rows) {
   if (!Array.isArray(rows) || rows.length === 0) return rows;
@@ -78,6 +163,23 @@ async function decorateParts(rows) {
     if (!catsByPart.has(l.part_id)) catsByPart.set(l.part_id, []);
     const name = catMap.get(l.category_id);
     if (name) catsByPart.get(l.part_id).push(name);
+  }
+
+  const subcategoryIds = Array.from(new Set(rows.map(r => r.subcategory_id).filter(Boolean)));
+  const subcategories = subcategoryIds.length
+    ? await prisma.subcategories.findMany({
+        where: { id: { in: subcategoryIds } },
+        select: { id: true, name: true, category_id: true },
+      })
+    : [];
+  const subcategoryMap = new Map(subcategories.map(sc => [sc.id, sc]));
+  const primaryCategoryIds = Array.from(new Set(subcategories.map(sc => sc.category_id).filter(Boolean)));
+  if (primaryCategoryIds.length) {
+    const parentCats = await prisma.categories.findMany({
+      where: { id: { in: primaryCategoryIds } },
+      select: { id: true, name: true },
+    });
+    for (const cat of parentCats) catMap.set(cat.id, cat.name);
   }
 
   // 相容車型摘要
@@ -114,7 +216,20 @@ async function decorateParts(rows) {
   }
 
   for (const r of rows) {
-    r.categories = catsByPart.get(r.id) || [];
+    const labels = [];
+    if (r.subcategory_id) {
+      const sub = subcategoryMap.get(r.subcategory_id);
+      if (sub) {
+        const parentName = sub.category_id ? catMap.get(sub.category_id) : null;
+        if (parentName) labels.push(parentName);
+        labels.push(sub.name);
+      }
+    }
+    const legacy = catsByPart.get(r.id) || [];
+    for (const name of legacy) {
+      if (!labels.includes(name)) labels.push(name);
+    }
+    r.categories = labels;
     const vs = pcsByPart.get(r.id) || [];
     if (!vs.length) {
       r.compatibility_summary = "";
@@ -139,25 +254,37 @@ async function decorateParts(rows) {
 }
 
 /* ============================== 類別 ============================== */
-function buildCategoryTree(rows, { onlyActive = false } = {}) {
-  const list = onlyActive ? rows.filter(r => r.is_active) : rows.slice();
-  const byParent = new Map();
-  for (const r of list) {
-    const k = r.parent_id || 0;
-    if (!byParent.has(k)) byParent.set(k, []);
-    byParent.get(k).push(r);
+async function loadCategoryTree({ onlyActive = true } = {}) {
+  const categoryWhere = onlyActive ? { is_active: true } : {};
+  const subcategoryWhere = onlyActive ? { is_active: true } : {};
+
+  const [categories, subcategories] = await Promise.all([
+    prisma.categories.findMany({
+      where: categoryWhere,
+      orderBy: [{ sort_order: "asc" }, { id: "asc" }],
+    }),
+    prisma.subcategories.findMany({
+      where: subcategoryWhere,
+      orderBy: [{ category_id: "asc" }, { sort_order: "asc" }, { id: "asc" }],
+    }),
+  ]);
+
+  const subsByCategory = new Map();
+  for (const sub of subcategories) {
+    if (!subsByCategory.has(sub.category_id)) subsByCategory.set(sub.category_id, []);
+    subsByCategory.get(sub.category_id).push({ ...sub });
   }
-  const attach = (node) => {
-    node.children = (byParent.get(node.id) || []).map(child => attach({ ...child })); return node;
-  };
-  return (byParent.get(0) || []).map(r => attach({ ...r }));
+
+  return categories.map(cat => ({
+    ...cat,
+    subcategories: subsByCategory.get(cat.id) || [],
+  }));
 }
 
 app.get("/categories/tree", async (req, res) => {
   try {
-    const rows = await prisma.categories.findMany({ orderBy: [{ sort_order: "asc" }, { id: "asc" }] });
     const onlyActive = !(String(req.query.all || "") === "1");
-    const tree = buildCategoryTree(rows, { onlyActive });
+    const tree = await loadCategoryTree({ onlyActive });
     res.json(tree);
   } catch (e) { res.status(500).json({ error: "Failed to load category tree", detail: String(e.message || e) }); }
 });
@@ -208,8 +335,10 @@ app.get("/parts/export", async (req, res) => {
   try {
     const rows = await prisma.parts.findMany({ orderBy: [{ sku: "asc" }] });
     const headers = [
-      "sku","name","brand","category","msrp_twd","wholesale_twd","image_url","description",
-      "stock_qty","availability_mode","lead_time_days"
+      "sku","name","brand","brand_id","category","subcategory_id",
+      "msrp","msrp_twd","wholesale_price","wholesale_twd",
+      "image_url","description","stock_qty","availability_mode","lead_time_days",
+      "supply_status","preorder_days","is_active"
     ];
     const format = String(req.query.format || "csv").toLowerCase();
 
@@ -275,20 +404,38 @@ app.post("/parts/import", async (req, res) => {
     let created = 0, updated = 0;
     for (const it of items) {
       const stock_qty = toIntNonNeg(it.stock_qty, 0);
-      const availability_mode = normalizeMode(it.availability_mode, stock_qty) || normalizeMode(null, stock_qty);
-      const lead_time_days = availability_mode === "stock" ? 0 : (toIntNonNeg(it.lead_time_days, 21) || 21);
+      const supply_status = normalizeSupplyStatus(it.supply_status, stock_qty);
+      let preorder_days = supply_status === "IN_STOCK" ? 0 : (toIntNonNeg(it.preorder_days, DEFAULT_PREORDER_DAYS) || DEFAULT_PREORDER_DAYS);
+      if (supply_status === "DISCONTINUED") preorder_days = 0;
+      const availability_mode = normalizeMode(
+        it.availability_mode ?? (supply_status === "IN_STOCK" ? "stock" : "preorder"),
+        stock_qty
+      ) || normalizeMode(null, stock_qty);
+      const lead_time_days = supply_status === "IN_STOCK" ? 0 : (toIntNonNeg(it.lead_time_days, preorder_days) || preorder_days);
+      const brandId = toNullableInt(it.brand_id);
+      const subcategoryId = toNullableInt(it.subcategory_id);
+      const msrpVal = toNullableInt(it.msrp ?? it.msrp_twd);
+      const wholesaleVal = toNullableInt(it.wholesale_price ?? it.wholesale_twd);
+      const isActive = toBoolean(it.is_active, true);
 
       const data = {
         name: it.name ? String(it.name).trim() : "",
         brand: it.brand ? String(it.brand).trim() : null,
+        brand_id: brandId,
         category: it.category ? String(it.category).trim() : null,
-        msrp_twd: toNullableInt(it.msrp_twd),
-        wholesale_twd: toNullableInt(it.wholesale_twd),
+        subcategory_id: subcategoryId,
+        msrp_twd: msrpVal ?? toNullableInt(it.msrp_twd),
+        wholesale_twd: wholesaleVal ?? toNullableInt(it.wholesale_twd),
+        msrp: msrpVal,
+        wholesale_price: wholesaleVal,
         image_url: it.image_url ?? null,
         description: it.description ?? null,
         stock_qty,
         availability_mode,
         lead_time_days,
+        supply_status,
+        preorder_days,
+        is_active: isActive,
       };
       const sku = String(it.sku || "").trim();
       if (!sku || !data.name) continue;
@@ -313,9 +460,20 @@ app.post("/parts/import", async (req, res) => {
 app.get("/parts", async (req, res) => {
   try {
     const {
-      search, sku, categoryId, variantId, makeId, modelId, generationId, year,
+      search, sku, categoryId, subcategoryId, variantId, makeId, modelId, generationId, year,
       sort = "skuAsc", page, pageSize, raw
     } = req.query;
+
+    const workshopId = parseWorkshopId(req);
+    const quotaCtx = await prepareWorkshopQuota(workshopId);
+    if (quotaCtx && quotaCtx.allowed === false) {
+      return res.status(429).json({
+        error: "workshop_query_limit_reached",
+        message: "查詢次數已用完，請聯繫業務升級方案",
+        limit: quotaCtx.limit,
+        remaining: quotaCtx.remaining,
+      });
+    }
 
     // 車型過濾：先找符合的 variant ids
     let variantIdsForFilter = null;
@@ -339,27 +497,66 @@ app.get("/parts", async (req, res) => {
       if (!variantIdsForFilter.length) return res.json({ items: [], total: 0 });
     }
 
-    // 分類過濾（含子孫）
+    // 分類過濾（主/子目錄）
     let restrictIds = null;
-    if (categoryId) {
-      const all = await prisma.categories.findMany({ select: { id: true, parent_id: true, name: true, is_active: true } });
-      const byParent = new Map();
-      for (const c of all) { const k = c.parent_id ?? 0; if (!byParent.has(k)) byParent.set(k, []); byParent.get(k).push(c); }
-      const ids = new Set([Number(categoryId)]), names = new Set(); const q = [Number(categoryId)];
-      while (q.length) {
-        const pid = q.shift(); const node = all.find(x => x.id === pid); if (node) names.add(node.name);
-        const kids = byParent.get(pid) || []; for (const ch of kids) { if (!ids.has(ch.id)) { ids.add(ch.id); names.add(ch.name); q.push(ch.id); } }
-      }
-      const catLinks = await prisma.parts_on_categories.findMany({
-        where: { category_id: { in: Array.from(ids) } }, select: { part_id: true }
-      });
-      restrictIds = new Set(catLinks.map(c => c.part_id));
-      if (names.size) {
-        const nameRows = await prisma.parts.findMany({
-          where: { category: { in: Array.from(names) } }, select: { id: true }
+    if (categoryId || subcategoryId) {
+      const partIdSet = new Set();
+      const legacyNames = new Set();
+      const targetCategoryIds = [];
+      const targetSubcategoryIds = [];
+
+      const toInt = (val) => {
+        const n = Number(val);
+        return Number.isInteger(n) && n > 0 ? n : null;
+      };
+
+      const subIdNum = toInt(subcategoryId);
+      if (subIdNum) targetSubcategoryIds.push(subIdNum);
+
+      const catIdNum = toInt(categoryId);
+      if (catIdNum) {
+        targetCategoryIds.push(catIdNum);
+        const cat = await prisma.categories.findUnique({ where: { id: catIdNum }, select: { name: true } });
+        if (cat?.name) legacyNames.add(cat.name);
+        const subs = await prisma.subcategories.findMany({
+          where: { category_id: catIdNum },
+          select: { id: true, name: true },
         });
-        nameRows.forEach(r => restrictIds.add(r.id));
+        for (const sc of subs) {
+          targetSubcategoryIds.push(sc.id);
+          if (sc.name) legacyNames.add(sc.name);
+        }
       }
+
+      if (targetSubcategoryIds.length) {
+        const distinctSubs = Array.from(new Set(targetSubcategoryIds));
+        const partsBySub = await prisma.parts.findMany({
+          where: { subcategory_id: { in: distinctSubs } }, select: { id: true }
+        });
+        partsBySub.forEach(r => partIdSet.add(r.id));
+
+        const legacySubLinks = await prisma.parts_on_categories.findMany({
+          where: { category_id: { in: distinctSubs } }, select: { part_id: true }
+        });
+        legacySubLinks.forEach(link => partIdSet.add(link.part_id));
+      }
+
+      if (targetCategoryIds.length) {
+        const catLinks = await prisma.parts_on_categories.findMany({
+          where: { category_id: { in: targetCategoryIds } }, select: { part_id: true }
+        });
+        catLinks.forEach(link => partIdSet.add(link.part_id));
+      }
+
+      if (legacyNames.size) {
+        const nameRows = await prisma.parts.findMany({
+          where: { category: { in: Array.from(legacyNames) } }, select: { id: true }
+        });
+        nameRows.forEach(r => partIdSet.add(r.id));
+      }
+
+      restrictIds = partIdSet;
+      if (restrictIds.size === 0) return res.json({ items: [], total: 0 });
     }
 
     // 車型過濾：交集
@@ -398,19 +595,42 @@ app.get("/parts", async (req, res) => {
     const include = { parts_on_categories: true, part_compatibilities: true };
     const skipDecorate = String(raw || "") === "1";
 
+    const maxRowsPerQuery = quotaCtx
+      ? (quotaCtx.maxRowsPerQuery === Number.POSITIVE_INFINITY ? null : Math.max(1, Math.floor(quotaCtx.maxRowsPerQuery)))
+      : null;
+
     if (page && pageSize) {
-      const take = Math.max(1, Math.min(100, Number(pageSize)));
+      const requestedTake = Math.max(1, Math.min(100, Number(pageSize)));
+      const take = maxRowsPerQuery != null ? Math.min(requestedTake, maxRowsPerQuery) : requestedTake;
       const skip = Math.max(0, (Number(page) - 1) * take);
       const [items, total] = await Promise.all([
         prisma.parts.findMany({ where, orderBy, skip, take, include }),
         prisma.parts.count({ where })
       ]);
       if (!skipDecorate) await decorateParts(items);
-      return res.json({ items, total });
+      if (quotaCtx) await finalizeWorkshopQuota(quotaCtx, items.length);
+      const response = { items, total };
+      if (quotaCtx) {
+        response.quota = {
+          limit: quotaCtx.limit,
+          remaining: quotaCtx.limit != null ? Math.max(0, (quotaCtx.remaining ?? 0) - 1) : null,
+        };
+      }
+      return res.json(response);
     } else {
-      const rows = await prisma.parts.findMany({ where, orderBy, include });
+      const findArgs = { where, orderBy, include };
+      if (maxRowsPerQuery != null) findArgs.take = maxRowsPerQuery;
+      const rows = await prisma.parts.findMany(findArgs);
       if (!skipDecorate) await decorateParts(rows);
-      return res.json({ items: rows, total: rows.length });
+      if (quotaCtx) await finalizeWorkshopQuota(quotaCtx, rows.length);
+      const response = { items: rows, total: rows.length };
+      if (quotaCtx) {
+        response.quota = {
+          limit: quotaCtx.limit,
+          remaining: quotaCtx.limit != null ? Math.max(0, (quotaCtx.remaining ?? 0) - 1) : null,
+        };
+      }
+      return res.json(response);
     }
   } catch (err) {
     res.status(500).json({ error: "Failed to load parts", detail: String(err.message || err) });
@@ -429,6 +649,9 @@ app.get("/parts/by-sku/:sku", async (req, res) => {
     row.stock_qty = toIntNonNeg(row.stock_qty, 0);
     row.availability_mode = normalizeMode(row.availability_mode, row.stock_qty) || "";
     row.lead_time_days = row.availability_mode === "stock" ? 0 : (toIntNonNeg(row.lead_time_days, 21) || 21);
+    row.supply_status = normalizeSupplyStatus(row.supply_status, row.stock_qty);
+    row.preorder_days = row.supply_status === "IN_STOCK" ? 0 : (toIntNonNeg(row.preorder_days, DEFAULT_PREORDER_DAYS) || DEFAULT_PREORDER_DAYS);
+    if (row.supply_status === "DISCONTINUED") row.preorder_days = 0;
     res.json(row);
   } catch (e) { res.status(500).json({ error: "Failed to load part by sku", detail: String(e.message || e) }); }
 });
@@ -445,6 +668,9 @@ app.get("/parts/:id", async (req, res) => {
     row.stock_qty = toIntNonNeg(row.stock_qty, 0);
     row.availability_mode = normalizeMode(row.availability_mode, row.stock_qty) || "";
     row.lead_time_days = row.availability_mode === "stock" ? 0 : (toIntNonNeg(row.lead_time_days, 21) || 21);
+    row.supply_status = normalizeSupplyStatus(row.supply_status, row.stock_qty);
+    row.preorder_days = row.supply_status === "IN_STOCK" ? 0 : (toIntNonNeg(row.preorder_days, DEFAULT_PREORDER_DAYS) || DEFAULT_PREORDER_DAYS);
+    if (row.supply_status === "DISCONTINUED") row.preorder_days = 0;
     res.json(row);
   } catch (e) { res.status(500).json({ error: "Failed to load part", detail: String(e.message || e) }); }
 });
@@ -453,29 +679,50 @@ app.get("/parts/:id", async (req, res) => {
 app.post("/parts", async (req, res) => {
   try {
     const {
-      sku, name, brand, category, msrp_twd, wholesale_twd,
+      sku, name, brand, brand_id, category, subcategory_id,
+      msrp, msrp_twd, wholesale_price, wholesale_twd,
       image_url, description, stock_qty, availability_mode, lead_time_days,
+      supply_status, preorder_days, is_active,
       compatibility_variant_ids
     } = req.body || {};
     if (!sku || !name) return res.status(400).json({ error: "sku & name required" });
 
+    const brandId = toNullableInt(brand_id);
+    const subcategoryId = toNullableInt(subcategory_id);
+    const msrpVal = toNullableInt(msrp ?? msrp_twd);
+    const wholesaleVal = toNullableInt(wholesale_price ?? wholesale_twd);
     const stockQty = toIntNonNeg(stock_qty, 0);
-    const mode = normalizeMode(availability_mode, stockQty) || normalizeMode(null, stockQty);
-    const leadDays = mode === "stock" ? 0 : (toIntNonNeg(lead_time_days, 21) || 21);
+    const status = normalizeSupplyStatus(supply_status, stockQty);
+    let preorderDays = status === "IN_STOCK" ? 0 : (toIntNonNeg(preorder_days, DEFAULT_PREORDER_DAYS) || DEFAULT_PREORDER_DAYS);
+    if (status === "DISCONTINUED") preorderDays = 0;
+    const mode = normalizeMode(
+      availability_mode ?? (status === "IN_STOCK" ? "stock" : "preorder"),
+      stockQty
+    ) || normalizeMode(null, stockQty);
+    let leadDays = mode === "stock" ? 0 : (toIntNonNeg(lead_time_days, preorderDays) || preorderDays);
+    if (status === "DISCONTINUED") leadDays = 0;
+    const active = toBoolean(is_active, true);
 
     const created = await prisma.parts.create({
       data: {
         sku: String(sku).trim(),
         name: String(name).trim(),
         brand: brand ? String(brand).trim() : null,
+        brand_id: brandId,
         category: category ? String(category).trim() : null,
-        msrp_twd: toNullableInt(msrp_twd),
-        wholesale_twd: toNullableInt(wholesale_twd),
+        subcategory_id: subcategoryId,
+        msrp_twd: msrpVal ?? toNullableInt(msrp_twd),
+        wholesale_twd: wholesaleVal ?? toNullableInt(wholesale_twd),
+        msrp: msrpVal,
+        wholesale_price: wholesaleVal,
         image_url: fixUrl(image_url),
         description: description ? String(description).trim() : null,
         stock_qty: stockQty,
         availability_mode: mode,
         lead_time_days: leadDays,
+        supply_status: status,
+        preorder_days: preorderDays,
+        is_active: active,
       },
       select: { id: true }
     });
@@ -500,30 +747,57 @@ app.put("/parts/:id", async (req, res) => {
     const id = parseIdParam(req, res); if (id == null) return;
 
     const {
-      name, brand, category, msrp_twd, wholesale_twd, stock_qty,
-      availability_mode, lead_time_days, image_url, description,
+      name, brand, brand_id, category, subcategory_id,
+      msrp, msrp_twd, wholesale_price, wholesale_twd, stock_qty,
+      availability_mode, lead_time_days, supply_status, preorder_days,
+      is_active, image_url, description,
       compatibility_variant_ids
     } = req.body || {};
 
     if (!name?.trim()) return res.status(400).json({ error: "name required" });
 
     const stockQty = toIntNonNeg(stock_qty, 0);
-    const mode = normalizeMode(availability_mode, stockQty) || normalizeMode(null, stockQty);
-    let leadDays = mode === "stock" ? 0 : toIntNonNeg(lead_time_days, 21);
-    if (mode === "preorder" && (leadDays == null || leadDays <= 0)) leadDays = 21;
+    const status = normalizeSupplyStatus(supply_status, stockQty);
+    let preorderDays = status === "IN_STOCK" ? 0 : (toIntNonNeg(preorder_days, DEFAULT_PREORDER_DAYS) || DEFAULT_PREORDER_DAYS);
+    if (status === "DISCONTINUED") preorderDays = 0;
+    const mode = normalizeMode(
+      availability_mode ?? (status === "IN_STOCK" ? "stock" : "preorder"),
+      stockQty
+    ) || normalizeMode(null, stockQty);
+    let leadDays = mode === "stock" ? 0 : toIntNonNeg(lead_time_days, preorderDays);
+    if (mode === "preorder" && (leadDays == null || leadDays <= 0)) leadDays = preorderDays;
+    if (status === "IN_STOCK") leadDays = 0;
+    if (status === "DISCONTINUED") leadDays = 0;
+
+    const msrpVal = toNullableInt(msrp ?? msrp_twd);
+    const wholesaleVal = toNullableInt(wholesale_price ?? wholesale_twd);
+    const brandId = toNullableInt(brand_id);
+    const subcategoryId = toNullableInt(subcategory_id);
+    const active = is_active === undefined ? undefined : toBoolean(is_active, true);
 
     const payload = {
       name: String(name).trim(),
       brand: brand ? String(brand).trim() : null,
       category: category ? String(category).trim() : null,
-      msrp_twd: toNullableInt(msrp_twd),
-      wholesale_twd: toNullableInt(wholesale_twd),
       stock_qty: stockQty,
       availability_mode: mode,
       lead_time_days: leadDays,
       image_url: fixUrl(image_url),
       description: description ? String(description).trim() : null,
+      supply_status: status,
+      preorder_days: preorderDays,
     };
+    if (brand_id !== undefined) payload.brand_id = brandId;
+    if (subcategory_id !== undefined) payload.subcategory_id = subcategoryId;
+    if (msrp !== undefined || msrp_twd !== undefined) {
+      payload.msrp = msrpVal;
+      payload.msrp_twd = msrpVal ?? toNullableInt(msrp_twd);
+    }
+    if (wholesale_price !== undefined || wholesale_twd !== undefined) {
+      payload.wholesale_price = wholesaleVal;
+      payload.wholesale_twd = wholesaleVal ?? toNullableInt(wholesale_twd);
+    }
+    if (active !== undefined) payload.is_active = active;
 
     const updated = await prisma.$transaction(async (tx) => {
       const row = await tx.parts.update({ where: { id }, data: payload });

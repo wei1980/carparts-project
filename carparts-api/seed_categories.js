@@ -12,23 +12,42 @@ function slugify(s) {
     .replace(/\-+/g, "-");
 }
 
-async function findBySlug(slug) {
-  return prisma.categories.findFirst({ where: { slug } });
-}
-
-async function upsertCategory({ name, slug, parent_id = null, sort_order = 0, is_active = true, is_nav = true }) {
+async function upsertCategory({ name, slug, sort_order = 0, is_active = true, is_nav = true }) {
   if (!slug) slug = slugify(name);
-  const exists = await findBySlug(slug);
+  const exists = await prisma.categories.findFirst({ where: { slug } });
   if (exists) {
     return prisma.categories.update({
       where: { id: exists.id },
-      data: { name, parent_id, sort_order, is_active, is_nav, slug },
-    });
-  } else {
-    return prisma.categories.create({
-      data: { name, slug, parent_id, sort_order, is_active, is_nav },
+      data: { name, sort_order, is_active, is_nav, slug },
     });
   }
+  return prisma.categories.create({
+    data: { name, slug, sort_order, is_active, is_nav },
+  });
+}
+
+async function upsertSubcategory({ category_id, name, slug, sort_order = 0, is_active = true }) {
+  if (!category_id) throw new Error("category_id required for subcategory");
+  if (!slug) slug = slugify(name);
+  const exists = await prisma.subcategories.findFirst({ where: { category_id, slug } });
+  if (exists) {
+    return prisma.subcategories.update({
+      where: { id: exists.id },
+      data: { name, slug, sort_order, is_active },
+    });
+  }
+  return prisma.subcategories.create({
+    data: { category_id, name, slug, sort_order, is_active },
+  });
+}
+
+async function upsertBrand({ name, slug, logo_url = null }) {
+  if (!slug) slug = slugify(name);
+  return prisma.brands.upsert({
+    where: { slug },
+    update: { name, logo_url, is_active: true },
+    create: { name, slug, logo_url },
+  });
 }
 
 async function seedTree() {
@@ -103,10 +122,10 @@ async function seedTree() {
     if (Array.isArray(node.children)) {
       let csort = 10;
       for (const child of node.children) {
-        await upsertCategory({
+        await upsertSubcategory({
+          category_id: parent.id,
           name: child.name,
           slug: child.slug,
-          parent_id: parent.id,
           sort_order: csort,
         });
         csort += 10;
@@ -119,10 +138,11 @@ async function seedTree() {
   const brands = ["K&N","Pipercross","HKS","BMC","APR","CTS Turbo","Bilstein","KW"];
   let bsort = 10;
   for (const b of brands) {
-    await upsertCategory({
-      name: b,
-      slug: slugify(b),
-      parent_id: brandsRoot.id,
+    const brand = await upsertBrand({ name: b, slug: slugify(b) });
+    await upsertSubcategory({
+      category_id: brandsRoot.id,
+      name: brand.name,
+      slug: brand.slug,
       sort_order: bsort,
     });
     bsort += 10;
