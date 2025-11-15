@@ -1,0 +1,94 @@
+// src/Admin.jsx
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+
+async function jget(path) {
+  const r = await fetch(path, { headers: { Accept: "application/json" } });
+  const ct = r.headers.get("content-type") || "";
+  const text = await r.text();
+  if (!r.ok) throw new Error(`${path} -> HTTP ${r.status}\n${text.slice(0, 160)}`);
+  if (!ct.includes("application/json")) {
+    throw new Error(`${path} 回傳 ${ct}，可能是 Vite 的 HTML。請確認 proxy 有生效。\n內容：\n${text.slice(0, 160)}`);
+  }
+  return JSON.parse(text);
+}
+
+export default function Admin() {
+  const [health, setHealth] = useState(null);
+  const [roots, setRoots] = useState([]);
+  const [partsTotal, setPartsTotal] = useState(0);
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        setErr("");
+        setHealth(await jget("/health"));
+        setRoots(await jget("/categories/roots"));
+        const p = await jget("/parts?page=1&pageSize=1&raw=1");
+        setPartsTotal(Number(p?.total || 0));
+      } catch (e) {
+        console.error(e);
+        setErr(String(e.message || e));
+      }
+    })();
+  }, []);
+
+  return (
+    <div className="max-w-6xl mx-auto p-4 md:p-6">
+      <h1 className="text-2xl font-semibold mb-4">後台儀表板</h1>
+
+      {err && (
+        <div className="mb-4 p-3 rounded border border-red-200 bg-red-50 text-red-700 text-sm whitespace-pre-wrap">
+          {err}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="border rounded-lg p-4">
+          <div className="text-sm text-gray-500">後端狀態</div>
+          <div className="text-xl mt-1">{health?.ok ? "Online" : "Offline"}</div>
+          {health?.mediaDir && <div className="text-xs text-gray-500 mt-1">media: {health.mediaDir}</div>}
+        </div>
+        <div className="border rounded-lg p-4">
+          <div className="text-sm text-gray-500">主目錄數</div>
+          <div className="text-xl mt-1">{roots.length}</div>
+          <div className="text-xs text-gray-500 mt-1">
+            {roots.map(r => r.name).join("、") || "—"}
+          </div>
+        </div>
+        <div className="border rounded-lg p-4">
+          <div className="text-sm text-gray-500">商品總數</div>
+          <div className="text-xl mt-1">{partsTotal}</div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <section className="border rounded-lg p-4">
+          <h2 className="font-medium mb-2">分類管理</h2>
+          <p className="text-sm text-gray-600 mb-3">
+            目前主目錄（啟用中）：{roots.map(r => r.name).join("、") || "—"}
+          </p>
+          <div className="flex gap-2">
+            <Link className="border rounded px-3 py-1.5 hover:bg-gray-50" to="/admin/categories">
+              開啟分類管理
+            </Link>
+            <Link className="border rounded px-3 py-1.5 hover:bg-gray-50" to="/shop">
+              前往前台檢視
+            </Link>
+          </div>
+        </section>
+
+        <section className="border rounded-lg p-4">
+          <h2 className="font-medium mb-2">商品管理</h2>
+          <p className="text-sm text-gray-600 mb-3">目前商品總數：{partsTotal}</p>
+          <div className="flex gap-2">
+            <Link className="border rounded px-3 py-1.5 hover:bg-gray-50" to="/shop">
+              瀏覽商品清單
+            </Link>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}

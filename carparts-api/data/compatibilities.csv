@@ -1,0 +1,7 @@
+﻿sku,make,model,generation_name,year_from,year_to,engine_code,note
+AF-TOY-ALTIS-2ZR-19P,Toyota,Corolla Altis 1.8,E210,2019,2022,2ZR-FE,面紙型空濾；定保件
+AF-TOY-GRY-1.6T-20P,Toyota,GR Yaris 1.6T,,2020,2024,G16E-GTS,高流量，可清洗
+BP-TOY-ALTIS-FR-19A,Toyota,Corolla Altis 1.8,E210,2019,2022,2ZR-FE,前來令片；FMSI D1694
+BP-TOY-ALTIS-RR-19A,Toyota,Corolla Altis 1.8,E210,2019,2022,2ZR-FE,後來令片；FMSI D1450
+BP-TOY-GRY-FR-20S,Toyota,GR Yaris 1.6T,,2020,2024,G16E-GTS,前來令片；運動配方
+BP-TOY-GRY-RR-20S,Toyota,GR Yaris 1.6T,,2020,2024,G16E-GTS,後來令片；運動配方

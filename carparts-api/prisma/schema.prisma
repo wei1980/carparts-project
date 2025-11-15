@@ -1,0 +1,163 @@
+// ---------- Prisma Client ----------
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ---------- Database ----------
+datasource db {
+  provider     = "postgresql"
+  url          = env("DATABASE_URL")
+  // 使用 Prisma relation 模式（不建外鍵），我們會手動加索引以維持查詢效能
+  relationMode = "prisma"
+}
+
+// ---------- Enums ----------
+enum AvailabilityMode {
+  stock // 現貨（24–48 小時內出貨）
+  preorder // 預訂（顯示備貨天數）
+}
+
+// ---------- Tables / Models ----------
+model parts {
+  id                Int               @id @default(autoincrement())
+  sku               String            @unique
+  name              String
+  brand             String?
+  category          String? // 舊主分類字串（仍保留，建議逐步改為 parts_on_categories 關聯）
+  msrp_twd          Int?
+  wholesale_twd     Int?
+  image_url         String?
+  description       String?
+  stock_qty         Int               @default(0)
+  availability_mode AvailabilityMode?
+  lead_time_days    Int               @default(0)
+
+  // relations
+  parts_on_categories  parts_on_categories[]
+  part_compatibilities part_compatibilities[]
+
+  // 適度輔助查詢的索引（選配）
+  @@index([name])
+  @@index([brand])
+  @@index([category])
+  @@map("parts")
+}
+
+model categories {
+  id         Int     @id @default(autoincrement())
+  name       String
+  slug       String?
+  parent_id  Int?
+  sort_order Int     @default(0)
+  is_active  Boolean @default(true)
+  is_nav     Boolean @default(true)
+
+  // relations
+  parts_on_categories parts_on_categories[]
+
+  // 供分類樹與清單排序使用的索引
+  @@index([parent_id, sort_order])
+  @@index([is_active])
+  @@map("categories")
+}
+
+model parts_on_categories {
+  id          Int @id @default(autoincrement())
+  part_id     Int
+  category_id Int
+
+  // relations（relationMode=prisma 下不建外鍵，因此靠索引輔助）
+  part     parts      @relation(fields: [part_id], references: [id])
+  category categories @relation(fields: [category_id], references: [id])
+
+  // 去重
+  @@unique([part_id, category_id], name: "ux_part_category")
+  // 查詢效能用索引（重要）
+  @@index([part_id])
+  @@index([category_id])
+  @@map("parts_on_categories")
+}
+
+model makes {
+  id   Int    @id @default(autoincrement())
+  name String
+
+  // relations
+  models models[]
+
+  @@index([name])
+  @@map("makes")
+}
+
+model models {
+  id      Int    @id @default(autoincrement())
+  name    String
+  make_id Int
+
+  // relations
+  make             makes              @relation(fields: [make_id], references: [id])
+  generations      generations[]
+  vehicle_variants vehicle_variants[]
+
+  // 關聯欄位索引（重要）
+  @@index([make_id])
+  @@index([name])
+  @@map("models")
+}
+
+model generations {
+  id        Int     @id @default(autoincrement())
+  model_id  Int
+  name      String?
+  year_from Int?
+  year_to   Int?
+
+  // relations
+  model            models             @relation(fields: [model_id], references: [id])
+  vehicle_variants vehicle_variants[]
+
+  // 關聯欄位索引（重要）
+  @@index([model_id])
+  @@index([year_from, year_to])
+  @@map("generations")
+}
+
+model vehicle_variants {
+  id            Int     @id @default(autoincrement())
+  model_id      Int
+  generation_id Int?
+  name          String?
+  engine_code   String?
+  year_from     Int?
+  year_to       Int?
+  fuel_type     String?
+
+  // relations
+  model                models                 @relation(fields: [model_id], references: [id])
+  generation           generations?           @relation(fields: [generation_id], references: [id])
+  part_compatibilities part_compatibilities[]
+
+  // 關聯欄位與常用查詢索引（重要）
+  @@index([model_id])
+  @@index([generation_id])
+  @@index([engine_code])
+  @@index([year_from, year_to])
+  @@map("vehicle_variants")
+}
+
+model part_compatibilities {
+  id                 Int @id @default(autoincrement())
+  part_id            Int
+  vehicle_variant_id Int
+
+  // relations
+  part            parts            @relation(fields: [part_id], references: [id])
+  vehicle_variant vehicle_variants @relation(fields: [vehicle_variant_id], references: [id])
+
+  // 去重
+  @@unique([part_id, vehicle_variant_id], name: "ux_part_variant")
+  // 關聯欄位索引（重要）
+  @@index([part_id])
+  @@index([vehicle_variant_id])
+  @@map("part_compatibilities")
+}
