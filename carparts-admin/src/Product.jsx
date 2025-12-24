@@ -1,3 +1,5 @@
+// src/Product.jsx
+
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { addToCart } from "./CartDrawer.jsx";
@@ -5,15 +7,28 @@ import { addToCart } from "./CartDrawer.jsx";
 function computeStatus(p) {
   const qty = Number(p?.stock_qty ?? 0);
   const mode = (p?.availability_mode || "").toLowerCase();
-  const lead = Number(p?.lead_time_days ?? 0);
+  // 假設 lead_time_days 欄位現在存的是週數 (例如: 3)
+  const leadWeeks = Number(p?.lead_time_days ?? 0);
 
+  // 1. 現貨狀態
   if (qty > 0 || mode === "stock") {
     const stockText = qty > 0 ? `庫存量：${qty}` : "庫存：—";
-    return `${stockText}（現貨，24–48 小時內出貨）`;
+    return `${stockText}（✅ 現貨，24–48 小時內出貨）`;
   }
-  if (mode === "lead" && lead > 0) return `備貨中，約 ${lead} 天出貨`;
-  if (mode === "mto") return "接單生產，出貨期另行通知";
-  return null;
+  
+  // 2. 預訂狀態
+  if (mode === "preorder" && leadWeeks > 0) {
+    // 直接使用 leadWeeks
+    return `備貨中，⏳ 預計 ${leadWeeks} 週後出貨`;
+  }
+  
+  // 3. 接單生產狀態
+  if (mode === "mto") {
+    return "接單生產，出貨期另行通知";
+  }
+  
+  // 4. 其他狀態 (如無庫存且無預訂天數)
+  return "❌ 電洽（請聯繫業務確認交期）";
 }
 
 export default function Product({ by }) {
@@ -24,20 +39,28 @@ export default function Product({ by }) {
   const [qty, setQty] = useState(1);
 
   const priceFmt = useMemo(() => (n) => `NT$ ${Number(n).toLocaleString()}`, []);
+  
+  // 獲取零件狀態文字
+  const statusText = useMemo(() => part ? computeStatus(part) : null, [part]);
 
   useEffect(() => {
     async function run() {
       try {
         setLoading(true); setErr("");
+        // 假設後端 API 路徑為 /parts/:id 或 /parts/by-sku/:sku
         const url = by === "id" ? `/parts/${Number(id)}` : `/parts/by-sku/${encodeURIComponent(sku)}`;
-        const res = await fetch(url, { headers: { Accept: "application/json" } });
-        const text = await res.text();
-        if (!res.ok) throw new Error(text || `HTTP ${res.status}`);
-        const data = JSON.parse(text);
+        const r = await fetch(url);
+        if (r.status === 404) {
+          setErr("零件不存在。");
+          setPart(null);
+          return;
+        }
+        if (!r.ok) throw new Error("載入零件詳細資料失敗");
+        
+        const data = await r.json();
         setPart(data);
       } catch (e) {
-        setErr(String(e.message || e));
-        setPart(null);
+        setErr(String(e));
       } finally {
         setLoading(false);
       }
@@ -45,127 +68,122 @@ export default function Product({ by }) {
     run();
   }, [id, sku, by]);
 
-  function handleAddToCart() {
+  const handleAddToCart = () => {
     if (!part) return;
-    const unit =
-      (part.wholesale_twd != null ? Number(part.wholesale_twd) : null) ??
-      (part.msrp_twd != null ? Number(part.msrp_twd) : 0);
-
     addToCart({
-      sku: part.sku,
-      name: part?.name || (sku ?? String(id)),
-      image_url: part?.image_url || null,
-      role: "dealer",
-      qty: Number(qty) || 1,
-      unit_price_twd: unit,
-      msrp_twd: part?.msrp_twd != null ? Number(part.msrp_twd) : null,
-      wholesale_twd: part?.wholesale_twd != null ? Number(part.wholesale_twd) : null
+        id: part.id,
+        sku: part.sku,
+        name: part.name,
+        price: part.wholesale_twd || part.msrp_twd, // 使用實際價格
+        qty: Number(qty) || 1,
+        meta: { 
+          vehicle: "當前篩選車型", // TODO: 實際應從 VehicleFilter 狀態獲取
+          brand: part.brand_name || part.brand_id 
+        }
     });
-
-    alert("已加入購物車！請點右上角 🛒 查看。");
+    alert(`已將 ${qty} 個 ${part.name} 加入購物車！`);
   }
 
-  if (loading) return <div style={{ maxWidth: 1000, margin: "20px auto", padding: 16 }}>載入中…</div>;
-  if (err || !part) return (
-    <div style={{ maxWidth: 1000, margin: "20px auto", padding: 16, color: err ? "crimson" : "#333" }}>
-      找不到此商品。
-      {err && <div style={{ marginTop: 6, color: "crimson" }}>{err}</div>}
-    </div>
-  );
-
-  const hasMsrp = part.msrp_twd != null;
-  const hasWholesale = part.wholesale_twd != null;
-  const statusText = computeStatus(part);
+  // 輔助函式：檢查是否有價格
+  const hasMsrp = useMemo(() => Number(part?.msrp_twd || 0) > 0, [part]);
+  const hasWholesale = useMemo(() => Number(part?.wholesale_twd || 0) > 0, [part]);
+  
+  if (loading) return <div>載入中...</div>;
+  if (err) return <div style={{ color: 'red' }}>錯誤: {err}</div>;
+  if (!part) return <div>找不到該零件。</div>;
 
   return (
-    <div style={{ maxWidth: 1000, margin: "20px auto", padding: 16 }}>
-      <div style={{ marginBottom: 12 }}>
-        <Link to="/shop">← 回到商店</Link>
-      </div>
+    <div className="product-page" style={{ padding: 20 }}>
+      <Link to="/" style={{ display: "block", marginBottom: 16 }}>← 返回零件列表</Link>
 
-      <div style={{ display: "grid", gridTemplateColumns: "360px 1fr", gap: 16 }}>
-        {/* 圖片 */}
-        <div>
-          {part.image_url ? (
-            <img src={part.image_url} alt={part.name} style={{ width: "100%", borderRadius: 10 }} />
-          ) : (
-            <div style={{ width: "100%", height: 260, background: "#f2f2f2", borderRadius: 10 }} />
-          )}
+      <div style={{ display: "flex", gap: 30 }}>
+        
+        {/* 左側：圖片與基本資訊 */}
+        <div style={{ flex: 1 }}>
+          <img 
+            src={part.image_url || 'placeholder.jpg'} 
+            alt={part.name} 
+            style={{ width: "100%", maxHeight: 500, objectFit: "contain", border: "1px solid #eee", borderRadius: 8 }}
+          />
+          {/* 圖片切換或其他詳細圖片... */}
         </div>
-
-        {/* 右側內容 */}
-        <div>
-          <h2 style={{ margin: "0 0 6px" }}>{part.name}</h2>
-
-          {/* 不顯示 SKU */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 8, marginBottom: 8 }}>
-            <div>品牌：{part.brand ?? "-"}</div>
-            <div>類別：{Array.isArray(part.categories) && part.categories.length ? part.categories.join("、") : (part.category ?? "-")}</div>
+        
+        {/* 右側：詳細資訊與操作 */}
+        <div style={{ flex: 1 }}>
+          
+          <h1 style={{ fontSize: "2em", margin: "0 0 8px 0" }}>{part.name}</h1>
+          <div style={{ color: "#666", marginBottom: 16 }}>
+            SKU: <strong>{part.sku}</strong> | 品牌: <strong>{part.brand_name || part.brand_id || 'N/A'}</strong>
           </div>
 
-          {/* 相容車型摘要 */}
-          {part.compatibility_summary && (
-            <div style={{ marginBottom: 8, color: "#444" }}>
-              相容車型：{part.compatibility_summary}
-            </div>
-          )}
-
-          {/* 價格區塊：建議售價（刪除線）＋ 批發價格（放大 & 粗體） */}
-          <div style={{ marginBottom: 10 }}>
+          {/* 價格顯示邏輯 */}
+          <div style={{ marginBottom: 20, padding: 16, border: "1px dashed #ccc", borderRadius: 8 }}>
+            
             {hasMsrp && hasWholesale && (
               <>
-                <div style={{ color: "#888", textDecoration: "line-through" }}>
-                  建議售價：{priceFmt(part.msrp_twd)}
+                <div style={{ fontSize: "1.2em", color: "#999", textDecoration: "line-through" }}>
+                  建議售價 (MSRP): {priceFmt(part.msrp_twd)}
                 </div>
-                <div style={{ fontSize: 24, fontWeight: 800, lineHeight: 1.2 }}>
+                <div style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.2, color: "#dc3545", marginTop: 4 }}>
                   批發價格：{priceFmt(part.wholesale_twd)}
                 </div>
               </>
             )}
 
-            {hasMsrp && !hasWholesale && (
-              <div>建議售價：{priceFmt(part.msrp_twd)}</div>
-            )}
-
-            {!hasMsrp && hasWholesale && (
-              <div style={{ fontSize: 24, fontWeight: 800, lineHeight: 1.2 }}>
-                批發價格：{priceFmt(part.wholesale_twd)}
-              </div>
-            )}
-
+            {/* 處理僅有 MSRP 或僅有 Wholesale 的情況... (略) */}
+            
             {!hasMsrp && !hasWholesale && (
-              <div>價格：-</div>
+              <div>價格：請電洽</div>
             )}
           </div>
 
           {/* ✅ 商品狀態 */}
           {statusText && (
-            <div style={{ marginBottom: 12, color: "#047857" }}>
+            <div style={{ marginBottom: 18, fontSize: "1.1em", fontWeight: "bold", color: "#047857" }}>
               商品狀態：{statusText}
             </div>
           )}
 
           {/* 產品說明 */}
           {part.description && (
-            <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.6, marginBottom: 16 }}>
-              {part.description}
-            </div>
+            <>
+                <h3 style={{fontSize: "1.2em", margin: "0 0 8px 0"}}>產品特色</h3>
+                <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.6, marginBottom: 16, border: "1px solid #eee", padding: 12, borderRadius: 6 }}>
+                  {part.description}
+                </div>
+            </>
           )}
 
           {/* 加入購物車 */}
           <div style={{ border: "1px solid #eee", borderRadius: 10, padding: 12 }}>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <label>數量：</label>
+              <label style={{fontWeight: 'bold'}}>數量：</label>
               <input
                 type="number" min={1} value={qty}
-                onChange={e => setQty(e.target.value)}
-                style={{ width: 90 }}
+                onChange={e => setQty(Math.max(1, Number(e.target.value || 1)))}
+                style={{ width: 90, padding: 8, borderRadius: 4, border: "1px solid #ccc" }}
               />
-              <button onClick={handleAddToCart} style={{ marginLeft: "auto", fontWeight: 700 }}>
-                加入購物車
+              <button 
+                onClick={handleAddToCart} 
+                style={{ 
+                    marginLeft: "auto", 
+                    fontWeight: 700,
+                    padding: "10px 20px", 
+                    backgroundColor: "#007bff", 
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    transition: "background-color 0.2s",
+                }}
+                onMouseEnter={(e) => e.target.style.backgroundColor = "#0056b3"}
+                onMouseLeave={(e) => e.target.style.backgroundColor = "#007bff"}
+              >
+                🛒 加入購物車
               </button>
             </div>
           </div>
+
         </div>
       </div>
     </div>

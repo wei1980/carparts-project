@@ -66,3 +66,570 @@ ConnectorError(ConnectorError { user_facing_error: None, kind: QueryError(Postgr
 ^C[dotenv@17.2.3] injecting env (1) from .env -- tip: ✅ audit secrets and track compliance: https://dotenvx.com/ops
 🚀 API listening at http://localhost:3000
 ✅ orders / order_items tables ready
+[dotenv@17.2.3] injecting env (1) from .env -- tip: ✅ audit secrets and track compliance: https://dotenvx.com/ops
+🚀 API listening at http://localhost:3000
+✅ orders / order_items tables ready
+^C[dotenv@17.2.3] injecting env (1) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+🚀 API listening at http://localhost:3000
+✅ orders / order_items tables ready
+^C[dotenv@17.2.3] injecting env (1) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+🚀 API listening at http://localhost:3000
+✅ orders / order_items tables ready
+[dotenv@17.2.3] injecting env (1) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+🚀 API listening at http://localhost:3000
+✅ orders / order_items tables ready
+^C[dotenv@17.2.3] injecting env (1) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+🚀 API listening at http://localhost:3000
+✅ orders / order_items tables ready
+^C[dotenv@17.2.3] injecting env (1) from .env -- tip: ⚙️  override existing env vars with { override: true }
+🚀 API listening at http://localhost:3000
+✅ orders / order_items tables ready
+GET /makes failed: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "vehicle_makes" does not exist`
+    at $n.handleRequestError (C:\carparts\carparts-api\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (C:\carparts\carparts-api\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (C:\carparts\carparts-api\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (C:\carparts\carparts-api\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async C:\carparts\carparts-api\index.js:305:21 {
+  code: 'P2010',
+  clientVersion: '5.22.0',
+  meta: { code: '42P01', message: 'relation "vehicle_makes" does not exist' }
+}
+GET /makes failed: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "vehicle_makes" does not exist`
+    at $n.handleRequestError (C:\carparts\carparts-api\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (C:\carparts\carparts-api\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (C:\carparts\carparts-api\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (C:\carparts\carparts-api\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async C:\carparts\carparts-api\index.js:305:21 {
+  code: 'P2010',
+  clientVersion: '5.22.0',
+  meta: { code: '42P01', message: 'relation "vehicle_makes" does not exist' }
+}
+^C[dotenv@17.2.3] injecting env (1) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+🚀 API listening at http://localhost:3000
+✅ orders / order_items tables ready
+GET /makes failed: PrismaClientKnownRequestError: 
+Invalid `prisma.$queryRaw()` invocation:
+
+
+Raw query failed. Code: `42P01`. Message: `relation "vehicle_makes" does not exist`
+    at $n.handleRequestError (C:\carparts\carparts-api\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (C:\carparts\carparts-api\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (C:\carparts\carparts-api\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (C:\carparts\carparts-api\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async C:\carparts\carparts-api\index.js:305:21 {
+  code: 'P2010',
+  clientVersion: '5.22.0',
+  meta: { code: '42P01', message: 'relation "vehicle_makes" does not exist' }
+}
+^C[dotenv@17.2.3] injecting env (1) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+🚀 API listening at http://localhost:3000
+✅ orders / order_items tables ready
+^C[dotenv@17.2.3] injecting env (1) from .env -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+node:events:502
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::3000
+    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
+    at listenInCluster (node:net:1965:12)
+    at Server.listen (node:net:2067:7)
+    at Function.listen (C:\carparts\carparts-api\node_modules\express\lib\application.js:635:24)
+    at Object.<anonymous> (C:\carparts\carparts-api\index.js:1048:5)
+    at Module._compile (node:internal/modules/cjs/loader:1529:14)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+    at Module.load (node:internal/modules/cjs/loader:1275:32)
+    at Module._load (node:internal/modules/cjs/loader:1096:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1944:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 3000
+}
+
+Node.js v20.19.4
+[dotenv@17.2.3] injecting env (1) from .env -- tip: ⚙️  override existing env vars with { override: true }
+node:events:502
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::3000
+    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
+    at listenInCluster (node:net:1965:12)
+    at Server.listen (node:net:2067:7)
+    at Function.listen (C:\carparts\carparts-api\node_modules\express\lib\application.js:635:24)
+    at Object.<anonymous> (C:\carparts\carparts-api\index.js:1048:5)
+    at Module._compile (node:internal/modules/cjs/loader:1529:14)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+    at Module.load (node:internal/modules/cjs/loader:1275:32)
+    at Module._load (node:internal/modules/cjs/loader:1096:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1944:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 3000
+}
+
+Node.js v20.19.4
+[dotenv@17.2.3] injecting env (1) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+node:events:502
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::3000
+    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
+    at listenInCluster (node:net:1965:12)
+    at Server.listen (node:net:2067:7)
+    at Function.listen (C:\carparts\carparts-api\node_modules\express\lib\application.js:635:24)
+    at Object.<anonymous> (C:\carparts\carparts-api\index.js:1049:5)
+    at Module._compile (node:internal/modules/cjs/loader:1529:14)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+    at Module.load (node:internal/modules/cjs/loader:1275:32)
+    at Module._load (node:internal/modules/cjs/loader:1096:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1944:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 3000
+}
+
+Node.js v20.19.4
+[dotenv@17.2.3] injecting env (1) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+🚀 API listening at http://localhost:3000
+✅ orders / order_items tables ready
+[dotenv@17.2.3] injecting env (1) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+🚀 API listening at http://localhost:3000
+✅ orders / order_items tables ready
+^C[dotenv@17.2.3] injecting env (1) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+🚀 API listening at http://localhost:3000
+✅ orders / order_items tables ready
+[dotenv@17.2.3] injecting env (1) from .env -- tip: ⚙️  override existing env vars with { override: true }
+🚀 API listening at http://localhost:3000
+✅ orders / order_items tables ready
+DELETE /categories error: PrismaClientValidationError: 
+Invalid `prisma.parts_on_categories.deleteMany()` invocation in
+C:\carparts\carparts-api\index.js:1254:44
+
+  1251 if (force) {
+  1252   const subIds = cat.subcategories.map(s => s.id);
+  1253   if (subIds.length) {
+→ 1254     await prisma.parts_on_categories.deleteMany({
+             where: {
+               subcategory_id: {
+               ~~~~~~~~~~~~~~
+                 in: [
+                   43,
+                   44,
+                   45,
+                   46,
+                   47
+                 ]
+               },
+           ?   AND?: parts_on_categoriesWhereInput | parts_on_categoriesWhereInput[],
+           ?   OR?: parts_on_categoriesWhereInput[],
+           ?   NOT?: parts_on_categoriesWhereInput | parts_on_categoriesWhereInput[],
+           ?   id?: IntFilter | Int,
+           ?   part_id?: IntFilter | Int,
+           ?   category_id?: IntFilter | Int,
+           ?   part?: PartsRelationFilter | partsWhereInput,
+           ?   category?: CategoriesRelationFilter | categoriesWhereInput
+             }
+           })
+
+Unknown argument `subcategory_id`. Did you mean `category_id`? Available options are marked with ?.
+    at wn (C:\carparts\carparts-api\node_modules\@prisma\client\runtime\library.js:29:1363)
+    at $n.handleRequestError (C:\carparts\carparts-api\node_modules\@prisma\client\runtime\library.js:121:6958)
+    at $n.handleAndLogRequestError (C:\carparts\carparts-api\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (C:\carparts\carparts-api\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (C:\carparts\carparts-api\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async C:\carparts\carparts-api\index.js:1254:11 {
+  clientVersion: '5.22.0'
+}
+^C[dotenv@17.2.3] injecting env (1) from .env -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+🚀 API listening at http://localhost:3000
+✅ orders / order_items tables ready
+^C[dotenv@17.2.3] injecting env (1) from .env -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
+🚀 API listening at http://localhost:3000
+✅ orders / order_items tables ready
+^C[dotenv@17.2.3] injecting env (1) from .env -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
+🚀 API listening at http://localhost:3000
+✅ orders / order_items tables ready
+^C[dotenv@17.2.3] injecting env (1) from .env -- tip: 👥 sync secrets across teammates & machines: https://dotenvx.com/ops
+🚀 API listening at http://localhost:3000
+✅ orders / order_items tables ready
+^C[dotenv@17.2.3] injecting env (1) from .env -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+🚀 API listening at http://localhost:3000
+✅ orders / order_items tables ready
+^C[dotenv@17.2.3] injecting env (1) from .env -- tip: ⚙️  override existing env vars with { override: true }
+🚀 API listening at http://localhost:3000
+✅ orders / order_items tables ready
+^C[dotenv@17.2.3] injecting env (1) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+🚀 API listening at http://localhost:3000
+✅ orders / order_items tables ready
+^C[dotenv@17.2.3] injecting env (1) from .env -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
+🚀 API listening at http://localhost:3000
+✅ orders / order_items tables ready
+^C[dotenv@17.2.3] injecting env (1) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+🚀 API listening at http://localhost:3000
+✅ orders / order_items tables ready
+^C[dotenv@17.2.3] injecting env (1) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+🚀 API listening at http://localhost:3000
+✅ orders / order_items tables ready
+[dotenv@17.2.3] injecting env (1) from .env -- tip: 👥 sync secrets across teammates & machines: https://dotenvx.com/ops
+🚀 API listening at http://localhost:3000
+✅ orders / order_items tables ready
+^C[dotenv@17.2.3] injecting env (1) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+🚀 API listening at http://localhost:3000
+✅ orders / order_items tables ready
+^C[dotenv@17.2.3] injecting env (1) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+🚀 API listening at http://localhost:3000
+✅ orders / order_items tables ready
+^C[dotenv@17.2.3] injecting env (1) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+🚀 API listening at http://localhost:3000
+✅ orders / order_items tables ready
+[dotenv@17.2.3] injecting env (1) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+🚀 API listening at http://localhost:3000
+✅ orders / order_items tables ready
+GET /makes failed: TypeError: Cannot read properties of undefined (reading 'findMany')
+    at C:\carparts\carparts-api\index.js:334:41
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at C:\carparts\carparts-api\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:280:10)
+    at textParser (C:\carparts\carparts-api\node_modules\body-parser\lib\types\text.js:69:7)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+GET /makes failed: TypeError: Cannot read properties of undefined (reading 'findMany')
+    at C:\carparts\carparts-api\index.js:334:41
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at C:\carparts\carparts-api\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:280:10)
+    at textParser (C:\carparts\carparts-api\node_modules\body-parser\lib\types\text.js:69:7)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+GET /makes failed: TypeError: Cannot read properties of undefined (reading 'findMany')
+    at C:\carparts\carparts-api\index.js:334:41
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at C:\carparts\carparts-api\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:280:10)
+    at textParser (C:\carparts\carparts-api\node_modules\body-parser\lib\types\text.js:69:7)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+GET /makes failed: TypeError: Cannot read properties of undefined (reading 'findMany')
+    at C:\carparts\carparts-api\index.js:334:41
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at C:\carparts\carparts-api\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:280:10)
+    at textParser (C:\carparts\carparts-api\node_modules\body-parser\lib\types\text.js:69:7)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+^C[dotenv@17.2.3] injecting env (1) from .env -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+🚀 API listening at http://localhost:3000
+✅ orders / order_items tables ready
+GET /makes failed: TypeError: Cannot read properties of undefined (reading 'findMany')
+    at C:\carparts\carparts-api\index.js:407:41
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at C:\carparts\carparts-api\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:280:10)
+    at textParser (C:\carparts\carparts-api\node_modules\body-parser\lib\types\text.js:69:7)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+GET /makes failed: TypeError: Cannot read properties of undefined (reading 'findMany')
+    at C:\carparts\carparts-api\index.js:407:41
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at C:\carparts\carparts-api\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:280:10)
+    at textParser (C:\carparts\carparts-api\node_modules\body-parser\lib\types\text.js:69:7)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+GET /makes failed: TypeError: Cannot read properties of undefined (reading 'findMany')
+    at C:\carparts\carparts-api\index.js:407:41
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at C:\carparts\carparts-api\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:280:10)
+    at textParser (C:\carparts\carparts-api\node_modules\body-parser\lib\types\text.js:69:7)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+GET /makes failed: TypeError: Cannot read properties of undefined (reading 'findMany')
+    at C:\carparts\carparts-api\index.js:407:41
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at C:\carparts\carparts-api\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:280:10)
+    at textParser (C:\carparts\carparts-api\node_modules\body-parser\lib\types\text.js:69:7)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+GET /makes failed: TypeError: Cannot read properties of undefined (reading 'findMany')
+    at C:\carparts\carparts-api\index.js:407:41
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at C:\carparts\carparts-api\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:280:10)
+    at textParser (C:\carparts\carparts-api\node_modules\body-parser\lib\types\text.js:69:7)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+GET /makes failed: TypeError: Cannot read properties of undefined (reading 'findMany')
+    at C:\carparts\carparts-api\index.js:407:41
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at C:\carparts\carparts-api\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:280:10)
+    at textParser (C:\carparts\carparts-api\node_modules\body-parser\lib\types\text.js:69:7)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+GET /makes failed: TypeError: Cannot read properties of undefined (reading 'findMany')
+    at C:\carparts\carparts-api\index.js:407:41
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at C:\carparts\carparts-api\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:280:10)
+    at textParser (C:\carparts\carparts-api\node_modules\body-parser\lib\types\text.js:69:7)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+GET /makes failed: TypeError: Cannot read properties of undefined (reading 'findMany')
+    at C:\carparts\carparts-api\index.js:407:41
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at C:\carparts\carparts-api\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:280:10)
+    at textParser (C:\carparts\carparts-api\node_modules\body-parser\lib\types\text.js:69:7)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+GET /makes failed: TypeError: Cannot read properties of undefined (reading 'findMany')
+    at C:\carparts\carparts-api\index.js:407:41
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at C:\carparts\carparts-api\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:280:10)
+    at textParser (C:\carparts\carparts-api\node_modules\body-parser\lib\types\text.js:69:7)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+GET /makes failed: TypeError: Cannot read properties of undefined (reading 'findMany')
+    at C:\carparts\carparts-api\index.js:407:41
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at C:\carparts\carparts-api\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:280:10)
+    at textParser (C:\carparts\carparts-api\node_modules\body-parser\lib\types\text.js:69:7)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+GET /makes failed: TypeError: Cannot read properties of undefined (reading 'findMany')
+    at C:\carparts\carparts-api\index.js:407:41
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at C:\carparts\carparts-api\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:280:10)
+    at textParser (C:\carparts\carparts-api\node_modules\body-parser\lib\types\text.js:69:7)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+GET /makes failed: TypeError: Cannot read properties of undefined (reading 'findMany')
+    at C:\carparts\carparts-api\index.js:407:41
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at C:\carparts\carparts-api\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:280:10)
+    at textParser (C:\carparts\carparts-api\node_modules\body-parser\lib\types\text.js:69:7)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+GET /makes failed: TypeError: Cannot read properties of undefined (reading 'findMany')
+    at C:\carparts\carparts-api\index.js:407:41
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at C:\carparts\carparts-api\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:280:10)
+    at textParser (C:\carparts\carparts-api\node_modules\body-parser\lib\types\text.js:69:7)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+GET /makes failed: TypeError: Cannot read properties of undefined (reading 'findMany')
+    at C:\carparts\carparts-api\index.js:407:41
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at C:\carparts\carparts-api\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:280:10)
+    at textParser (C:\carparts\carparts-api\node_modules\body-parser\lib\types\text.js:69:7)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+GET /makes failed: TypeError: Cannot read properties of undefined (reading 'findMany')
+    at C:\carparts\carparts-api\index.js:407:41
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at C:\carparts\carparts-api\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:280:10)
+    at textParser (C:\carparts\carparts-api\node_modules\body-parser\lib\types\text.js:69:7)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+GET /makes failed: TypeError: Cannot read properties of undefined (reading 'findMany')
+    at C:\carparts\carparts-api\index.js:407:41
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at C:\carparts\carparts-api\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:280:10)
+    at textParser (C:\carparts\carparts-api\node_modules\body-parser\lib\types\text.js:69:7)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+GET /makes failed: TypeError: Cannot read properties of undefined (reading 'findMany')
+    at C:\carparts\carparts-api\index.js:407:41
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at C:\carparts\carparts-api\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:280:10)
+    at textParser (C:\carparts\carparts-api\node_modules\body-parser\lib\types\text.js:69:7)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+GET /makes failed: TypeError: Cannot read properties of undefined (reading 'findMany')
+    at C:\carparts\carparts-api\index.js:407:41
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at C:\carparts\carparts-api\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:280:10)
+    at textParser (C:\carparts\carparts-api\node_modules\body-parser\lib\types\text.js:69:7)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+GET /makes failed: TypeError: Cannot read properties of undefined (reading 'findMany')
+    at C:\carparts\carparts-api\index.js:407:41
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at C:\carparts\carparts-api\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:280:10)
+    at textParser (C:\carparts\carparts-api\node_modules\body-parser\lib\types\text.js:69:7)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+GET /makes failed: TypeError: Cannot read properties of undefined (reading 'findMany')
+    at C:\carparts\carparts-api\index.js:407:41
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at C:\carparts\carparts-api\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:280:10)
+    at textParser (C:\carparts\carparts-api\node_modules\body-parser\lib\types\text.js:69:7)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+GET /makes failed: TypeError: Cannot read properties of undefined (reading 'findMany')
+    at C:\carparts\carparts-api\index.js:407:41
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at C:\carparts\carparts-api\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:280:10)
+    at textParser (C:\carparts\carparts-api\node_modules\body-parser\lib\types\text.js:69:7)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+GET /makes failed: TypeError: Cannot read properties of undefined (reading 'findMany')
+    at C:\carparts\carparts-api\index.js:407:41
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at C:\carparts\carparts-api\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:280:10)
+    at textParser (C:\carparts\carparts-api\node_modules\body-parser\lib\types\text.js:69:7)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+GET /makes failed: TypeError: Cannot read properties of undefined (reading 'findMany')
+    at C:\carparts\carparts-api\index.js:407:41
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at C:\carparts\carparts-api\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:280:10)
+    at textParser (C:\carparts\carparts-api\node_modules\body-parser\lib\types\text.js:69:7)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+GET /makes failed: TypeError: Cannot read properties of undefined (reading 'findMany')
+    at C:\carparts\carparts-api\index.js:407:41
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:149:13)
+    at Route.dispatch (C:\carparts\carparts-api\node_modules\express\lib\router\route.js:119:3)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+    at C:\carparts\carparts-api\node_modules\express\lib\router\index.js:284:15
+    at Function.process_params (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:346:12)
+    at next (C:\carparts\carparts-api\node_modules\express\lib\router\index.js:280:10)
+    at textParser (C:\carparts\carparts-api\node_modules\body-parser\lib\types\text.js:69:7)
+    at Layer.handle [as handle_request] (C:\carparts\carparts-api\node_modules\express\lib\router\layer.js:95:5)
+^C[dotenv@17.2.3] injecting env (1) from .env -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
+🚀 API listening at http://localhost:3000
+   - Admin: /admin/parts
+   - Shop:  /parts
+^C[dotenv@17.2.3] injecting env (1) from .env -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
+🚀 API listening at http://localhost:3000
+   - Admin: /admin/parts
+   - Shop:  /parts
+^C[dotenv@17.2.3] injecting env (1) from .env -- tip: ⚙️  override existing env vars with { override: true }
+🚀 API listening at http://localhost:3000
+   - Admin: /admin/parts
+   - Shop:  /parts
+^C

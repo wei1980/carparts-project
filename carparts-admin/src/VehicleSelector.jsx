@@ -44,7 +44,7 @@ export default function VehicleSelector({ value=[], onChange }) {
     if (![...qs.keys()].length) { setVariants([]); return; }
     try {
       setLoading(true);
-      setVariants(await jget(`/variants?${qs.toString()}`));
+      setVariants(await jget(`/variants?modelId=${pick.modelId}`)); //
     } catch(e){ setErr(String(e.message||e)); setVariants([]); }
     finally { setLoading(false); }
   })(); }, [pick.generationId, pick.modelId, pick.year]);

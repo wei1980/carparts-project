@@ -1,249 +1,341 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import VehicleFilter from "./VehicleFilter.jsx";
 import CartDrawer, { addToCart, getCartCount } from "./CartDrawer.jsx";
 
-const API = "http://localhost:3000";
-
-export default function Shop() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [parts, setParts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [categories, setCategories] = useState([]); // roots with children
-  const [expandedRootId, setExpandedRootId] = useState(null); // 手風琴
-  const [brandFilters, setBrandFilters] = useState([]); // 子目錄內出現過的品牌
-  const [selectedBrand, setSelectedBrand] = useState("");
-
-  // 車型（摘要與取消在 VehicleFilter 裡顯示）
-  const [vehicle, setVehicle] = useState(() => {
-    const v = {};
-    if (searchParams.get("year")) v.year = Number(searchParams.get("year"));
-    if (searchParams.get("makeId")) v.makeId = Number(searchParams.get("makeId"));
-    if (searchParams.get("modelId")) v.modelId = Number(searchParams.get("modelId"));
-    if (searchParams.get("variantId")) v.variantId = Number(searchParams.get("variantId"));
-    v.makeName = searchParams.get("makeName") || "";
-    v.modelName = searchParams.get("modelName") || "";
-    v.variantName = searchParams.get("variantName") || "";
-    return v;
-  });
-
-  // 類別選擇
-  const [rootId, setRootId] = useState(null);
-  const [childId, setChildId] = useState(null);
-  const [childName, setChildName] = useState("");
-
-  // 購物車抽屜
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [cartCount, setCartCount] = useState(getCartCount());
-
-  useEffect(() => {
-    refreshParts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rootId, childId, selectedBrand, vehicle?.variantId]);
-
-  useEffect(() => {
-    fetch(`${API}/categories/tree`)
-      .then((r) => r.json())
-      .then((data) => setCategories(Array.isArray(data) ? data : []))
-      .catch(() => setCategories([]));
-  }, []);
-
-  function refreshParts() {
-    setLoading(true);
-    const qs = new URLSearchParams();
-    qs.set("page", String(searchParams.get("page") || 1));
-    qs.set("pageSize", "20");
-    if (childName) qs.set("category", childName);
-    if (selectedBrand) qs.set("brand", selectedBrand);
-    if (vehicle?.variantId) qs.set("variantId", String(vehicle.variantId));
-
-    fetch(`${API}/parts?${qs.toString()}`)
-      .then((r) => r.json())
-      .then((data) => {
-        const arr = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : []);
-        setParts(arr);
-        const brands = [...new Set(arr.map(p => (p.brand || "").trim()).filter(Boolean))];
-        setBrandFilters(brands);
-      })
-      .catch(() => setParts([]))
-      .finally(() => setLoading(false));
-  }
-
-  function onVehicleChange(next) {
-    setVehicle(next);
-    const sp = new URLSearchParams(searchParams);
-    ["year","makeId","modelId","variantId","makeName","modelName","variantName"].forEach(k=>{
-      if (next[k]) sp.set(k, String(next[k])); else sp.delete(k);
-    });
-    setSearchParams(sp, { replace: true });
-  }
-
-  // 手風琴展開/收合（只展開一個 root）
-  function toggleRoot(root) {
-    setExpandedRootId(expandedRootId === root.id ? null : root.id);
-    setRootId(root.id);
-    setChildId(null);
-    setChildName("");
-    setSelectedBrand("");
-  }
-
-  function pickChild(root, child) {
-    setChildId(child.id);
-    setChildName(child.name);
-    setSelectedBrand("");
-    if (expandedRootId !== root.id) setExpandedRootId(root.id);
-  }
-
-  // 產生「適用車型」摘要（只有在已選 variantId 才會回傳字串）
-  function vehicleSummary(v) {
-    if (!v || !v.variantId) return "";
-    // 只把有值的串起來，避免多餘空白
-    return [v.year, v.makeName, v.modelName, v.variantName].filter(Boolean).join(" ");
-  }
-
-  function joinCart(p) {
-    const summary = vehicleSummary(vehicle); // 若未選車型會是空字串
-    addToCart({
-      id: p.id,
-      name: p.name,
-      price: computePrice(p),
-      qty: 1,
-      image_url: p.image_url || "",
-      meta: {
-        brand: p.brand || "",
-        category: p.category || "",
-        // ✅ 只有「已選車型」才寫入，否則不放這個欄位
-        ...(summary ? { vehicle: summary } : {})
-      }
-    });
-    setCartCount(getCartCount());
-    setDrawerOpen(true);
-  }
-
-  function computePrice(p) {
-    // 經銷商系統：優先批發，否則退回 MSRP
-    const w = Number.isFinite(Number(p.wholesale_twd)) ? Number(p.wholesale_twd) : null;
-    const m = Number.isFinite(Number(p.msrp_twd)) ? Number(p.msrp_twd) : null;
-    return w ?? m ?? 0;
-  }
-
-  // 詳情路由仍保留（圖片/名稱可以點入產品頁；若完全不需要詳情，將 Link 換成 div）
-  function productLink(p) {
-    return p?.sku ? `/p/${encodeURIComponent(p.sku)}` : `/pid/${encodeURIComponent(p.id)}`;
-  }
-
-  return (
-    <div className="shop-page">
-      {/* 頂部：Logo + 車型選擇 */}
-      <div className="shop-top">
-        <img src="/images/Top_logo_684x190.webp" alt="logo" className="shop-logo" />
-        <div className="shop-vehicle">
-          <VehicleFilter value={vehicle} onChange={onVehicleChange} />
-        </div>
-      </div>
-
-      <div className="shop-body">
-        {/* 左：目錄（手風琴） */}
-        <aside className="shop-cats">
-          <div className="cats-title">目錄</div>
-          <div className="cats-list">
-            {categories.map(root => (
-              <div key={root.id} className="cat-root">
-                <button
-                  className={`cat-root-btn ${expandedRootId === root.id ? "is-open" : ""}`}
-                  onClick={() => toggleRoot(root)}
-                >
-                  {root.name}
-                  <span className="arrow">{expandedRootId === root.id ? "▾" : "▸"}</span>
-                </button>
-                {expandedRootId === root.id && (
-                  <div className="cat-children">
-                    {(root.children || []).map(child => (
-                      <button
-                        key={child.id}
-                        className={`cat-child-btn ${childId === child.id ? "active" : ""}`}
-                        onClick={() => pickChild(root, child)}
-                      >
-                        {child.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* 二次篩選：品牌 */}
-          {childName && brandFilters.length > 0 && (
-            <div className="brand-filter">
-              <div className="brand-title">品牌</div>
-              <select
-                value={selectedBrand}
-                onChange={(e) => setSelectedBrand(e.target.value)}
-                className="brand-select"
-              >
-                <option value="">全部</option>
-                {brandFilters.map(b => <option key={b} value={b}>{b}</option>)}
-              </select>
-            </div>
-          )}
-        </aside>
-
-        {/* 右：商品清單 */}
-        <section className="shop-list">
-          {loading && <div className="p-4">Loading…</div>}
-          {!loading && parts.length === 0 && <div className="p-4">目前沒有符合篩選的商品</div>}
-
-          <div className="cards">
-            {parts.map(p => (
-              <div key={p.id} className="card">
-                {/* 圖片可點（如不需要詳情，改成 <div className="card-img-wrap">…） */}
-                <Link to={productLink(p)} className="card-img-wrap" title={p.name}>
-                  <img
-                    src={p.image_url || "/images/placeholder.png"}
-                    alt={p.name}
-                    className="card-img"
-                    loading="lazy"
-                  />
-                </Link>
-
-                <div className="card-body">
-                  {/* 名稱也可點（如不需要詳情，這行改成 <div className="card-name">{p.name}</div>） */}
-                  <Link to={productLink(p)} className="card-name" title={p.name}>
-                    {p.name}
-                  </Link>
-
-                  {renderAvailability(p)}
-                  <div className="card-price">NT$ {toCurrency(computePrice(p))}</div>
-
-                  <div className="card-actions">
-                    <button className="btn-primary" onClick={() => joinCart(p)}>加入購物車</button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="list-footer">共 {parts.length} 件</div>
-        </section>
-      </div>
-
-      <CartDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
-    </div>
-  );
+// 助手函數：取得價格
+function computePrice(p) {
+  return Number(p.wholesale_twd || p.msrp_twd || 0);
 }
 
+// 助手函數：價格格式化
 function toCurrency(n) {
   const v = Number(n || 0);
   return v.toLocaleString("zh-TW");
 }
 
+// 助手函數：產生商品連結
+function productLink(p) {
+  return p.sku ? `/p/${encodeURIComponent(p.sku)}` : `/pid/${p.id}`;
+}
+
+// 助手函數：渲染商品狀態
 function renderAvailability(p) {
   const mode = (p.availability_mode || "").toLowerCase();
   const qty = Number(p.stock_qty || 0);
-  const lead = Number(p.lead_time_days || 0);
-  if (mode === "stock") return <div className="card-availability">商品狀態：現貨（庫存 {qty}）</div>;
-  if (mode === "lead")  return <div className="card-availability">商品狀態：備貨（約 {lead} 天）</div>;
-  if (mode === "mto")   return <div className="card-availability">商品狀態：接單生產</div>;
-  return null;
+  const leadWeeks = Number(p.lead_time_days || 0); 
+  
+  if (qty > 0 || mode === "stock") {
+    return <div className="text-xs font-bold text-green-600 mt-1">✅ 現貨（庫存 {qty}）</div>;
+  }
+  if (leadWeeks > 0) {
+    return <div className="text-xs font-bold text-orange-500 mt-1">⏳ 預訂（約 {leadWeeks} 週後出貨）</div>;
+  }
+  return <div className="text-xs font-bold text-red-500 mt-1">❌ 電洽</div>;
+}
+
+export default function Shop() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [parts, setParts] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [categories, setCategories] = useState([]);
+  const [expandedRootId, setExpandedRootId] = useState(null);
+
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [sortBy, setSortBy] = useState("skuAsc");
+  const [cartCount, setCartCount] = useState(0);
+
+  // 車型狀態
+  const [vehicle, setVehicle] = useState(() => ({
+    variantId: searchParams.get("variantId") || null,
+    summary: searchParams.get("summary") || "",
+  }));
+
+  // 從 URL 取得目前的分類狀態 (區分主/子)
+  const activeCatId = searchParams.get("categoryId");
+  const activeSubId = searchParams.get("subcategoryId");
+
+  // 1. 載入零件列表
+  const fetchParts = useMemo(() => {
+    return async (currentVehicle, currentSortBy) => {
+      setLoading(true);
+      setError("");
+      try {
+        const variantId = currentVehicle.variantId;
+        
+        // 取得目前的分類參數
+        const catId = searchParams.get("categoryId"); 
+        const subId = searchParams.get("subcategoryId"); 
+
+        let url = `/parts?page=1&limit=20`;
+        
+        if (currentSortBy) url += `&sort=${currentSortBy}`;
+        if (variantId) url += `&variantId=${variantId}`;
+        
+        // ⚠️ 關鍵修正：區分傳送 subcategoryId 或 categoryId
+        // 後端 API 若同時收到兩者，通常會優先處理子目錄，或我們在此只送一個最精確的
+        if (subId) {
+            url += `&subcategoryId=${subId}`;
+        } else if (catId) {
+            url += `&categoryId=${catId}`;
+        }
+
+        const r = await fetch(url);
+        if (r.status === 429) throw new Error("查詢配額已滿，請聯繫業務。"); 
+        if (!r.ok) throw new Error("載入零件列表失敗");
+        
+        const resData = await r.json();
+        
+        if (resData.items) {
+            setParts(resData.items);
+            setTotal(resData.total || 0);
+        } else if (resData.data) { 
+            setParts(resData.data);
+            setTotal(resData.meta?.total || 0);
+        } else {
+            setParts([]);
+            setTotal(0);
+        }
+      } catch (e) {
+        setError(String(e.message || e)); 
+        setParts([]);
+        setTotal(0);
+      } finally {
+        setLoading(false);
+      }
+    };
+  }, [searchParams]);
+
+  useEffect(() => {
+    fetchParts(vehicle, sortBy);
+  }, [vehicle, sortBy, fetchParts]); 
+
+  // 2. 載入分類樹 & 自動展開
+  useEffect(() => {
+    async function loadCategories() {
+      try {
+        const r = await fetch(`/categories/tree`);
+        if (!r.ok) throw new Error("載入分類失敗");
+        const data = await r.json();
+        setCategories(data || []);
+
+        // ⚠️ 自動展開邏輯：如果目前選中了子目錄，要自動展開對應的主目錄
+        const currentSubId = searchParams.get("subcategoryId");
+        if (currentSubId && data.length > 0) {
+            const parent = data.find(root => root.subcategories?.some(sub => String(sub.id) === currentSubId));
+            if (parent) setExpandedRootId(parent.id);
+        }
+      } catch (e) {
+        console.error("Category load error:", e);
+      }
+    }
+
+    loadCategories();
+    setCartCount(getCartCount());
+  }, []); // 只在初次載入時執行
+
+  // 3. 處理分類點擊 (修正 ID 衝突的核心)
+  const handleCategoryClick = (id, type) => {
+    setSearchParams(prev => {
+        const newParams = new URLSearchParams(prev);
+        
+        // 重置頁碼
+        newParams.delete("page");
+
+        if (type === 'main') {
+            // 點擊主目錄：設定 categoryId，清除 subcategoryId
+            // 如果點擊的是「目前已選中」的主目錄 -> 取消選取 (Toggle)
+            if (newParams.get("categoryId") === String(id) && !newParams.get("subcategoryId")) {
+                newParams.delete("categoryId");
+            } else {
+                newParams.set("categoryId", id);
+                newParams.delete("subcategoryId"); // 清除子目錄選取
+            }
+            
+            // UI 展開控制
+            setExpandedRootId(prevId => prevId === id ? null : id);
+
+        } else if (type === 'sub') {
+            // 點擊子目錄：設定 subcategoryId
+            // 為了乾淨網址與避免衝突，我們刪除 categoryId，靠 expandedRootId 維持展開
+            if (newParams.get("subcategoryId") === String(id)) {
+                newParams.delete("subcategoryId"); // 取消選取
+            } else {
+                newParams.set("subcategoryId", id);
+                newParams.delete("categoryId"); 
+            }
+        }
+        
+        return newParams;
+    }, { replace: true });
+  };
+  
+  const handleVehicleChange = (newVehicle) => {
+    setVehicle(newVehicle);
+    setSearchParams(prev => {
+        if (newVehicle.variantId) {
+            prev.set("variantId", newVehicle.variantId);
+            prev.set("summary", newVehicle.summary);
+        } else {
+            prev.delete("variantId");
+            prev.delete("summary");
+        }
+        return prev;
+    }, { replace: true });
+  };
+
+  const joinCart = (p) => {
+    addToCart({ 
+        id: p.id, sku: p.sku, name: p.name, 
+        price: computePrice(p), qty: 1, 
+        meta: { vehicle: vehicle.summary, brand: p.brand_name || p.brand } 
+    });
+    setCartCount(getCartCount());
+    setDrawerOpen(true);
+  }
+
+  // 4. 渲染分類導航 (樣式邏輯修正)
+  const renderCategoryNav = () => {
+    return (
+        <div style={{ padding: "16px 0", borderRight: "1px solid #eee", minWidth: 200 }}>
+            <h3 style={{ fontSize: "1.2em", marginBottom: "16px", padding: "0 16px" }}>零件分類</h3>
+            
+            {categories.length === 0 && (
+                <div style={{ padding: "0 16px", color: "#888", fontSize: "0.9em" }}>(暫無分類資料)</div>
+            )}
+
+            {categories.map(root => {
+                // 主目錄是否啟用：必須 categoryId 吻合 且 沒有選子目錄
+                const isMainActive = activeCatId === String(root.id) && !activeSubId;
+                
+                return (
+                <div key={root.id}>
+                    <button 
+                        onClick={() => handleCategoryClick(root.id, 'main')}
+                        style={{ 
+                            width: "100%", textAlign: "left", padding: "8px 16px", 
+                            // 樣式：如果選中變藍色，否則根據是否展開變灰色
+                            backgroundColor: isMainActive ? "#e0f7fa" : (expandedRootId === root.id ? "#f5f5f5" : "white"),
+                            color: isMainActive ? "#006064" : "inherit",
+                            border: "none", cursor: "pointer", fontWeight: "bold",
+                            transition: "background-color 0.2s",
+                            display: "flex", justifyContent: "space-between"
+                        }}
+                    >
+                        {root.name}
+                        {root.subcategories && root.subcategories.length > 0 && (
+                            <span style={{ fontSize: "0.8em", color: "#888" }}>
+                                {expandedRootId === root.id ? "▼" : "▶"}
+                            </span>
+                        )}
+                    </button>
+                    
+                    {/* 子目錄區塊 */}
+                    {root.subcategories && expandedRootId === root.id && (
+                        <div style={{ paddingLeft: "16px", borderLeft: isMainActive ? "3px solid #00bcd4" : "3px solid transparent" }}>
+                            {root.subcategories.map(child => {
+                                // 子目錄是否啟用：只看 subcategoryId
+                                const isSubActive = activeSubId === String(child.id);
+
+                                return (
+                                <button
+                                    key={child.id}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleCategoryClick(child.id, 'sub');
+                                    }}
+                                    style={{
+                                        width: "100%", textAlign: "left", padding: "6px 16px", fontSize: "0.9em",
+                                        backgroundColor: isSubActive ? "#e0f7fa" : "white",
+                                        color: isSubActive ? "#007bff" : "#555",
+                                        fontWeight: isSubActive ? "bold" : "normal",
+                                        border: "none", cursor: "pointer",
+                                    }}
+                                >
+                                    {child.name}
+                                </button>
+                                )
+                            })}
+                        </div>
+                    )}
+                </div>
+            )})}
+        </div>
+    );
+  };
+
+  return (
+    <div className="shop-page" style={{ padding: 20 }}>
+      <h1 style={{ marginBottom: 20 }}>零件批發平台</h1>
+
+      <VehicleFilter value={vehicle} onChange={handleVehicleChange} compact={true} />
+      
+      {vehicle.variantId && (
+        <div style={{ marginTop: 20, padding: 12, backgroundColor: "#f0f8ff", border: "1px solid #cce5ff", borderRadius: 8, display: "flex", alignItems: "center", gap: 12 }}>
+            🚗 <strong style={{color: "#0056b3"}}>目前車型:</strong> {vehicle.summary}
+            <button onClick={() => handleVehicleChange({ variantId: null, summary: "" })} style={{ marginLeft: 20, padding: "4px 8px", background: "#fff", border: "1px solid #ccc", borderRadius: 4 }}>
+                [取消/更換]
+            </button>
+        </div>
+      )}
+
+      <div style={{ display: "flex", marginTop: 20, gap: 20 }}>
+        {renderCategoryNav()}
+
+        <div style={{ flexGrow: 1 }}>
+          <section style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
+             <div className="text-gray-600">
+                {vehicle.variantId ? `共找到 ${total} 個適用零件` : `全站共 ${total} 個零件`}
+             </div>
+             <div>
+                <label className="text-sm text-gray-500 mr-2">排序:</label>
+                <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="border rounded px-2 py-1">
+                    <option value="skuAsc">料號 (A-Z)</option>
+                    <option value="priceAsc">價格 (低到高)</option>
+                    <option value="priceDesc">價格 (高到低)</option>
+                </select>
+            </div>
+          </section>
+
+          <section>
+            {loading && <div className="text-center py-10">載入中...</div>}
+            {error && <div className="text-center py-10 text-red-500">錯誤: {error}</div>}
+            
+            {!loading && parts.length === 0 && (
+                <div className="text-center py-16 bg-gray-50 rounded border border-dashed">
+                    <p className="text-gray-500 mb-2">查無商品</p>
+                    <button onClick={() => setSearchParams({})} className="text-blue-600 underline text-sm">清除所有篩選</button>
+                </div>
+            )}
+            
+            {!loading && parts.length > 0 && (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 20 }}>
+                {parts.map(p => (
+                  <div key={p.id} className="bg-white border rounded-lg overflow-hidden hover:shadow-md flex flex-col">
+                    <Link to={productLink(p)} className="block relative h-48 bg-gray-200">
+                        <img src={p.image_url || '/placeholder.jpg'} onError={(e)=>e.target.src='https://via.placeholder.com/300?text=No+Image'} alt={p.name} className="w-full h-full object-cover" />
+                    </Link>
+                    <div className="p-4 flex-grow flex flex-col">
+                        <div className="text-xs text-gray-500 mb-1">{p.sku} | {p.brand_name || p.brand}</div>
+                        <h4 className="font-bold mb-2 line-clamp-2"><Link to={productLink(p)}>{p.name}</Link></h4>
+                        <div className="mb-3">{renderAvailability(p)}</div>
+                        <div className="mt-auto pt-3 border-t flex justify-between items-center">
+                            <div className="text-xl font-bold text-red-600">NT$ {toCurrency(computePrice(p))}</div>
+                            <button onClick={() => joinCart(p)} className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm font-medium hover:bg-blue-700">
+                                + 加入
+                            </button>
+                        </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+      </div>
+      <CartDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+    </div>
+  );
 }

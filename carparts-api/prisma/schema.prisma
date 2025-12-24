@@ -1,338 +1,247 @@
-// ---------- Prisma Client ----------
+// schema.prisma
+
 generator client {
   provider = "prisma-client-js"
 }
 
-// ---------- Database ----------
 datasource db {
   provider     = "postgresql"
   url          = env("DATABASE_URL")
-  // 使用 Prisma relation 模式（不建外鍵），我們會手動加索引以維持查詢效能
   relationMode = "prisma"
 }
 
-// ---------- Enums ----------
-enum AvailabilityMode {
-  stock // 現貨（24–48 小時內出貨）
-  preorder // 預訂（顯示備貨天數）
-}
+// =========================================
+// Enums
+// =========================================
 
 enum SupplyStatus {
-  IN_STOCK
-  PREORDER
-  DISCONTINUED
+  IN_STOCK      // 現貨
+  PREORDER      // 預訂 (庫存=0)
+  DISCONTINUED  // 停產/缺貨
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT // 待付款 (已扣庫存)
+  PAYMENT_REVIEW  // 待查核 (已填後五碼)
+  PAID            // 已付款 (對帳成功/訂金已付)
+  SHIPPED         // 已出貨
+  COMPLETED       // 已完成
+  CANCELLED       // 已取消 (歸還庫存)
 }
 
 enum WorkshopRole {
-  ADMIN
-  WORKSHOP_OWNER
-  STAFF
+  TRIAL     // 試用會員 (限制次數, 僅看 MSRP)
+  VERIFIED  // 正式會員 (可看批發價, 可下單)
+  ADMIN     // 平台管理員
 }
 
-enum WorkshopSpecialty {
-  EURO_BMW_MBENZ
-  JP_TOYOTA
-  DOMESTIC
-  EV_TESLA
-  PERFORMANCE
-  OTHER
+// =========================================
+// Models
+// =========================================
+
+// 1. 車廠/使用者 (Workshops)
+model Workshop {
+  id              Int          @id @default(autoincrement())
+  email           String       @unique
+  password_hash   String
+  company_name    String
+  tax_id          String?      
+  line_id         String       
+  contact_person  String
+  phone           String
+  address         String
+  
+  role            WorkshopRole @default(TRIAL)
+  
+  // 審核狀態
+  is_approved     Boolean      @default(false)
+  is_active       Boolean      @default(true)
+  
+  created_at      DateTime     @default(now())
+  updated_at      DateTime     @updatedAt
+
+  orders          Order[]
+  query_usage     WorkshopQueryUsage[]
+
+  @@map("workshops")
 }
 
-// ---------- Tables / Models ----------
-model parts {
-  id                Int               @id @default(autoincrement())
-  sku               String            @unique
-  name              String
-  brand             String?
-  brand_id          Int?
-  category          String? // 舊主分類字串（仍保留，建議逐步改為 parts_on_categories 關聯）
-  msrp_twd          Int?
-  wholesale_twd     Int?
-  msrp              Int?
-  wholesale_price   Int?
-  image_url         String?
-  description       String?
-  stock_qty         Int               @default(0)
-  availability_mode AvailabilityMode?
-  lead_time_days    Int               @default(0)
-  supply_status     SupplyStatus?
-  preorder_days     Int               @default(21)
-  subcategory_id    Int?
-  is_active         Boolean           @default(true)
-  created_at        DateTime          @default(now())
-  updated_at        DateTime          @updatedAt
+// 2. 核心車型資料庫 (Vehicle Variants)
+model VehicleVariant {
+  id            Int     @id @default(autoincrement())
+  
+  // 階層資料
+  make          String  
+  model         String  
+  generation    String  
+  engine_code   String  
+  
+  variant_name  String  
+  specs         Json?   
+  
+  year_start    Int
+  year_end      Int
 
-  // relations
-  parts_on_categories  parts_on_categories[]
-  part_compatibilities part_compatibilities[]
-  brand_ref            brands?                @relation(fields: [brand_id], references: [id])
-  subcategory          subcategories?         @relation(fields: [subcategory_id], references: [id])
+  compatible_parts PartCompatibility[]
 
-  // 適度輔助查詢的索引（選配）
-  @@index([name])
-  @@index([brand])
-  @@index([category])
-  @@index([brand_id])
+  @@index([make, model, generation, year_start])
+  @@map("vehicle_variants")
+}
+
+// 3. 分類系統 (Categories) - 新增
+model Categories {
+  id            Int             @id @default(autoincrement())
+  name          String
+  sort_order    Int             @default(0)
+  is_active     Boolean         @default(true)
+  
+  subcategories Subcategories[]
+  parts_link    PartsOnCategories[]
+
+  @@map("categories")
+}
+
+// 4. 子分類 (Subcategories) - 新增
+model Subcategories {
+  id            Int      @id @default(autoincrement())
+  category_id   Int
+  name          String
+  sort_order    Int      @default(0)
+  is_active     Boolean  @default(true)
+  
+  category      Categories @relation(fields: [category_id], references: [id])
+  parts         Part[]
+
+  @@index([category_id])
+  @@map("subcategories")
+}
+
+// 5. 零件主表 (Parts)
+model Part {
+  id                      Int              @id @default(autoincrement())
+  sku                     String           @unique
+  name                    String
+  brand                   String
+  
+  // 關聯分類
+  subcategory_id          Int?
+  subcategory             Subcategories?   @relation(fields: [subcategory_id], references: [id])
+  
+  // 搜尋用快取欄位 (配合 index.js 搜尋邏輯)
+  category                String?          
+
+  image_url               String?
+  description             String?
+  
+  // 價格
+  msrp_price              Decimal          @default(0)
+  wholesale_price         Decimal          @default(0)
+  
+  // 庫存與供應鏈
+  stock_qty               Int              @default(0) 
+  preorder_lead_time_days Int              @default(21)
+  
+  is_active               Boolean          @default(true)
+  
+  created_at              DateTime         @default(now())
+  updated_at              DateTime         @updatedAt
+
+  // 關聯
+  compatible_vehicles     PartCompatibility[]
+  order_items             OrderItem[]
+  parts_on_categories     PartsOnCategories[]
+
   @@index([subcategory_id])
   @@map("parts")
 }
 
-model categories {
-  id         Int     @id @default(autoincrement())
-  name       String
-  slug       String?
-  sort_order Int     @default(0)
-  is_active  Boolean @default(true)
-  is_nav     Boolean @default(true)
-
-  // relations
-  subcategories       subcategories[]
-  parts_on_categories parts_on_categories[]
-
-  // 供分類樹與清單排序使用的索引
-  @@index([is_active])
-  @@map("categories")
-}
-
-model subcategories {
-  id          Int     @id @default(autoincrement())
-  category_id Int
-  name        String
-  slug        String?
-  sort_order  Int     @default(0)
-  is_active   Boolean @default(true)
-
-  // relations
-  category categories @relation(fields: [category_id], references: [id])
-  parts    parts[]
-
-  @@unique([category_id, name], name: "ux_category_subcategory_name")
-  @@index([category_id])
-  @@index([is_active])
-  @@map("subcategories")
-}
-
-model parts_on_categories {
-  id          Int @id @default(autoincrement())
+// 6. 零件與分類多對多關聯 (PartsOnCategories) - 新增
+model PartsOnCategories {
   part_id     Int
   category_id Int
-
-  // relations（relationMode=prisma 下不建外鍵，因此靠索引輔助）
-  part     parts      @relation(fields: [part_id], references: [id])
-  category categories @relation(fields: [category_id], references: [id])
-
-  // 去重
-  @@unique([part_id, category_id], name: "ux_part_category")
-  // 查詢效能用索引（重要）
-  @@index([part_id])
+  part        Part       @relation(fields: [part_id], references: [id])
+  category    Categories @relation(fields: [category_id], references: [id])
+  
+  @@id([part_id, category_id])
   @@index([category_id])
+  @@index([part_id])
   @@map("parts_on_categories")
 }
 
-model makes {
-  id   Int    @id @default(autoincrement())
-  name String
+// 7. 零件與車型關聯 (Many-to-Many)
+model PartCompatibility {
+  id            Int @id @default(autoincrement())
+  part_id       Int
+  vehicle_id    Int
+  
+  part          Part           @relation(fields: [part_id], references: [id])
+  vehicle       VehicleVariant @relation(fields: [vehicle_id], references: [id])
 
-  // relations
-  models models[]
-
-  @@index([name])
-  @@map("makes")
+  @@unique([part_id, vehicle_id])
+  @@index([vehicle_id])
+  @@map("part_vehicle_compatibility")
 }
 
-model models {
-  id      Int    @id @default(autoincrement())
-  name    String
-  make_id Int
+// 8. 訂單主表 (Orders)
+model Order {
+  id                    Int         @id @default(autoincrement())
+  order_number          String      @unique 
+  workshop_id           Int
+  status                OrderStatus @default(PENDING_PAYMENT)
+  
+  subtotal_amount       Decimal
+  shipping_fee          Decimal     @default(0)
+  total_amount          Decimal
+  
+  payment_last_5_digits String?     
+  deposit_required      Boolean     @default(false)
+  
+  shipping_address      String
+  tracking_number       String?
 
-  // relations
-  make             makes              @relation(fields: [make_id], references: [id])
-  generations      generations[]
-  vehicle_variants vehicle_variants[]
+  created_at            DateTime    @default(now())
+  updated_at            DateTime    @updatedAt
 
-  // 關聯欄位索引（重要）
-  @@index([make_id])
-  @@index([name])
-  @@map("models")
+  workshop              Workshop    @relation(fields: [workshop_id], references: [id])
+  items                 OrderItem[]
+
+  @@map("orders")
 }
 
-model generations {
-  id        Int     @id @default(autoincrement())
-  model_id  Int
-  name      String?
-  year_from Int?
-  year_to   Int?
+// 9. 訂單明細
+model OrderItem {
+  id              Int     @id @default(autoincrement())
+  order_id        Int
+  part_id         Int
+  
+  sku_snapshot    String
+  name_snapshot   String
+  price_snapshot  Decimal 
+  
+  qty             Int
+  is_preorder     Boolean @default(false)
+  promised_weeks  Int     @default(0)     
 
-  // relations
-  model            models             @relation(fields: [model_id], references: [id])
-  vehicle_variants vehicle_variants[]
+  order           Order   @relation(fields: [order_id], references: [id])
+  part            Part    @relation(fields: [part_id], references: [id])
 
-  // 關聯欄位索引（重要）
-  @@index([model_id])
-  @@index([year_from, year_to])
-  @@map("generations")
+  @@index([order_id])
+  @@map("order_items")
 }
 
-model vehicle_variants {
-  id            Int     @id @default(autoincrement())
-  model_id      Int
-  generation_id Int?
-  name          String?
-  engine_code   String?
-  year_from     Int?
-  year_to       Int?
-  fuel_type     String?
-  displacement  Int?
-  power_hp      Int?
-  drivetrain    String?
-  transmission  String?
-
-  // relations
-  model                models                 @relation(fields: [model_id], references: [id])
-  generation           generations?           @relation(fields: [generation_id], references: [id])
-  part_compatibilities part_compatibilities[]
-
-  // 關聯欄位與常用查詢索引（重要）
-  @@index([model_id])
-  @@index([generation_id])
-  @@index([engine_code])
-  @@index([year_from, year_to])
-  @@map("vehicle_variants")
-}
-
-model brands {
-  id         Int      @id @default(autoincrement())
-  name       String
-  slug       String?
-  logo_url   String?
-  is_active  Boolean  @default(true)
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  // relations
-  parts parts[]
-
-  @@unique([slug])
-  @@index([name])
-  @@index([is_active])
-  @@map("brands")
-}
-
-model part_compatibilities {
-  id                 Int @id @default(autoincrement())
-  part_id            Int
-  vehicle_variant_id Int
-
-  // relations
-  part            parts            @relation(fields: [part_id], references: [id])
-  vehicle_variant vehicle_variants @relation(fields: [vehicle_variant_id], references: [id])
-
-  // 去重
-  @@unique([part_id, vehicle_variant_id], name: "ux_part_variant")
-  // 關聯欄位索引（重要）
-  @@index([part_id])
-  @@index([vehicle_variant_id])
-  @@map("part_compatibilities")
-}
-
-model workshops {
-  id               Int      @id @default(autoincrement())
-  name             String
-  tax_id           String?
-  business_type    String?
-  line_id          String
-  mobile           String
-  contact_person   String
-  title            String?
-  address          String
-  technician_count Int?
-  lift_count       Int?
-  photos           Json?
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
-
-  // relations
-  users        users[]
-  specialties  workshop_specialties[]
-  plan         workshop_plans?
-  query_usages workshop_query_usage[]
-  status       workshop_status?
-
-  @@index([name])
-  @@index([tax_id])
-  @@map("workshops")
-}
-
-model workshop_specialties {
-  id          Int               @id @default(autoincrement())
-  workshop_id Int
-  specialty   WorkshopSpecialty
-  created_at  DateTime          @default(now())
-
-  workshop workshops @relation(fields: [workshop_id], references: [id])
-
-  @@unique([workshop_id, specialty], name: "ux_workshop_specialty")
-  @@index([workshop_id])
-  @@map("workshop_specialties")
-}
-
-model users {
-  id            Int          @id @default(autoincrement())
-  email         String       @unique
-  password_hash String
-  role          WorkshopRole @default(STAFF)
-  workshop_id   Int?
-  is_active     Boolean      @default(true)
-  last_login_at DateTime?
-  created_at    DateTime     @default(now())
-  updated_at    DateTime     @updatedAt
-
-  workshop workshops? @relation(fields: [workshop_id], references: [id])
-
-  @@index([workshop_id])
-  @@map("users")
-}
-
-model workshop_plans {
-  id                  Int      @id @default(autoincrement())
-  workshop_id         Int      @unique
-  monthly_query_limit Int?
-  is_unlimited        Boolean  @default(false)
-  notes               String?
-  created_at          DateTime @default(now())
-  updated_at          DateTime @updatedAt
-
-  workshop workshops @relation(fields: [workshop_id], references: [id])
-
-  @@map("workshop_plans")
-}
-
-model workshop_query_usage {
-  id            Int       @id @default(autoincrement())
+// 10. 查詢配額紀錄
+model WorkshopQueryUsage {
+  id            Int      @id @default(autoincrement())
   workshop_id   Int
-  year_month    String
-  query_count   Int       @default(0)
-  rows_returned Int       @default(0)
-  last_query_at DateTime?
-  created_at    DateTime  @default(now())
-  updated_at    DateTime  @updatedAt
+  year_month    String   
+  query_count   Int      @default(0)
+  rows_returned Int      @default(0) // 新增欄位配合 index.js
+  last_query_at DateTime? @default(now()) // 新增欄位配合 index.js
+  
+  updated_at    DateTime @updatedAt
 
-  workshop workshops @relation(fields: [workshop_id], references: [id])
+  workshop      Workshop @relation(fields: [workshop_id], references: [id])
 
-  @@unique([workshop_id, year_month], name: "ux_workshop_usage_month")
-  @@index([workshop_id])
+  @@unique([workshop_id, year_month])
   @@map("workshop_query_usage")
-}
-
-model workshop_status {
-  workshop_id       Int      @id
-  is_verified_buyer Boolean  @default(false)
-  is_active         Boolean  @default(true)
-  onboarding_notes  String?
-  created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
-
-  workshop workshops @relation(fields: [workshop_id], references: [id])
-
-  @@map("workshop_status")
 }

@@ -1,261 +1,179 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 
-// 以 JSON 要求，避免拿到 Vite 的 HTML
+// ⚠️ API 設定修正：
+// 1. 移除 /api，因為後端 index.js 路由是掛在根目錄 (如 /makes)
+// 2. 改用相對路徑，讓 vite.config.js 的 proxy 處理跨域問題
 async function jget(url) {
   const r = await fetch(url, { headers: { Accept: "application/json" } });
-  const ct = r.headers.get("content-type") || "";
-  const text = await r.text();
-  if (!r.ok) throw new Error(text || `HTTP ${r.status}`);
-  if (!ct.includes("application/json")) throw new Error(`${url} 回傳 ${ct}`);
-  return JSON.parse(text);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
 }
 
-/**
- * VehicleFilter
- * Flow：年份 → 廠牌 → 車系 → 引擎（variants）
- * 確認後：以「車型摘要」取代下拉，右側顯示「取消車型」
- *
- * props:
- *  - value: { year, makeId, modelId, variantId, makeName, modelName, variantName }
- *  - onChange(nextValue)
- */
-export default function VehicleFilter({ value, onChange }) {
-  // 下拉資料
+export default function VehicleFilter({ value, onChange, compact = false }) {
+  // 資料來源狀態
   const [makes, setMakes] = useState([]);
   const [models, setModels] = useState([]);
   const [variants, setVariants] = useState([]);
-
-  // 草稿（按「確定」才送到外層）
+  
+  // 使用者選擇狀態 (草稿)
   const [draft, setDraft] = useState({
-    year: value?.year || "",
-    makeId: value?.makeId || "",
-    modelId: value?.modelId || "",
-    variantId: value?.variantId || "",
-    makeName: value?.makeName || "",
-    modelName: value?.modelName || "",
-    variantName: value?.variantName || "",
+    year: "",
+    makeId: "",
+    modelId: "",
+    variantId: ""
   });
 
-  // 是否顯示「摘要模式」
-  const [showSummary, setShowSummary] = useState(
-    Boolean(value?.year || value?.makeId || value?.modelId || value?.variantId)
-  );
+  // 載入狀態
+  const [loading, setLoading] = useState(false);
 
-  // 外部 value 變更時，同步到內部與摘要顯示
+  // 產生年份清單 (例如 1990 - 2025)
+  const years = Array.from({ length: 36 }, (_, i) => String(2025 - i));
+
+  // 1. 初始載入廠牌
   useEffect(() => {
-    setDraft({
-      year: value?.year || "",
-      makeId: value?.makeId || "",
-      modelId: value?.modelId || "",
-      variantId: value?.variantId || "",
-      makeName: value?.makeName || "",
-      modelName: value?.modelName || "",
-      variantName: value?.variantName || "",
+    // 呼叫 /makes (透過 Vite Proxy -> http://localhost:3000/makes)
+    jget("/makes").then(setMakes).catch(console.error);
+  }, []);
+
+  // 2. 當年份或廠牌改變時，載入車系
+  useEffect(() => {
+    setModels([]); // 清空舊的
+    setVariants([]);
+    if (!draft.year || !draft.makeId) return;
+
+    setLoading(true);
+    jget(`/models?makeId=${draft.makeId}&year=${draft.year}`)
+      .then(setModels)
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [draft.year, draft.makeId]);
+
+  // 3. 當車系改變時，載入引擎/變體
+  useEffect(() => {
+    setVariants([]); // 清空舊的
+    if (!draft.year || !draft.modelId) return;
+
+    setLoading(true);
+    jget(`/variants?modelId=${draft.modelId}&year=${draft.year}`)
+      .then(setVariants)
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [draft.year, draft.modelId]);
+
+  // 按下「確定」
+  const confirm = () => {
+    const selectedMake = makes.find(m => String(m.id) === String(draft.makeId));
+    const selectedModel = models.find(m => String(m.id) === String(draft.modelId));
+    const selectedVariant = variants.find(v => String(v.id) === String(draft.variantId));
+
+    if (!selectedVariant) return;
+
+    // 組合摘要字串
+    const parts = [
+      draft.year,
+      selectedMake?.name,
+      selectedModel?.name,
+      selectedVariant?.name,
+      selectedVariant?.engine_code
+    ].filter(Boolean).join(" ");
+
+    onChange({
+      variantId: draft.variantId,
+      summary: parts
     });
-    setShowSummary(Boolean(value?.year || value?.makeId || value?.modelId || value?.variantId));
-  }, [
-    value?.year, value?.makeId, value?.modelId, value?.variantId,
-    value?.makeName, value?.modelName, value?.variantName
-  ]);
+  };
 
-  // 年份選項（1980~今年）
-  const years = useMemo(() => {
-    const now = new Date().getFullYear();
-    const arr = [];
-    for (let y = now; y >= 1980; y--) arr.push(y);
-    return arr;
-  }, []);
+  // 按下「取消/重置」
+  const cancel = () => {
+    setDraft({ year: "", makeId: "", modelId: "", variantId: "" });
+    onChange({ variantId: null, summary: "" });
+  };
 
-  // 載入廠牌
-  useEffect(() => {
-    (async () => {
-      try {
-        const list = await jget("/makes");
-        setMakes(Array.isArray(list) ? list : []);
-      } catch {
-        setMakes([]);
-      }
-    })();
-  }, []);
-
-  // 選「廠牌」→ 讀取該廠牌下的車系
-  useEffect(() => {
-    (async () => {
-      if (!draft.makeId) { setModels([]); return; }
-      try {
-        const list = await jget(`/models?makeId=${draft.makeId}`);
-        setModels(Array.isArray(list) ? list : []);
-      } catch {
-        setModels([]);
-      }
-    })();
-  }, [draft.makeId]);
-
-  // 選「車系」或「年份」→ 讀取引擎（variants）
-  useEffect(() => {
-    (async () => {
-      if (!draft.modelId) { setVariants([]); return; }
-      const qs = new URLSearchParams({ modelId: String(draft.modelId) });
-      if (draft.year) qs.set("year", String(draft.year));
-      try {
-        const list = await jget(`/variants?${qs.toString()}`);
-        setVariants(Array.isArray(list) ? list : []);
-      } catch {
-        setVariants([]);
-      }
-    })();
-  }, [draft.modelId, draft.year]);
-
-  // 工具
-  const nameOf = (list, id) => list.find(x => String(x.id) === String(id))?.name || "";
-  const disabledConfirm = !(draft.makeId && draft.modelId && draft.variantId); // 年份可選可不選
-
-  function pickYear(v) {
-    setDraft(s => ({ ...s, year: v || "", variantId: "", variantName: "" }));
-  }
-  function pickMake(v) {
-    setDraft(s => ({
-      ...s,
-      makeId: v || "", makeName: nameOf(makes, v),
-      modelId: "", modelName: "",
-      variantId: "", variantName: ""
-    }));
-  }
-  function pickModel(v) {
-    setDraft(s => ({
-      ...s,
-      modelId: v || "", modelName: nameOf(models, v),
-      variantId: "", variantName: ""
-    }));
-  }
-  function pickVariant(v) {
-    setDraft(s => ({ ...s, variantId: v || "", variantName: nameOf(variants, v) }));
-  }
-
-  // 套用（顯示摘要、通知外層）
-  function apply() {
-    setShowSummary(true);
-    onChange?.({ ...draft });
-  }
-
-  // 取消車型（回到下拉、清空、通知外層）
-  function clearSelection() {
-    const empty = {
-      year: "", makeId: "", modelId: "", variantId: "",
-      makeName: "", modelName: "", variantName: ""
-    };
-    setDraft(empty);
-    setShowSummary(false);
-    onChange?.(empty);
-  }
-
-  // 取得目前選中的 variant 詳細（用 variants 陣列就足夠，不必額外請求）
-  const selectedVariant =
-    variants.find(v => String(v.id) === String(draft.variantId)) || null;
-
-  // 組合「車型摘要」：基本 + MK 世代（不顯示年份區間）
-  function summaryText() {
-    const base = [];
-    if (draft.year) base.push(draft.year);
-    if (draft.makeName) base.push(draft.makeName);
-    if (draft.modelName) base.push(draft.modelName);
-    if (draft.variantName) base.push(draft.variantName);
-
-    // 優先使用 DB 內的世代欄位
-    const mk =
-      selectedVariant?.generation_label ||
-      selectedVariant?.generation_name ||
-      selectedVariant?.generation_short ||
-      selectedVariant?.gen_label ||
-      selectedVariant?.gen ||
-      "";
-
-    return `車型：${base.join(" ") || "未選擇"}${mk ? " " + mk : ""}`;
-  }
-
-  // === UI ===
-  if (showSummary) {
-    // ✅ 摘要模式：顯示車型摘要 + 取消按鈕（同高度樣式）
+  // === 渲染模式：已選擇 ===
+  if (value && value.variantId) {
     return (
-      <div className="w-full overflow-x-auto">
-        <div className="inline-flex items-center gap-8 whitespace-nowrap vf-wrap">
-          <div className="vf-summary">{summaryText()}</div>
-          <button type="button" className="vf-control vf-btn--ghost" onClick={clearSelection}>
-            取消車型
-          </button>
-        </div>
+      <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+        <span className="text-green-800 font-medium">🚗 已選車型：{value.summary}</span>
+        <button 
+          onClick={cancel}
+          className="text-sm bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition"
+        >
+          重選
+        </button>
       </div>
     );
   }
 
-  // 下拉模式（字體大小全部與按鈕一致）
+  // === 渲染模式：Compact (首頁單排) ===
   return (
-    <div className="w-full overflow-x-auto">
-      <div className="inline-flex items-center gap-8 whitespace-nowrap vf-wrap">
-        <div className="vf-field">
-          <label className="vf-label">年份</label>
-          <select
-            className="vf-control"
-            value={draft.year || ""}
-            onChange={(e) => pickYear(e.target.value)}
-          >
-            <option value="">選擇年份</option>
-            {years.map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
-        </div>
-
-        <div className="vf-field">
-          <label className="vf-label">廠牌</label>
-          <select
-            className="vf-control"
-            value={draft.makeId || ""}
-            onChange={(e) => pickMake(e.target.value)}
-          >
-            <option value="">選擇廠牌</option>
-            {makes.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-          </select>
-        </div>
-
-        <div className="vf-field">
-          <label className="vf-label">車系</label>
-          <select
-            className="vf-control"
-            value={draft.modelId || ""}
-            onChange={(e) => pickModel(e.target.value)}
-            disabled={!draft.makeId}
-          >
-            <option value="">{draft.makeId ? "選擇車系" : "先選廠牌"}</option>
-            {models.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-          </select>
-        </div>
-
-        <div className="vf-field">
-          <label className="vf-label">引擎</label>
-          <select
-            className="vf-control"
-            value={draft.variantId || ""}
-            onChange={(e) => pickVariant(e.target.value)}
-            disabled={!draft.modelId}
-          >
-            <option value="">{draft.modelId ? "選擇引擎" : "先選車系"}</option>
-            {variants.map(v => (
-              <option key={v.id} value={v.id}>
-                {v.name || v.engine_code || `#${v.id}`}
-                {/* 不再顯示 (year_from–year_to) */}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <button
-          className="vf-control vf-btn--primary"
-          onClick={apply}
-          disabled={disabledConfirm}
-          title={disabledConfirm ? "請先選擇：廠牌 + 車系 + 引擎" : "套用車型"}
+    <div className={`flex flex-wrap gap-2 items-end ${compact ? 'text-sm' : ''}`}>
+      {/* 年份 */}
+      <div>
+        <select
+          className="border p-2 rounded"
+          value={draft.year}
+          onChange={e => setDraft(d => ({ ...d, year: e.target.value, makeId: "", modelId: "", variantId: "" }))}
         >
-          確定
-        </button>
+          <option value="">年份</option>
+          {years.map(y => <option key={y} value={y}>{y}</option>)}
+        </select>
       </div>
+
+      {/* 廠牌 */}
+      <div>
+        <select
+          className="border p-2 rounded w-32"
+          value={draft.makeId}
+          disabled={!draft.year}
+          onChange={e => setDraft(d => ({ ...d, makeId: e.target.value, modelId: "", variantId: "" }))}
+        >
+          <option value="">廠牌</option>
+          {makes.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+        </select>
+      </div>
+
+      {/* 車系 */}
+      <div>
+        <select
+          className="border p-2 rounded w-32"
+          value={draft.modelId}
+          disabled={!draft.makeId}
+          onChange={e => setDraft(d => ({ ...d, modelId: e.target.value, variantId: "" }))}
+        >
+          <option value="">車系</option>
+          {models.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+        </select>
+      </div>
+
+      {/* 引擎/車型 */}
+      <div>
+        <select
+          className="border p-2 rounded w-48"
+          value={draft.variantId}
+          disabled={!draft.modelId}
+          onChange={e => setDraft(d => ({ ...d, variantId: e.target.value }))}
+        >
+          <option value="">引擎/規格</option>
+          {variants.map(v => (
+            <option key={v.id} value={v.id}>
+              {[v.name, v.engine_code].filter(Boolean).join(" - ")}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* 按鈕 */}
+      <button
+        onClick={confirm}
+        disabled={!draft.variantId || loading}
+        className={`px-4 py-2 rounded font-bold text-white transition ${
+          draft.variantId && !loading 
+            ? "bg-blue-600 hover:bg-blue-700" 
+            : "bg-gray-300 cursor-not-allowed"
+        }`}
+      >
+        {loading ? "載入中..." : "確定"}
+      </button>
     </div>
   );
 }

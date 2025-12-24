@@ -16,7 +16,7 @@ import AdminMakes from "./AdminMakes.jsx";
 import AdminVehicles from "./AdminVehicles.jsx";
 import AdminBrands from "./AdminBrands.jsx"; // ✅ 新增
 import AdminUsers from "./AdminUsers.jsx";   // ✅ 新增
-
+import RegisterShop from "./pages/RegisterShop.jsx";
 import CartDrawer, { getCartCount } from "./CartDrawer.jsx";
 
 function Layout({ children }) {
@@ -93,7 +93,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           <Route path="/p/:sku" element={<Product by="sku" />} />
           <Route path="/pid/:id" element={<Product by="id" />} />
           <Route path="/checkout" element={<Checkout />} />
-
+          <Route path="/register-shop" element={<RegisterShop />} />
           {/* 後台 */}
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
