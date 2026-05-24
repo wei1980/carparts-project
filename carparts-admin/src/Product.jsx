@@ -1,187 +1,204 @@
-// src/Product.jsx
-
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { addToCart } from "./CartDrawer.jsx";
+// 確保正確引用 CartDrawer (修正了錯誤)
+import { addToCart } from "./CartDrawer.jsx"; 
 
 function computeStatus(p) {
   const qty = Number(p?.stock_qty ?? 0);
   const mode = (p?.availability_mode || "").toLowerCase();
-  // 假設 lead_time_days 欄位現在存的是週數 (例如: 3)
   const leadWeeks = Number(p?.lead_time_days ?? 0);
 
-  // 1. 現貨狀態
   if (qty > 0 || mode === "stock") {
     const stockText = qty > 0 ? `庫存量：${qty}` : "庫存：—";
     return `${stockText}（✅ 現貨，24–48 小時內出貨）`;
   }
-  
-  // 2. 預訂狀態
   if (mode === "preorder" && leadWeeks > 0) {
-    // 直接使用 leadWeeks
     return `備貨中，⏳ 預計 ${leadWeeks} 週後出貨`;
   }
-  
-  // 3. 接單生產狀態
   if (mode === "mto") {
     return "接單生產，出貨期另行通知";
   }
-  
-  // 4. 其他狀態 (如無庫存且無預訂天數)
   return "❌ 電洽（請聯繫業務確認交期）";
 }
 
-export default function Product({ by }) {
-  const { id, sku } = useParams();
+// 取得價格 (優先顯示批發價)
+function getPrice(p) {
+    // 注意：後端 API 欄位為 wholesale_price 和 msrp_price
+    return Number(p?.wholesale_price || p?.msrp_price || 0);
+}
+
+export default function Product() {
+  const { sku, id } = useParams(); // 支援 /p/:sku 或 /pid/:id
   const [part, setPart] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState("");
+  const [error, setError] = useState("");
   const [qty, setQty] = useState(1);
 
-  const priceFmt = useMemo(() => (n) => `NT$ ${Number(n).toLocaleString()}`, []);
-  
-  // 獲取零件狀態文字
-  const statusText = useMemo(() => part ? computeStatus(part) : null, [part]);
-
   useEffect(() => {
-    async function run() {
+    async function load() {
+      setLoading(true);
       try {
-        setLoading(true); setErr("");
-        // 假設後端 API 路徑為 /parts/:id 或 /parts/by-sku/:sku
-        const url = by === "id" ? `/parts/${Number(id)}` : `/parts/by-sku/${encodeURIComponent(sku)}`;
-        const r = await fetch(url);
-        if (r.status === 404) {
-          setErr("零件不存在。");
-          setPart(null);
-          return;
+        let url = "";
+        if (id) {
+            url = `/parts/${id}`;
+        } else if (sku) {
+            const searchUrl = `/parts?sku=${encodeURIComponent(sku)}&page=1&pageSize=1`;
+            const r = await fetch(searchUrl);
+            const d = await r.json();
+            if (d.items && d.items.length > 0) {
+                // 直接使用列表回傳的第一筆資料，或者再用 ID 抓詳細
+                setPart(d.items[0]);
+                setLoading(false);
+                return;
+            } else {
+                throw new Error("找不到商品");
+            }
         }
-        if (!r.ok) throw new Error("載入零件詳細資料失敗");
-        
-        const data = await r.json();
-        setPart(data);
+
+        if (url) {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error("商品載入失敗");
+            const data = await res.json();
+            setPart(data);
+        }
       } catch (e) {
-        setErr(String(e));
+        setError(e.message);
       } finally {
         setLoading(false);
       }
     }
-    run();
-  }, [id, sku, by]);
+    load();
+  }, [sku, id]);
 
   const handleAddToCart = () => {
     if (!part) return;
     addToCart({
-        id: part.id,
-        sku: part.sku,
-        name: part.name,
-        price: part.wholesale_twd || part.msrp_twd, // 使用實際價格
-        qty: Number(qty) || 1,
-        meta: { 
-          vehicle: "當前篩選車型", // TODO: 實際應從 VehicleFilter 狀態獲取
-          brand: part.brand_name || part.brand_id 
-        }
+      id: part.id,
+      sku: part.sku,
+      name: part.name,
+      price: getPrice(part),
+      qty: qty,
+      meta: { brand: part.brand_name || part.brand }
     });
-    alert(`已將 ${qty} 個 ${part.name} 加入購物車！`);
-  }
+    alert("已加入購物車");
+  };
 
-  // 輔助函式：檢查是否有價格
-  const hasMsrp = useMemo(() => Number(part?.msrp_twd || 0) > 0, [part]);
-  const hasWholesale = useMemo(() => Number(part?.wholesale_twd || 0) > 0, [part]);
-  
-  if (loading) return <div>載入中...</div>;
-  if (err) return <div style={{ color: 'red' }}>錯誤: {err}</div>;
-  if (!part) return <div>找不到該零件。</div>;
+  if (loading) return <div className="p-10 text-center">載入中...</div>;
+  if (error || !part) return <div className="p-10 text-center text-red-500">錯誤：{error || "找不到商品"}</div>;
+
+  const msrp = Number(part.msrp_price || 0);
+  const wholesale = Number(part.wholesale_price || 0);
+  const showPrice = msrp > 0 || wholesale > 0;
 
   return (
-    <div className="product-page" style={{ padding: 20 }}>
-      <Link to="/" style={{ display: "block", marginBottom: 16 }}>← 返回零件列表</Link>
+    <div className="max-w-6xl mx-auto p-4 md:p-8">
+      <div className="mb-4">
+        <Link to="/shop" className="text-blue-600 hover:underline">&larr; 回商品列表</Link>
+      </div>
 
-      <div style={{ display: "flex", gap: 30 }}>
-        
-        {/* 左側：圖片與基本資訊 */}
-        <div style={{ flex: 1 }}>
-          <img 
-            src={part.image_url || 'placeholder.jpg'} 
-            alt={part.name} 
-            style={{ width: "100%", maxHeight: 500, objectFit: "contain", border: "1px solid #eee", borderRadius: 8 }}
-          />
-          {/* 圖片切換或其他詳細圖片... */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+        {/* 左側圖片區 */}
+        <div className="bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center min-h-[300px]">
+           {/* 圖片顯示優化: object-contain */}
+           <img 
+             src={part.image_url || '/placeholder.jpg'} 
+             onError={(e) => e.target.src = 'https://via.placeholder.com/400?text=No+Image'}
+             alt={part.name} 
+             className="w-full h-full object-contain"
+             style={{ maxHeight: "400px" }}
+           />
         </div>
-        
-        {/* 右側：詳細資訊與操作 */}
-        <div style={{ flex: 1 }}>
-          
-          <h1 style={{ fontSize: "2em", margin: "0 0 8px 0" }}>{part.name}</h1>
-          <div style={{ color: "#666", marginBottom: 16 }}>
-            SKU: <strong>{part.sku}</strong> | 品牌: <strong>{part.brand_name || part.brand_id || 'N/A'}</strong>
-          </div>
 
-          {/* 價格顯示邏輯 */}
-          <div style={{ marginBottom: 20, padding: 16, border: "1px dashed #ccc", borderRadius: 8 }}>
-            
-            {hasMsrp && hasWholesale && (
-              <>
-                <div style={{ fontSize: "1.2em", color: "#999", textDecoration: "line-through" }}>
-                  建議售價 (MSRP): {priceFmt(part.msrp_twd)}
-                </div>
-                <div style={{ fontSize: 28, fontWeight: 800, lineHeight: 1.2, color: "#dc3545", marginTop: 4 }}>
-                  批發價格：{priceFmt(part.wholesale_twd)}
-                </div>
-              </>
-            )}
-
-            {/* 處理僅有 MSRP 或僅有 Wholesale 的情況... (略) */}
-            
-            {!hasMsrp && !hasWholesale && (
-              <div>價格：請電洽</div>
+        {/* 右側資訊區 */}
+        <div>
+          <div className="mb-2">
+            <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded font-bold mr-2">
+                {part.brand_name || part.brand || "Brand"}
+            </span>
+            <span className="text-sm font-mono text-gray-600 bg-gray-100 px-2 py-1 rounded">
+               SKU: {part.sku}
+            </span>
+            {part.category_name && (
+                <span className="text-xs text-gray-500 ml-2">{part.category_name}</span>
             )}
           </div>
 
-          {/* ✅ 商品狀態 */}
-          {statusText && (
-            <div style={{ marginBottom: 18, fontSize: "1.1em", fontWeight: "bold", color: "#047857" }}>
-              商品狀態：{statusText}
-            </div>
-          )}
+          <h1 className="text-2xl font-bold text-gray-900 mb-4 leading-tight">{part.name}</h1>
 
-          {/* 產品說明 */}
+          {/* ✅ 修正價格顯示區域: 顯示未定價 */}
+          <div className="mb-6 p-4 bg-gray-50 rounded border border-gray-100">
+             { showPrice ? (
+                <>
+                    <div className="text-sm text-gray-500 mb-1">
+                        {msrp > 0 ? (
+                            <span className="line-through">建議售價: NT$ {msrp.toLocaleString()}</span>
+                        ) : (
+                            <span>建議售價: 未定價</span>
+                        )}
+                    </div>
+                    
+                    <div className="flex items-baseline gap-2">
+                        <span className="text-sm text-gray-600">批發優惠價:</span>
+                        <span className="text-3xl font-bold text-red-600">
+                            NT$ {wholesale > 0 ? wholesale.toLocaleString() : "-"}
+                        </span>
+                    </div>
+                </>
+             ) : (
+                <div className="text-2xl font-bold text-gray-600">
+                    請洽客服
+                </div>
+             )}
+          </div>
+
+          <div className="mb-6">
+            <h3 className="font-bold text-gray-800 mb-2">庫存狀態</h3>
+            <div className="text-sm">{computeStatus(part)}</div>
+          </div>
+
           {part.description && (
-            <>
-                <h3 style={{fontSize: "1.2em", margin: "0 0 8px 0"}}>產品特色</h3>
-                <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.6, marginBottom: 16, border: "1px solid #eee", padding: 12, borderRadius: 6 }}>
-                  {part.description}
+            <div className="mb-6">
+                <h3 className="font-bold text-gray-800 mb-2">商品說明</h3>
+                <div className="text-gray-600 text-sm whitespace-pre-wrap leading-relaxed">
+                    {part.description}
                 </div>
-            </>
+            </div>
+          )}
+          
+          {part.compatibility_summary && (
+             <div className="mb-6">
+                <h3 className="font-bold text-gray-800 mb-2">適用車型摘要</h3>
+                <div className="text-gray-600 text-sm">{part.compatibility_summary}</div>
+             </div>
           )}
 
-          {/* 加入購物車 */}
-          <div style={{ border: "1px solid #eee", borderRadius: 10, padding: 12 }}>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <label style={{fontWeight: 'bold'}}>數量：</label>
-              <input
-                type="number" min={1} value={qty}
-                onChange={e => setQty(Math.max(1, Number(e.target.value || 1)))}
-                style={{ width: 90, padding: 8, borderRadius: 4, border: "1px solid #ccc" }}
-              />
-              <button 
-                onClick={handleAddToCart} 
-                style={{ 
-                    marginLeft: "auto", 
-                    fontWeight: 700,
-                    padding: "10px 20px", 
-                    backgroundColor: "#007bff", 
-                    color: "white",
-                    border: "none",
-                    borderRadius: "4px",
-                    cursor: "pointer",
-                    transition: "background-color 0.2s",
-                }}
-                onMouseEnter={(e) => e.target.style.backgroundColor = "#0056b3"}
-                onMouseLeave={(e) => e.target.style.backgroundColor = "#007bff"}
-              >
-                🛒 加入購物車
-              </button>
-            </div>
+          <div className="flex items-center gap-4 pt-4 border-t border-gray-100">
+             { showPrice ? (
+                 <>
+                    <div className="flex items-center border border-gray-300 rounded">
+                        <button onClick={() => setQty(Math.max(1, qty - 1))} className="px-3 py-2 hover:bg-gray-100">-</button>
+                        <input 
+                            type="number" 
+                            min="1" 
+                            value={qty} 
+                            onChange={(e) => setQty(Math.max(1, Number(e.target.value)))}
+                            className="w-12 text-center border-none focus:ring-0"
+                        />
+                        <button onClick={() => setQty(qty + 1)} className="px-3 py-2 hover:bg-gray-100">+</button>
+                    </div>
+                    
+                    <button 
+                        onClick={handleAddToCart}
+                        className="flex-1 bg-blue-600 text-white font-bold py-3 px-6 rounded hover:bg-blue-700 transition shadow-sm"
+                    >
+                        加入購物車
+                    </button>
+                 </>
+             ) : (
+                 <button disabled className="flex-1 bg-gray-300 text-white font-bold py-3 px-6 rounded cursor-not-allowed">
+                     請洽客服購買
+                 </button>
+             )}
           </div>
 
         </div>

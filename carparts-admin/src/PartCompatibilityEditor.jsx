@@ -1,231 +1,158 @@
-// src/PartCompatibilityEditor.jsx
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import VehicleFilter from "./VehicleFilter.jsx";
 
-/** GET JSON helper */
-async function jget(path) {
-  const r = await fetch(path);
-  if (!r.ok) throw new Error(`${path} -> HTTP ${r.status}`);
-  return r.json();
-}
-/** POST JSON helper */
-async function jpost(path, body) {
-  const r = await fetch(path, { method: "POST", headers: { "Content-Type":"application/json" }, body: JSON.stringify(body) });
-  if (!r.ok) throw new Error(`${path} -> HTTP ${r.status}`);
-  return r.json();
-}
-/** DELETE helper */
-async function jdel(path) {
-  const r = await fetch(path, { method: "DELETE" });
-  if (!r.ok) throw new Error(`${path} -> HTTP ${r.status}`);
-  return r.json();
-}
-
-/**
- * 編輯零件的相容車型
- * props:
- *  - partId: number (必填，已存在的零件 id)
- *  - initialList?: part_compatibilities[]  // 可不傳，會自動抓
- *  - onChange?: (list) => void              // 變更後回傳
- */
 export default function PartCompatibilityEditor({ partId, initialList, onChange }) {
+  // 適用車型列表
+  const [compatVehicles, setCompatVehicles] = useState(initialList || []);
+  const [vehicleSelection, setVehicleSelection] = useState({
+    makeId: "", modelId: "", year: "", variantId: "", summary: ""
+  });
   const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState("");
-  const [compat, setCompat] = useState(() => Array.isArray(initialList) ? initialList : []);
-  const [variants, setVariants] = useState([]);     // 依當前篩選列出的候選 variants
-  const [cond, setCond] = useState(null);           // { makeId, modelId, generationId, year, variantId }
 
-  // 為了把「已相容」顯示得更友善，我們會額外把相容的 variant 詳細資料抓回來
-  const [compatDetails, setCompatDetails] = useState([]); // [{id, year_from, year_to, name, engine_code, ...}]
-
-  const compatIds = useMemo(() => new Set((compat || []).map(c => Number(c.vehicle_variant_id))), [compat]);
-
-  // 初始/變動時載入 part 的相容清單
+  // 如果 parent 更新了 initialList (例如重新載入後)，這裡也同步
   useEffect(() => {
-    if (!partId) return;
-    if (initialList && Array.isArray(initialList)) {
-      setCompat(initialList);
+    if (initialList) setCompatVehicles(initialList);
+  }, [initialList]);
+
+  // 新增適用車型
+  async function handleAddVehicle() {
+    // 檢查是否有選 variantId
+    if (!vehicleSelection.variantId) {
+      alert("請先在上方選擇車型並按下「確定」，待顯示「目前車型」後再點擊加入。");
       return;
     }
-    (async () => {
-      try {
-        const p = await jget(`/parts/${partId}`);
-        setCompat(Array.isArray(p?.part_compatibilities) ? p.part_compatibilities : []);
-      } catch (e) {
-        console.error(e);
-      }
-    })();
-  }, [partId]);
 
-  // 把已相容的 variant 詳細資料補齊（需要後端支援 /variants?ids=1,2,3，見下面第 3 步）
-  useEffect(() => {
-    const ids = Array.from(compatIds);
-    if (ids.length === 0) { setCompatDetails([]); return; }
-    (async () => {
-      try {
-        const list = await jget(`/variants?ids=${ids.join(",")}`);
-        setCompatDetails(Array.isArray(list) ? list : []);
-      } catch (e) {
-        // 若後端尚未支援 ids，可忽略錯誤；畫面會用 id 先顯示
-        console.warn("variants?ids not supported yet:", e.message);
-        setCompatDetails([]);
-      }
-    })();
-  }, [compatIds]);
+    // 檢查是否重複
+    if (compatVehicles.some(v => v.id === Number(vehicleSelection.variantId))) {
+      alert("此車型已在列表中");
+      return;
+    }
 
-  // 由 VehicleFilter 觸發查詢
-  async function runSearch(c) {
-    setErr(""); setLoading(true);
+    setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (c?.variantId) params.set("variantId", c.variantId);
-      if (!c?.variantId) {
-        if (c?.makeId) params.set("makeId", c.makeId);
-        if (c?.modelId) params.set("modelId", c.modelId);
-        if (c?.generationId) params.set("generationId", c.generationId);
-        if (c?.year) params.set("year", c.year);
+      const res = await fetch(`/admin/parts/${partId}/vehicles`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vehicleId: vehicleSelection.variantId })
+      });
+      
+      if (!res.ok) throw new Error("加入失敗");
+      
+      // 加入成功後，清空選擇 (觸發 VehicleFilter 重置)
+      setVehicleSelection({ makeId: "", modelId: "", year: "", variantId: "", summary: "" });
+
+      // 通知父層重新整理
+      if (onChange) {
+        onChange();
+      } else {
+        alert("加入成功");
       }
-      const list = await jget(`/variants?${params.toString()}`);
-      setVariants(Array.isArray(list) ? list : []);
     } catch (e) {
-      setErr(String(e.message || e));
-      setVariants([]);
+      alert(e.message);
     } finally {
       setLoading(false);
     }
   }
 
-  function onApplyFromFilter(c) {
-    setCond(c);
-    runSearch(c);
-  }
-
-  async function attachOne(variantId) {
-    if (!partId) return alert("請先儲存零件，取得 partId 後再設定相容車型。");
+  // 移除適用車型
+  async function handleRemoveVehicle(vehicleId) {
+    if (!window.confirm("確定移除此適用車型?")) return;
+    setLoading(true);
     try {
-      await jpost(`/parts/${partId}/compatibility`, { variant_id: Number(variantId) });
-      const next = [...compat, { part_id: Number(partId), vehicle_variant_id: Number(variantId) }];
-      setCompat(next); onChange?.(next);
+      const res = await fetch(`/admin/parts/${partId}/vehicles/${vehicleId}`, {
+        method: "DELETE"
+      });
+      if (!res.ok) throw new Error("移除失敗");
+      
+      // 移除後通知父層
+      if (onChange) {
+        onChange();
+      } else {
+        setCompatVehicles(prev => prev.filter(v => v.id !== vehicleId));
+      }
     } catch (e) {
-      alert(`加入失敗：${e.message || e}`);
+      alert(e.message);
+    } finally {
+      setLoading(false);
     }
-  }
-
-  async function attachAllFromList() {
-    if (variants.length === 0) return;
-    const tasks = variants
-      .filter(v => !compatIds.has(Number(v.id)))
-      .map(v => jpost(`/parts/${partId}/compatibility`, { variant_id: Number(v.id) }).catch(() => null));
-    await Promise.all(tasks);
-    // 重新拉一次（穩妥）
-    const p = await jget(`/parts/${partId}`);
-    const next = Array.isArray(p?.part_compatibilities) ? p.part_compatibilities : [];
-    setCompat(next); onChange?.(next);
-  }
-
-  async function removeOne(variantId) {
-    if (!confirm("確定要移除此相容車型？")) return;
-    try {
-      await jdel(`/parts/${partId}/compatibility/${variantId}`);
-      const next = compat.filter(c => Number(c.vehicle_variant_id) !== Number(variantId));
-      setCompat(next); onChange?.(next);
-    } catch (e) {
-      alert(`移除失敗：${e.message || e}`);
-    }
-  }
-
-  // 用詳細資料（若有）呈現，否則退回顯示 id
-  function renderCompatRow(c) {
-    const v = compatDetails.find(v => Number(v.id) === Number(c.vehicle_variant_id));
-    const label = v
-      ? `${v.year_from ?? ""}${v.year_to && v.year_to !== v.year_from ? `–${v.year_to}` : ""}${v.name ? `｜${v.name}` : ""}${v.engine_code ? `｜${v.engine_code}` : ""}`
-      : `Variant #${c.vehicle_variant_id}`;
-    return (
-      <tr key={c.vehicle_variant_id} style={{ borderTop: "1px solid #eee" }}>
-        <td style={td}>{label}</td>
-        <td style={{ ...td, width: 1, whiteSpace: "nowrap" }}>
-          <button onClick={() => removeOne(c.vehicle_variant_id)}>移除</button>
-        </td>
-      </tr>
-    );
   }
 
   return (
-    <div style={{ border: "1px solid #eee", borderRadius: 12, padding: 12, marginTop: 12 }}>
-      <div style={{ fontWeight: 700, marginBottom: 8 }}>相容車型設定</div>
-
-      {/* 篩選器：沿用前台的 VehicleFilter（支援世代＋年份交集） */}
-      <VehicleFilter
-        onChange={(variantId) => {
-          // 若只點選 Variant（不按套用），也立即列出這一個
-          if (variantId) {
-            setCond(c => ({ ...(c||{}), variantId }));
-            runSearch({ ...(cond||{}), variantId });
-          }
-        }}
-        onApply={onApplyFromFilter}
-      />
-
-      {/* 候選列表（可逐筆加入或一鍵加入全部） */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-        <strong>候選車型</strong>
-        <span style={{ color: "#666" }}>（{variants.length} 筆）</span>
-        <div style={{ marginLeft: "auto" }} />
-        <button onClick={attachAllFromList} disabled={variants.length === 0}>把列表全部加入</button>
+    <div className="bg-white p-6 rounded shadow">
+      {/* 1. 加入區塊 */}
+      <div className="bg-blue-50 p-4 rounded mb-6 border border-blue-100">
+        <h3 className="font-bold text-blue-800 mb-2">新增適用車型</h3>
+        <div className="flex items-center gap-4 flex-wrap">
+          <VehicleFilter value={vehicleSelection} onChange={setVehicleSelection} />
+          
+          <button 
+            onClick={handleAddVehicle}
+            disabled={!vehicleSelection.variantId || loading}
+            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed h-10"
+          >
+            {loading ? "處理中..." : "+ 加入列表"}
+          </button>
+        </div>
+        {/* 修正提示文字與符號 */}
+        <p className="text-xs text-gray-500 mt-2">
+          步驟：選擇「年份 → 廠牌 → 車系 → 規格」並按 <b>確定</b>，確認選取後再按 <b>+ 加入列表</b>。
+        </p>
       </div>
 
-      {loading && <div>載入中…</div>}
-      {err && <div style={{ color: "crimson" }}>Error: {err}</div>}
-
-      <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 12 }}>
-        <thead>
-          <tr style={{ background: "#fafafa" }}>
-            <th style={th}>Variant</th>
-            <th style={{ ...th, width: 1 }}></th>
-          </tr>
-        </thead>
-        <tbody>
-          {variants.map(v => (
-            <tr key={v.id} style={{ borderTop: "1px solid #eee" }}>
-              <td style={td}>
-                {(v.year_from ?? "")}{v.year_to && v.year_to !== v.year_from ? `–${v.year_to}` : ""}
-                {v.name ? `｜${v.name}` : ""}{v.engine_code ? `｜${v.engine_code}` : ""}
-              </td>
-              <td style={{ ...td, width: 1, whiteSpace: "nowrap" }}>
-                {compatIds.has(Number(v.id))
-                  ? <span style={{ color: "#666" }}>已加入</span>
-                  : <button onClick={() => attachOne(v.id)}>加入</button>}
-              </td>
-            </tr>
-          ))}
-          {variants.length === 0 && (
-            <tr><td style={{ padding: 8, color: "#666" }} colSpan={2}>尚未選擇條件</td></tr>
-          )}
-        </tbody>
-      </table>
-
-      {/* 已相容清單 */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-        <strong>已設定相容車型</strong>
-        <span style={{ color: "#666" }}>（{compat.length} 筆）</span>
+      {/* 2. 列表區塊 */}
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="font-bold text-gray-800">已設定的車型 ({compatVehicles.length})</h3>
+        <button onClick={() => onChange && onChange()} className="text-sm text-blue-600 hover:underline">重新整理列表</button>
       </div>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead>
-          <tr style={{ background: "#fafafa" }}>
-            <th style={th}>Variant</th>
-            <th style={{ ...th, width: 1 }}></th>
-          </tr>
-        </thead>
-        <tbody>
-          {compat.map(renderCompatRow)}
-          {compat.length === 0 && (
-            <tr><td style={{ padding: 8, color: "#666" }} colSpan={2}>尚未設定</td></tr>
-          )}
-        </tbody>
-      </table>
+      
+      {compatVehicles.length === 0 ? (
+        <div className="text-gray-500 text-center py-8 border rounded border-dashed bg-gray-50">
+          尚未設定任何適用車型
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-gray-50 border-b">
+                <th className="p-3 whitespace-nowrap">廠牌</th>
+                <th className="p-3 whitespace-nowrap">車系</th>
+                <th className="p-3 whitespace-nowrap">年份/世代</th>
+                <th className="p-3 w-full">引擎/規格</th>
+                <th className="p-3 text-right whitespace-nowrap">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {compatVehicles.map(v => (
+                <tr key={v.id} className="border-b hover:bg-gray-50">
+                  <td className="p-3">{v.make}</td>
+                  <td className="p-3 font-medium">{v.model}</td>
+                  <td className="p-3 text-gray-600">
+                    {v.year_start === v.year_end ? v.year_start : `${v.year_start}-${v.year_end}`} 
+                    {v.generation && ` (${v.generation})`}
+                  </td>
+                  <td className="p-3 text-sm">
+                    <span className="font-semibold text-gray-700">{v.engine_code}</span>
+                    {v.variant_name !== v.model && <span className="ml-2 text-xs text-gray-500 bg-gray-200 px-1 rounded">{v.variant_name}</span>}
+                    
+                    {/* 安全渲染規格 */}
+                    {v.specs && typeof v.specs === 'object' && Object.entries(v.specs).map(([key, val]) => (
+                        <span key={key} className="ml-2 text-xs text-gray-400" title={key}>{String(val)}</span>
+                    )).slice(0, 2)}
+                  </td>
+                  <td className="p-3 text-right">
+                    <button 
+                      onClick={() => handleRemoveVehicle(v.id)}
+                      className="text-red-600 hover:text-red-800 hover:underline text-sm px-2 py-1 rounded hover:bg-red-50 transition"
+                    >
+                      移除
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
-
-const th = { textAlign: "left", padding: "8px 10px", borderBottom: "1px solid #eee" };
-const td = { padding: "8px 10px", verticalAlign: "top" };

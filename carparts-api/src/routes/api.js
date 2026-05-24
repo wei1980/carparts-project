@@ -12,6 +12,30 @@ router.get('/ping', (req, res) => {
 // 公用資料 API (無需權限即可存取)
 // ==========================================
 
+// 0. 取得所有年份 (Years) - ✅ 這是為了解決 404 新增的
+router.get('/years', async (req, res) => {
+  try {
+    // 撈取資料庫中所有車型的起始與結束年份
+    const variants = await prisma.vehicleVariant.findMany({
+      select: { year_start: true, year_end: true }
+    });
+    
+    // 使用 Set 來過濾重複的年份
+    const yearSet = new Set();
+    variants.forEach(v => {
+      if (v.year_start) yearSet.add(v.year_start);
+      if (v.year_end) yearSet.add(v.year_end);
+    });
+    
+    // 轉換成陣列，並從大到小排序 (新到舊)
+    const years = Array.from(yearSet).sort((a, b) => b - a);
+    res.json(years);
+  } catch (error) {
+    console.error('API /years 錯誤:', error);
+    res.status(500).json({ error: '無法取得年份列表' });
+  }
+});
+
 // 1. 取得所有製造商 (Makes)
 // 支援 ?year=2010 篩選
 router.get('/makes', async (req, res) => {
