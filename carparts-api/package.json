@@ -2,42 +2,80 @@
   "name": "carparts-api",
   "version": "1.0.0",
   "description": "Car parts API (Express + Prisma + PostgreSQL)",
-  "main": "index.js",
+  "main": "src/server.js",
   "license": "MIT",
   "scripts": {
     "import:vehicles": "node prisma/importVehicles.js ./data/vehicles.csv",
     "import:parts": "node prisma/importParts.js ./data/parts.csv ./data/compatibilities.csv",
-    "start": "node index.js",
-    "dev": "node index.js",
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
     "seed": "node prisma/seed.js",
     "seed:categories": "node prisma/seed_categories.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name init_app",
-    "prisma:reset": "prisma migrate reset -f"
+    "prisma:reset": "prisma migrate reset -f",
+    "test": "jest --ci --coverage --detectOpenHandles --forceExit",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --ci --coverage",
+    "lint": "oxlint"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
-    "axios": "^1.12.2",
+    "@sentry/node": "^10.73.0",
+    "@sentry/profiling-node": "^10.73.0",
+    "axios": "^1.20.0",
+    "bcryptjs": "^3.0.3",
     "bottleneck": "^2.19.5",
+    "bullmq": "^6.3.1",
     "cheerio": "^1.1.2",
-    "cors": "^2.8.5",
+    "compression": "^1.8.1",
+    "cors": "^2.8.6",
     "csv-parse": "^5.6.0",
     "csv-parser": "^3.2.0",
     "csv-writer": "^1.6.0",
-    "dotenv": "^17.2.3",
-    "express": "^4.19.2",
+    "dotenv": "^17.4.2",
+    "exceljs": "^4.4.0",
+    "express": "^4.22.2",
+    "express-rate-limit": "^8.6.2",
+    "helmet": "^8.3.0",
     "iconv-lite": "^0.7.0",
-    "multer": "^2.0.2",
+    "ioredis": "^6.0.0",
+    "jsonwebtoken": "^9.0.3",
+    "morgan": "^1.11.0",
+    "multer": "^2.2.0",
+    "node-cron": "^4.6.0",
     "papaparse": "^5.5.3",
-    "robots-parser": "^3.0.1"
+    "puppeteer-core": "^25.7.0",
+    "react-hot-toast": "^2.6.0",
+    "robots-parser": "^3.0.1",
+    "sharp": "^0.35.3",
+    "winston": "^3.19.0",
+    "winston-elasticsearch": "^0.19.0",
+    "winston-loki": "^6.1.7"
   },
   "devDependencies": {
-    "prisma": "^5.22.0"
+    "@babel/preset-env": "^8.0.2",
+    "@types/jest": "^30.0.0",
+    "@types/supertest": "^7.2.1",
+    "babel-jest": "^30.5.1",
+    "jest": "^30.5.1",
+    "nodemon": "^3.1.14",
+    "oxlint": "^1.75.0",
+    "prisma": "^5.22.0",
+    "supertest": "^7.2.2",
+    "ts-jest": "^29.4.12",
+    "xlsx": "^0.18.5"
   },
   "engines": {
     "node": ">=18"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
+  },
+  "allowScripts": {
+    "@prisma/client@5.22.0": true,
+    "@prisma/engines@5.22.0": true,
+    "prisma@5.22.0": true,
+    "unrs-resolver@1.12.2": true
   }
 }

@@ -21,6 +21,76 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
-
+# backups & dumps
 backups/
-*.zip
+*.sql
+*.dump
+*.backup
+full_backup.sql
+latest_data.sql
+
+# media files (large binary assets)
+carparts-api/media/
+carparts-web/public/media/
+
+# temporary scripts & verification files
+*_verify*.js
+verify_*.js
+check*.js
+restore_*.js
+backup_*.js
+export_*.js
+import_*.js
+*_check.js
+
+# IDE & editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+~$*.docx
+~$*.xlsx
+
+# OS generated
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# logs
+logs/
+*.log
+
+# test coverage
+coverage/
+.nyc_output/
+
+# misc temp files
+*.tmp
+*.temp
+nul
+Node.js
+HTTP
+
+# carparts-admin (retired)
+carparts-admin/dist/
+carparts-admin/node_modules/
+carparts-admin/.env*
+carparts-admin/logs/
+
+# prisma migrations (keep but ignore generated client in node_modules)
+# prisma/migrations/ - keep this tracked
+
+# scripts output
+carparts-api/scripts/*.txt
+carparts-api/scripts/validation_report_*.txt
+
+# large data files
+*.xlsx
+*.xls
+*.csv
+!prisma/data/*.csv  # keep seed data if any
+
+# Windows specific
+*.bat
+*.cmd
