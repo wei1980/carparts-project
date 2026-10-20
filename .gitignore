@@ -170,3 +170,4 @@ carparts-web/src/data/find_brackets.py
 
 # KW 適配匹配中間產物（可由 apkw_match_v7.js 重新產生）
 carparts-api/scratch_v7_*.json
+carparts-api/scratch_ebc_*.json
