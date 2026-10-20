@@ -72,11 +72,51 @@ nul
 Node.js
 HTTP
 
-# carparts-admin (retired)
-carparts-admin/dist/
-carparts-admin/node_modules/
-carparts-admin/.env*
-carparts-admin/logs/
+# carparts-admin (retired) — 整個應用已退役，不進版控
+carparts-admin/
+!carparts-admin/RETIRED.txt
+
+# 根目錄一次性探勘/爬蟲/處理腳本（非專案本體，屬歷史工作產物）
+/explore_*.py
+/debug_*.py
+/capture_*.py
+/check_*.py
+/detect_*.py
+/find_*.py
+/parse_kw*.py
+/read_*.py
+/process_*.py
+/build_*.py
+/analyze_*.py
+/auto_verification_system.py
+/verify_*.py
+/simple_verifier.py
+/test_*.py
+/csv_to_excel.py
+/export_air_filters.py
+/extract_sku_relations.py
+/fix_and_regenerate.py
+/generate_production_templates.py
+/import_parts_vehicles.py
+/integrate_official_data.py
+/official_compatible_cars.py
+/restore_db.py
+/save_official_csv.py
+/search_bmw.js
+/*koni*.py
+/koni_output/
+/scrape_*.py
+/fetch_koni_*.py
+
+# 匯出資料與產物
+/import_output/production_templates/
+!/import_output/TEMPLATE_USAGE_GUIDE.md
+
+# 專案本體（歷史摘要文件，已被 README/ARCHITECTURE 取代）
+/FRONTEND_OPTIMIZATION_SUMMARY.md
+/OPTIMIZATION_SUMMARY.md
+/OPTIMIZATION_FINAL_SUMMARY.md
+/VERIFICATION_SUMMARY.md
 
 # prisma migrations (keep but ignore generated client in node_modules)
 # prisma/migrations/ - keep this tracked
@@ -88,9 +128,42 @@ carparts-api/scripts/validation_report_*.txt
 # large data files
 *.xlsx
 *.xls
+*.xlsm
 *.csv
 !prisma/data/*.csv  # keep seed data if any
+
+# 訂單管理.xlsm 含「帳號」工作表的明文密碼，絕對不可進版控
+/訂單管理.xlsm
+
+# 匯出/除錯產物（體積大且可重新產生）
+koni_output/
+backup-parts-wipe/
+import_output/production_templates/debug_*
+import_output/production_templates/koni_*
+conflict_report.json
+conflict_report.csv
+koni_final.html
+koni_page.html
+koni_page_rendered.html
+carparts-api/db_parts.json
+
+# 未使用的截圖素材（logo.png 仍被 Navbar 使用，必須保留）
+carparts-web/public/*.png
+!carparts-web/public/logo.png
+
+# 備份與暫存檔
+*.bak
+carparts-web/dev/null
+carparts-web/src/__parse_test.jsx
+carparts-web/scratch/
 
 # Windows specific
 *.bat
 *.cmd
+# 一次性 DB 維護/驗證腳本（會寫正式庫，僅供本機使用）
+carparts-api/prisma/relink_compat*.js
+carparts-api/prisma/test_shop_filter.js
+carparts-api/prisma/import_Makes.js
+carparts-api/fix_api.py
+carparts-web/src/data/extract_tw_data.py
+carparts-web/src/data/find_brackets.py

@@ -1,0 +1,69 @@
+import React from 'react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { CurrentVehicleProvider } from '../context/CurrentVehicleContext';
+import { CartProvider } from '../context/CartContext';
+import Shop from './Shop';
+import PartDetail from './PartDetail';
+import Cart from './Cart';
+import MyCar from './MyCar';
+jest.mock('../components/ModificationEditor',()=>({ModificationEditor:()=>null}));
+jest.mock('../components/ConfirmDialog',()=>({confirmDialog:jest.fn(async()=>true)}));
+import { useCart } from '../context/CartContext';
+function SeedCart(){const {addToCart}=useCart();return <button onClick={()=>addToCart(mockPart)}>seed cart</button>;}
+import axios from 'axios';
+import { myCarAPI, vehicleAPI, partsAPI } from '../api';
+import { consumerClient } from '../api/client';
+
+jest.mock('axios');
+jest.mock('../api', () => ({vehicleAPI:{getAll:jest.fn()}, myCarAPI:{dashboard:jest.fn(),setCurrentVehicle:jest.fn()}, partsAPI:{getCompatibility:jest.fn()}}));
+jest.mock('../api/client',()=>({consumerClient:{get:jest.fn(async url=>url.includes('categories')?{data:[]}:{data:{parts:[mockPart],pagination:{page:1,pages:1,total:1}}})},garageClient:{get:jest.fn()}}));
+jest.mock('../context/AuthContext',()=>({useAuth:()=>({user:{id:'user-1'},logout:jest.fn()})}));
+jest.mock('../components/ErrorBoundary',()=>({PartialErrorBoundary:({children})=>children}));
+jest.mock('react-router-dom',()=>({useNavigate:()=>jest.fn(),useParams:()=>({id:'1'}),useLocation:()=>({pathname:'/shop',state:{part:mockPart}}),useSearchParams:()=>[new URLSearchParams()]}));
+const mockPart={id:1,name:'測試零件',msrp_price:100,stock_qty:5};
+const vehicles=[{id:'profile-a',variantId:321,make:'Toyota',model:'A'},{id:'profile-b',variantId:654,make:'Honda',model:'B'}];
+const deferred=()=>{let resolve;const promise=new Promise(r=>{resolve=r;});return {promise,resolve};};
+beforeEach(()=>{
+ jest.resetAllMocks(); localStorage.clear(); window.scrollTo=jest.fn();
+ vehicleAPI.getAll.mockResolvedValue({data:vehicles});
+ myCarAPI.dashboard.mockResolvedValue({data:{vehicle:vehicles[0],history:[],reminders:[],suggestions:[]}});
+ myCarAPI.setCurrentVehicle.mockResolvedValue({data:{success:true}});
+ consumerClient.get.mockImplementation(async url=>({data:url.includes('categories')?[]:{parts:[mockPart],pagination:{page:1,pages:1,total:1}}}));
+ partsAPI.getCompatibility.mockResolvedValue({data:{status:'CONFIRMED',vehicle:vehicles[0]}});
+});
+it('renders loading and retry then allows recovery in the Navbar',async()=>{vehicleAPI.getAll.mockRejectedValueOnce(new Error('offline'));render(<CurrentVehicleProvider><CartProvider><Cart/></CartProvider></CurrentVehicleProvider>);await screen.findAllByText(/車輛載入失敗/);fireEvent.click(screen.getAllByText('重試')[0]);await screen.findByRole('combobox',{name:'目前車輛（桌面）'});});
+it('MyCar follows Navbar changes',async()=>{axios.get.mockResolvedValue({data:[]});myCarAPI.dashboard.mockImplementation(async()=>({data:{vehicle:vehicles[0],history:[],reminders:[],suggestions:[]}}));render(<CurrentVehicleProvider><CartProvider><MyCar/></CartProvider></CurrentVehicleProvider>);await screen.findByRole('combobox',{name:'目前車輛（桌面）'});myCarAPI.dashboard.mockResolvedValue({data:{vehicle:vehicles[1],history:[],reminders:[],suggestions:[]}});fireEvent.change(screen.getByRole('combobox',{name:'目前車輛（桌面）'}),{target:{value:'profile-b'}});await waitFor(()=>expect(screen.getByRole('combobox',{name:'目前車輛（桌面）'})).toHaveValue('profile-b'));await waitFor(()=>expect(myCarAPI.dashboard.mock.calls.length).toBeGreaterThan(2));});
+it('MyCar list switching performs only one guarded dashboard refresh',async()=>{
+ axios.get.mockResolvedValue({data:[]});
+ render(<CurrentVehicleProvider><CartProvider><MyCar/></CartProvider></CurrentVehicleProvider>);
+ const button=await screen.findByRole('button',{name:'切換至這台車'});
+ const before=myCarAPI.dashboard.mock.calls.length;
+ myCarAPI.dashboard.mockResolvedValue({data:{vehicle:vehicles[1],history:[],reminders:[],suggestions:[]}});
+ fireEvent.click(button);
+ await waitFor(()=>expect(screen.getByRole('combobox',{name:'目前車輛（桌面）'})).toHaveValue('profile-b'));
+ await screen.findByRole('button',{name:'切換至這台車'});
+ expect(myCarAPI.dashboard.mock.calls.length-before).toBe(1);
+});
+it('cart keeps products and explains that switching does not confirm fitment',async()=>{
+ render(<CurrentVehicleProvider><CartProvider><SeedCart/><Cart/></CartProvider></CurrentVehicleProvider>);
+ await screen.findByRole('combobox',{name:'目前車輛（桌面）'});
+ fireEvent.click(screen.getByText('seed cart'));
+ fireEvent.change(screen.getByRole('combobox',{name:'目前車輛（桌面）'}),{target:{value:'profile-b'}});
+ await waitFor(()=>expect(screen.getByRole('combobox',{name:'目前車輛（桌面）'})).toHaveValue('profile-b'));
+ expect(screen.getByText('測試零件')).toBeInTheDocument();
+ expect(screen.getByText(/切換車輛不代表現有商品均適用/)).toBeInTheDocument();
+});
+it('Navbar switch updates Shop variant and removes old confirmed fitment before the new response',async()=>{
+ const pending=deferred();
+ render(<CurrentVehicleProvider><CartProvider><Shop/><PartDetail/></CartProvider></CurrentVehicleProvider>);
+ await screen.findByText(/已確認適用/);
+ expect(consumerClient.get).toHaveBeenCalledWith('/parts/recommended',expect.objectContaining({params:expect.objectContaining({variantId:321})}));
+ partsAPI.getCompatibility.mockReturnValueOnce(pending.promise);
+ fireEvent.change(screen.getAllByRole('combobox',{name:'目前車輛（桌面）'})[0],{target:{value:'profile-b'}});
+ await waitFor(()=>expect(myCarAPI.setCurrentVehicle).toHaveBeenCalledWith('profile-b'));
+ await waitFor(()=>expect(consumerClient.get).toHaveBeenCalledWith('/parts/recommended',expect.objectContaining({params:expect.objectContaining({variantId:654})})));
+ expect(screen.queryByText(/已確認適用/)).not.toBeInTheDocument();
+ expect(screen.getAllByRole('combobox',{name:'目前車輛（手機）'})[0]).toHaveValue('profile-b');
+ await act(async()=>pending.resolve({data:{status:'NEEDS_REVIEW'}}));
+ expect(screen.queryByText(/已確認適用/)).not.toBeInTheDocument();
+});

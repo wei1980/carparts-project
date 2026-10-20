@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api
+Disallow: /garage/
+Disallow: /profile
+Disallow: /cart
+Disallow: /checkout
+
+Sitemap: https://carparts.example.com/sitemap.xml

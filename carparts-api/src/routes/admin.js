@@ -4,12 +4,16 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const multer = require('multer');
 const Papa = require('papaparse');
+const rateLimit = require('express-rate-limit');
+const { apiError } = require('../utils/errorHandler');
+const partService = require('../services/partService');
+const vehicleService = require('../services/vehicleService');
 
 // 設定上傳記憶體儲存 (for CSV import)
 // 限制 20MB，僅接受 CSV
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 }, 
+  limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (file.mimetype === 'text/csv' || file.originalname.endsWith('.csv')) {
       cb(null, true);
@@ -17,6 +21,17 @@ const upload = multer({
       cb(new Error('只接受 CSV 檔案'));
     }
   },
+});
+
+// 速率限制：10 次/分鐘/IP
+const bulkUploadLimiter = rateLimit({
+  windowMs: 60_000, // 1 minute
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    apiError(res, 429, '請求過於頻繁，請稍後再試', 'RATE_LIMIT_EXCEEDED');
+  }
 });
 
 // ==========================================
@@ -30,15 +45,14 @@ router.get('/stats/users', async (req, res) => {
     });
     res.json({ totalUsers });
   } catch (error) {
-    console.error('Stats Error:', error);
-    res.status(500).json({ error: 'Failed to fetch user stats' });
+    apiError(res, 500, 'Failed to fetch user stats', 'STATS_ERROR');
   }
 });
 
 router.get('/stats/online', (req, res) => {
   // TODO: 如需精確線上人數，需在 app.js 加入全域 middleware 追蹤
   // 這裡先回傳 0 避免前端報錯
-  res.json({ onlineUsers: 0 }); 
+  res.json({ onlineUsers: 0 });
 });
 
 // ==========================================
@@ -58,7 +72,7 @@ router.get('/categories/tree', async (req, res) => {
     ];
     res.json(roots);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch categories' });
+    apiError(res, 500, 'Failed to fetch categories', 'CATEGORIES_ERROR');
   }
 });
 
@@ -103,8 +117,7 @@ router.get('/shops/review', async (req, res) => {
 
     res.json({ shops, total });
   } catch (error) {
-    console.error('Shops Review Error:', error);
-    res.status(500).json({ error: 'Failed to fetch shops' });
+    apiError(res, 500, 'Failed to fetch shops', 'SHOPS_REVIEW_ERROR');
   }
 });
 
@@ -122,8 +135,7 @@ router.post('/shops/:id/approve', async (req, res) => {
     });
     res.json({ success: true });
   } catch (error) {
-    console.error('Approve Error:', error);
-    res.status(500).json({ error: 'Failed to approve shop' });
+    apiError(res, 500, 'Failed to approve shop', 'APPROVE_ERROR');
   }
 });
 
@@ -137,7 +149,7 @@ router.post('/shops/:id/reject', async (req, res) => {
     });
     res.json({ success: true });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to reject shop' });
+    apiError(res, 500, 'Failed to reject shop', 'REJECT_ERROR');
   }
 });
 
@@ -151,26 +163,23 @@ router.post('/parts', async (req, res) => {
     const data = req.body;
     // 簡單驗證
     if (!data.sku || !data.name) {
-      return res.status(400).json({ error: 'SKU and Name are required' });
+      return apiError(res, 400, 'SKU and Name are required', 'MISSING_REQUIRED_FIELDS');
     }
 
-    const part = await prisma.part.create({
-      data: {
-        sku: data.sku,
-        name: data.name,
-        brand: data.brand || 'Generic',
-        category_main: data.category_main || 'Other',
-        msrp_price: data.msrp_price || 0,
-        wholesale_price: data.wholesale_price || 0,
-        stock_qty: data.stock_qty || 0,
-        preorder_lead_time_days: data.lead_time_days || 21,
-        is_active: true
-      }
+    const part = await partService.create({
+      sku: data.sku,
+      name: data.name,
+      brand: data.brand || 'Generic',
+      category_main: data.category_main || 'Other',
+      msrp_price: data.msrp_price || 0,
+      wholesale_price: data.wholesale_price || 0,
+      stock_qty: data.stock_qty || 0,
+      preorder_lead_time_days: data.lead_time_days || 21,
+      is_active: true
     });
     res.json({ message: 'Part created', data: part });
   } catch (error) {
-    console.error('Create Part Error:', error);
-    res.status(500).json({ error: 'Failed to create part', detail: error.message });
+    apiError(res, 500, 'Failed to create part', 'CREATE_PART_ERROR');
   }
 });
 
@@ -178,26 +187,27 @@ router.post('/parts', async (req, res) => {
 router.post('/parts/batch', async (req, res) => {
   try {
     const { action, ids } = req.body;
-    if (!ids || !ids.length) return res.status(400).json({ error: 'No IDs provided' });
+    if (!ids || !ids.length) return apiError(res, 400, 'No IDs provided', 'NO_IDS_PROVIDED');
 
     if (action === 'delete') {
-      await prisma.part.deleteMany({ where: { id: { in: ids } } });
+      await partService.deleteMany(ids);
     } else if (action === 'publish') {
-      await prisma.part.updateMany({ where: { id: { in: ids } }, data: { is_active: true } });
+      await partService.updateMany(ids, { is_active: true });
     } else if (action === 'unpublish') {
-      await prisma.part.updateMany({ where: { id: { in: ids } }, data: { is_active: false } });
+      await partService.updateMany(ids, { is_active: false });
+    } else {
+      return apiError(res, 400, 'Invalid action', 'INVALID_ACTION');
     }
 
     res.json({ success: true });
   } catch (error) {
-    console.error('Batch Error:', error);
-    res.status(500).json({ error: 'Batch operation failed' });
+    apiError(res, 500, 'Batch operation failed', 'BATCH_ERROR');
   }
 });
 
 // CSV 批次匯入 (Bulk Import)
-router.post('/parts/bulk', upload.single('file'), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: '請上傳 CSV 檔案' });
+router.post('/parts/bulk', bulkUploadLimiter, upload.single('file'), async (req, res) => {
+  if (!req.file) return apiError(res, 400, '請上傳 CSV 檔案', 'NO_FILE_UPLOADED');
 
   try {
     const csvString = req.file.buffer.toString('utf-8');
@@ -207,45 +217,63 @@ router.post('/parts/bulk', upload.single('file'), async (req, res) => {
       trimHeaders: true
     });
 
-    if (errors.length > 0) return res.status(400).json({ error: 'CSV 解析失敗', details: errors });
+    if (errors.length > 0) return apiError(res, 400, 'CSV 解析失敗', 'CSV_PARSE_ERROR', { details: errors });
 
-    const results = { success: 0, failed: 0, errors: [] };
+    // 檢查行數上限
+    if (rows.length > 10000) {
+      return apiError(res, 400, 'CSV 行數過多，上限 10,000 列', 'CSV_TOO_MANY_ROWS');
+    }
 
+    // 檢查危險字元開頭的儲存格
+    const dangerousPrefixes = ['=', '+', '-', '@'];
     for (const row of rows) {
-      try {
-        if (!row.sku || !row.name) continue;
-        
-        // Upsert: 存在則更新，不存在則新增
-        await prisma.part.upsert({
-          where: { sku: row.sku },
-          update: {
-            name: row.name,
-            msrp_price: row.msrp ? Number(row.msrp) : undefined,
-            wholesale_price: row.wholesale ? Number(row.wholesale) : undefined,
-            stock_qty: row.stock ? Number(row.stock) : undefined
-          },
-          create: {
-            sku: row.sku,
-            name: row.name,
-            brand: row.brand || 'Generic',
-            category_main: row.category || 'Other',
-            msrp_price: row.msrp ? Number(row.msrp) : 0,
-            wholesale_price: row.wholesale ? Number(row.wholesale) : 0,
-            stock_qty: row.stock ? Number(row.stock) : 0
+      for (const key in row) {
+        if (row.hasOwnProperty(key) && typeof row[key] === 'string') {
+          const trimmed = row[key].trim();
+          if (trimmed.length > 0 && dangerousPrefixes.includes(trimmed[0])) {
+            return apiError(res, 400, 'CSV 包含危險公式字開頭的儲存格', 'CSV_DANGEROUS_CONTENT');
           }
-        });
-        results.success++;
-      } catch (err) {
-        results.failed++;
-        results.errors.push({ sku: row.sku, error: err.message });
+        }
       }
     }
 
-    res.json({ message: 'Import completed', results });
+    const results = { success: 0, failed: 0, errors: [] };
 
+    await prisma.$transaction(async (tx) => {
+      for (const row of rows) {
+        try {
+          if (!row.sku || !row.name) continue;
+
+          // Upsert: 存在則更新，不存在則新增
+          await tx.part.upsert({
+            where: { sku: row.sku },
+            update: {
+              name: row.name,
+              msrp_price: row.msrp ? Number(row.msrp) : undefined,
+              wholesale_price: row.wholesale ? Number(row.wholesale) : undefined,
+              stock_qty: row.stock ? Number(row.stock) : undefined
+            },
+            create: {
+              sku: row.sku,
+              name: row.name,
+              brand: row.brand || 'Generic',
+              category_main: row.category || 'Other',
+              msrp_price: row.msrp ? Number(row.msrp) : 0,
+              wholesale_price: row.wholesale ? Number(row.wholesale) : 0,
+              stock_qty: row.stock ? Number(row.stock) : 0
+            }
+          });
+          results.success++;
+        } catch (err) {
+          results.failed++;
+          results.errors.push({ sku: row.sku, error: err.message });
+        }
+      }
+    });
+
+    res.json({ message: 'Import completed', results });
   } catch (error) {
-    console.error('Bulk Import Error:', error);
-    res.status(500).json({ error: '匯入過程發生錯誤' });
+    apiError(res, 500, '匯入過程發生錯誤', 'BULK_IMPORT_ERROR');
   }
 });
 

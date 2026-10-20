@@ -14,10 +14,11 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name init_app",
     "prisma:reset": "prisma migrate reset -f",
-    "test": "jest --ci --coverage --detectOpenHandles --forceExit",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --ci --coverage",
-    "lint": "oxlint"
+    "test": "node scripts/run-node-tests.cjs",
+    "test:watch": "node scripts/run-node-tests.cjs --watch",
+    "test:coverage": "node scripts/run-node-tests.cjs --experimental-test-coverage",
+    "lint": "oxlint",
+    "swagger:generate": "node swaggerAutogen.js"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
@@ -30,6 +31,7 @@
     "cheerio": "^1.1.2",
     "compression": "^1.8.1",
     "cors": "^2.8.6",
+    "csurf": "^1.11.0",
     "csv-parse": "^5.6.0",
     "csv-parser": "^3.2.0",
     "csv-writer": "^1.6.0",
@@ -49,11 +51,15 @@
     "react-hot-toast": "^2.6.0",
     "robots-parser": "^3.0.1",
     "sharp": "^0.35.3",
+    "swagger-autogen": "^2.23.7",
+    "swagger-jsdoc": "^6.3.0",
+    "swagger-ui-express": "^5.0.1",
     "winston": "^3.19.0",
     "winston-elasticsearch": "^0.19.0",
     "winston-loki": "^6.1.7"
   },
   "devDependencies": {
+    "@babel/core": "^8.0.7",
     "@babel/preset-env": "^8.0.2",
     "@types/jest": "^30.0.0",
     "@types/supertest": "^7.2.1",

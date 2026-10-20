@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+// 🔒 可選車廠辨識（決定是否回傳批發價/料號）
+const optionalGarageAuth = require('../middleware/optionalGarageAuth');
 
 // 如果你有用到這兩個檔案，請保留；如果測試時報錯說找不到檔案，可以先加上註解
 // const inventoryService = require('../services/inventoryService');
@@ -15,7 +17,7 @@ router.get('/ping', (req, res) => res.json({ msg: 'shop pong' }));
  * 前台搜尋零件 API
  */
 // 註：這裡我先拿掉 checkQueryQuota，確保你最基本的查詢能通。若你需要配額功能，確認沒問題後可再把 checkQueryQuota 加回中間件
-router.get('/parts', async (req, res) => {
+router.get('/parts', optionalGarageAuth, async (req, res) => {
   try {
     // 1. 接收參數（名稱必須與前端 Shop.jsx 完全一致）
     const { 
@@ -63,33 +65,38 @@ router.get('/parts', async (req, res) => {
     }
 
     // 5. 執行查詢與總數計算 (平行處理提升效能)
-    const [parts, total] = await Promise.all([
-      prisma.part.findMany({
-        where,
-        skip,
-        take,
-        orderBy: { id: 'desc' },
-        include: { subcategory: true } // 預先載入子分類資訊
-      }),
-      prisma.part.count({ where })
-    ]);
+        const [parts, total] = await Promise.all([
+          prisma.part.findMany({
+            where,
+            skip,
+            take,
+            orderBy: { id: 'desc' },
+            include: { 
+              subcategory: true,
+              compatible_vehicles: { include: { vehicle: true } }
+            }
+          }),
+          prisma.part.count({ where })
+        ]);
 
     // 格式化資料 (若你有保留 inventoryService 可取消下方註解使用)
     // const userRole = req.user ? req.user.role : 'TRIAL';
     // const formattedParts = parts.map(p => inventoryService.formatPartForClient(p, userRole));
 
     // 6. 回傳前端 Shop.jsx 期望的格式
+    // 🔒 車廠專屬欄位過濾：批發價/料號不給匿名與一般車主（防比價）
+    const items = req.isGarage ? parts : parts.map(({ sku, wholesale_price, ...rest }) => rest);
     res.json({
-      items: parts, // 如果有啟用上方 inventoryService，這裡改為 formattedParts
+      items,
       total: total,
       page: pageNum,
       limit: take
     });
 
   } catch (error) {
-    // 詳細印出錯誤，方便我們 Debug
+    // 詳細印出錯誤，方便我們 Debug（不回傳給客戶端，防內部資訊外洩）
     console.error('API /shop/parts 錯誤:', error);
-    res.status(500).json({ error: '搜尋零件失敗', details: error.message });
+    res.status(500).json({ error: '搜尋零件失敗' });
   }
 });
 
