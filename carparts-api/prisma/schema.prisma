@@ -1,5 +1,3 @@
-// schema.prisma
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,238 +8,1273 @@ datasource db {
   relationMode = "prisma"
 }
 
-// =========================================
-// Enums
-// =========================================
+model AiPartDraft {
+  id                String   @id
+  userId            String?
+  customerVehicleId String?
+  query             String
+  source_type       String
+  source_url        String?
+  raw_content       String?
+  result_json       Json?
+  status            String   @default("pending")
+  created_at        DateTime @default(now())
+  updated_at        DateTime @default(now())
+    // Relations (for prisma include)
+    user                         EndUser?                 @relation(fields: [userId], references: [id])
+    customerVehicle              VehicleProfile?           @relation(fields: [customerVehicleId], references: [id])
 
-enum SupplyStatus {
-  IN_STOCK      // 現貨
-  PREORDER      // 預訂 (庫存=0)
-  DISCONTINUED  // 停產/缺貨
+  }
+
+  model AuditLog {
+  id         String   @id
+  action     String
+  entityType String
+  entityId   String
+  actorId    String?
+  actorType  String?
+  before     Json?
+  after      Json?
+  detail     Json?
+  requestId  String?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([actorId, createdAt])
+  @@index([createdAt])
+  @@index([entityType, entityId])
 }
 
-enum OrderStatus {
-  PENDING_PAYMENT // 待付款 (已扣庫存)
-  PAYMENT_REVIEW  // 待查核 (已填後五碼)
-  PAID            // 已付款 (對帳成功/訂金已付)
-  SHIPPED         // 已出貨
-  COMPLETED       // 已完成
-  CANCELLED       // 已取消 (歸還庫存)
+model BankRemittanceClaim {
+  fingerprint     String   @id
+  orderId         Int
+  stage           String
+  amount          Decimal  @db.Decimal(18, 2)
+  transactionDate String
+  last5           String?
+  actorId         String
+  createdAt       DateTime @default(now())
+
+  // 分次匯款：同一訂單同一階段可認列多筆交易（合計金額由 advanceStatus 防重複推進保護）
+  @@index([orderId])
 }
 
-enum WorkshopRole {
-  TRIAL     // 試用會員 (限制次數, 僅看 MSRP)
-  VERIFIED  // 正式會員 (可看批發價, 可下單)
-  ADMIN     // 平台管理員
+model EndUser {
+  id               String    @id
+  passwordHash     String
+  name             String?
+  phone            String    @unique
+  createdAt        DateTime  @default(now())
+  lineId           String?
+  is_approved      Boolean   @default(false)
+  address          String?
+  is_active        Boolean   @default(true)
+  email            String?
+  resetCodeExpires DateTime?
+  resetCodeHash    String?
+  currentVehicleId String?   @unique
+  avatar_url       String?
+  consumerOrders   ConsumerOrder[]
+  aiPartDrafts     AiPartDraft[]
+  appointments     Appointment[]
+  wishItems        WishItem[]
 }
 
-// =========================================
-// Models
-// =========================================
-
-// 1. 車廠/使用者 (Workshops)
-model Workshop {
-  id              Int          @id @default(autoincrement())
-  email           String       @unique
-  password_hash   String
-  company_name    String
-  tax_id          String?      
-  line_id         String       
-  contact_person  String
-  phone           String
-  address         String
-  
-  role            WorkshopRole @default(TRIAL)
-  
-  // 審核狀態
-  is_approved     Boolean      @default(false)
-  is_active       Boolean      @default(true)
-  
-  created_at      DateTime     @default(now())
-  updated_at      DateTime     @updatedAt
-
-  orders          Order[]
-  query_usage     WorkshopQueryUsage[]
-
-  @@map("workshops")
+model PartImageRecognitionLog {
+  id              String   @id
+  userId          String?
+  imageUrl        String
+  rawResult       Json
+  finalBrand      String?
+  finalModel      String?
+  confidence      Float?
+  confirmedByUser Boolean   @default(false)
+  createdAt       DateTime  @default(now())
 }
 
-// 2. 核心車型資料庫 (Vehicle Variants)
-model VehicleVariant {
-  id            Int     @id @default(autoincrement())
-  
-  // 階層資料
-  make          String  
-  model         String  
-  generation    String  
-  engine_code   String  
-  
-  variant_name  String  
-  specs         Json?   
-  
-  year_start    Int
-  year_end      Int
-
-  compatible_parts PartCompatibility[]
-
-  @@index([make, model, generation, year_start])
-  @@map("vehicle_variants")
+model SupportConversation {
+  id            String           @id @default(cuid())
+  code          String           @unique
+  token         String
+  customerName  String?
+  customerPhone String?
+  page          String?
+  status        String           @default("OPEN")
+  createdAt     DateTime         @default(now())
+  messages      SupportMessage[]
 }
 
-// 3. 分類系統 (Categories) - 新增
-model Categories {
-  id            Int             @id @default(autoincrement())
-  name          String
-  sort_order    Int             @default(0)
-  is_active     Boolean         @default(true)
-  
-  subcategories Subcategories[]
-  parts_link    PartsOnCategories[]
+model SupportMessage {
+  id             String              @id @default(cuid())
+  conversation   SupportConversation @relation(fields: [conversationId], references: [id])
+  conversationId String
+  direction      String
+  author         String
+  text           String
+  createdAt      DateTime            @default(now())
 
-  @@map("categories")
+  @@index([conversationId, createdAt])
 }
 
-// 4. 子分類 (Subcategories) - 新增
-model Subcategories {
-  id            Int      @id @default(autoincrement())
-  category_id   Int
-  name          String
-  sort_order    Int      @default(0)
-  is_active     Boolean  @default(true)
-  
-  category      Categories @relation(fields: [category_id], references: [id])
-  parts         Part[]
+model VehicleProfile {
+  id            String   @id
+  userId        String
+  variantId     Int?
+  vin           String?
+  licensePlate  String?
+  make          String?
+  model         String?
+  generation    String?
+  year          Int?
+  engine        String?
+  modifications Json     @default("{}")
 
-  @@index([category_id])
-  @@map("subcategories")
+  // 🆕 里程數管理（工單自動回寫／手動／辨識／推算）
+  current_mileage     Int?
+  mileage_updated_at  DateTime?
+  mileage_source      String?   // manual | ocr | garage | estimated
+  mileage_source_note String?   // 例：「車大師旗艦廠工單」
+
+  // Relations (for prisma include)
+  variant                      VehicleVariant?           @relation(fields: [variantId], references: [id])
+  modifications_detail         VehicleModification[]
+  aiPartDrafts                 AiPartDraft[]
+  appointments                 Appointment[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now())
+  regPhotoUrl   String?
+
+  @@index([id])
+  @@index([userId])
+  @@index([userId, variantId])
 }
 
-// 5. 零件主表 (Parts)
-model Part {
-  id                      Int              @id @default(autoincrement())
-  sku                     String           @unique
-  name                    String
-  brand                   String
-  
-  // 關聯分類
-  subcategory_id          Int?
-  subcategory             Subcategories?   @relation(fields: [subcategory_id], references: [id])
-  
-  // 搜尋用快取欄位 (配合 index.js 搜尋邏輯)
-  category                String?          
+model WishItem {
+  id              String     @id @default(uuid())
+  userId          String
+  description     String
+  partPhoto       String?
+  status          WishStatus @default(PENDING)
+  handledBy       String?
+  createdAt       DateTime   @default(now())
+  notifiedAt      DateTime?
+  partId          Int?
+  targetPrice     Decimal?
+  notifiedAtPrice Decimal?
 
-  image_url               String?
-  description             String?
-  
-  // 價格
-  msrp_price              Decimal          @default(0)
-  wholesale_price         Decimal          @default(0)
-  
-  // 庫存與供應鏈
-  stock_qty               Int              @default(0) 
-  preorder_lead_time_days Int              @default(21)
-  
-  is_active               Boolean          @default(true)
-  
-  created_at              DateTime         @default(now())
-  updated_at              DateTime         @updatedAt
+  // Relations (for prisma include)
+  user                         EndUser                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  part                         Part?                    @relation(fields: [partId], references: [id], onDelete: Cascade)
 
-  // 關聯
-  compatible_vehicles     PartCompatibility[]
-  order_items             OrderItem[]
-  parts_on_categories     PartsOnCategories[]
-
-  @@index([subcategory_id])
-  @@map("parts")
+  @@index([partId])
+  @@index([userId])
 }
 
-// 6. 零件與分類多對多關聯 (PartsOnCategories) - 新增
-model PartsOnCategories {
-  part_id     Int
-  category_id Int
-  part        Part       @relation(fields: [part_id], references: [id])
-  category    Categories @relation(fields: [category_id], references: [id])
-  
-  @@id([part_id, category_id])
-  @@index([category_id])
-  @@index([part_id])
-  @@map("parts_on_categories")
-}
+model Appointment {
+  @@map("appointments")
+  id            Int               @id @default(autoincrement())
+  vehicle_id    String
+  garage_id     Int
+  user_id       String
+  service_type  String?
+  part_ids      Json?
+  scheduled_at  DateTime
+  status        AppointmentStatus @default(PENDING)
+  note          String?
+  created_at    DateTime          @default(now())
+  updated_at    DateTime @default(now())
+  install_items Json?
+  proposed_at   DateTime?
+  quote_amount  Int?
+  quote_note    String?
 
-// 7. 零件與車型關聯 (Many-to-Many)
-model PartCompatibility {
-  id            Int @id @default(autoincrement())
-  part_id       Int
-  vehicle_id    Int
-  
-  part          Part           @relation(fields: [part_id], references: [id])
-  vehicle       VehicleVariant @relation(fields: [vehicle_id], references: [id])
-
-  @@unique([part_id, vehicle_id])
+  @@index([garage_id])
+  @@index([garage_id, scheduled_at])
+  @@index([garage_id, status])
+  @@index([status, scheduled_at])
+  @@index([user_id])
   @@index([vehicle_id])
-  @@map("part_vehicle_compatibility")
+  @@index([vehicle_id, status])
+
+  // Relations (for prisma include)
+  vehicle                      VehicleProfile           @relation(fields: [vehicle_id], references: [id])
+  garage                       Workshop                 @relation(fields: [garage_id], references: [id])
+  user                         EndUser                  @relation(fields: [user_id], references: [id])
 }
 
-// 8. 訂單主表 (Orders)
+model BankTransaction {
+  @@map("bank_transactions")
+  id          Int      @id @default(autoincrement())
+  date        String?
+  amount      Float
+  memo        String?
+  remitter    String?
+  row         Int
+  fingerprint String?
+  createdAt   DateTime @default(now())
+}
+
+model Bay {
+  @@map("bays")
+  id         Int      @id @default(autoincrement())
+  garage_id  Int
+  name       String
+  code       String
+  type       String   @default("STANDARD")
+  is_active  Boolean  @default(true)
+  sort_order Int      @default(0)
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
+  @@unique([garage_id, code])
+}
+
+model Categories {
+  @@map("categories")
+  id         Int     @id @default(autoincrement())
+  name       String
+  slug       String?
+  parent_id  Int?
+  sort_order Int     @default(0)
+  is_active  Boolean @default(true)
+  is_nav     Boolean @default(true)
+
+  @@index([parent_id])
+
+  // Relations (for prisma include)
+  subcategories                Subcategories[]
+  parts_on_categories          PartsOnCategories[]
+}
+
+model ConsumerOrderItem {
+  @@map("consumer_order_items")
+  id                 Int       @id @default(autoincrement())
+  order_id           Int
+  part_id            Int
+  sku_snapshot       String
+  name_snapshot      String
+  price_snapshot     Decimal
+  qty                Int
+  is_preorder        Boolean   @default(false)
+  promised_weeks     Int       @default(0)
+  promised_weeks_min Int?
+  promised_weeks_max Int?
+  arrived_at         DateTime?
+  shipped_at         DateTime?
+  tracking_code      String?
+
+  // Relations (for prisma include)
+  order      ConsumerOrder     @relation(fields: [order_id], references: [id])
+  part       Part             @relation(fields: [part_id], references: [id])
+  returnItems OrderReturnItem[] // 🆕 退貨明細關聯
+
+  @@index([order_id])
+}
+
+model ConsumerOrder {
+  @@map("consumer_orders")
+  id                        Int                 @id @default(autoincrement())
+  order_number              String              @unique
+  userId                    String
+  status                    ConsumerOrderStatus @default(PENDING_PAYMENT)
+  subtotal_amount           Decimal
+  shipping_fee              Decimal             @default(0)
+  tax_amount                Decimal             @default(0) // 🆕 稅金（5%，系統設定開啟時計入）
+  total_amount              Decimal
+  payment_last_5_digits     String?
+  deposit_required          Boolean             @default(false)
+  payment_method            String?
+  cod_fee                   Decimal             @default(0)
+  shipping_address          String
+  tracking_number           String?
+  created_at                DateTime            @default(now())
+  updated_at                DateTime            @default(now())
+  is_import_order           Boolean             @default(false)
+  need_installation         Boolean             @default(false)
+  note                      String?
+  receiver_name             String
+  receiver_phone            String
+  vehicle_id                String?
+  balanceAmount             Decimal?
+  balancePaidAt             DateTime?
+  bankDepositDate           DateTime?
+  bankLastFiveDigits        String?
+  bankRemitterName          String?
+  bankDepositActualAmount   Decimal?   // 客戶實際匴款金額
+  depositAmount             Decimal?
+  depositPaidAt             DateTime?
+  orderType                 ConsumerOrderType   @default(INSTOCK)
+  shipped_at DateTime? // 🆕 記錄出貨時間
+  issues OrderIssue[]  // 🆕 售後問題回報關聯
+  returns OrderReturn[] // 🆕 退貨申請關聯
+  trackingCodeDomestic      String?
+  trackingCodeInternational String?
+  domesticCarrierId         Int?      // 🆕 國內物流業者
+  domesticCarrier           Carrier?  @relation(fields: [domesticCarrierId], references: [id])
+  idempotency_key           String?             @unique
+  // Relations (for prisma include)
+  user                        EndUser             @relation(fields: [userId], references: [id])
+  items                       ConsumerOrderItem[]
+
+  @@index([created_at])
+  @@index([status])
+  @@index([userId])
+  @@index([userId, status])
+  @@index([vehicle_id])
+}
+
+// 🆕 物流業者（查貨網頁連結可由後台管理）
+model Carrier {
+  @@map("carriers")
+  id          Int      @id @default(autoincrement())
+  name        String             // 顯示名稱：新竹物流 / 郵局 / 7-11店到店 / 全家店到店
+  code        String   @unique   // 短碼：HCT / POST / 711 / FAMILY
+  trackingUrl String?            // 查貨網頁；含 {number} 會併入單號
+  enabled     Boolean  @default(true)
+  sort_order  Int      @default(0)
+  created_at  DateTime @default(now())
+  orders      ConsumerOrder[]
+}
+
+model GarageLaborFee {
+  @@map("garage_labor_fees")
+  id          Int      @id @default(autoincrement())
+  workshop_id Int
+  name        String
+  price       Int
+  note        String?
+  sort_order  Int      @default(0)
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @default(now())
+  @@index([workshop_id])
+}
+
+model GarageReview {
+  @@map("garage_reviews")
+  id             Int      @id @default(autoincrement())
+  appointment_id Int      @unique
+  garage_id      Int
+  user_id        String
+  rating         Int
+  comment        String?
+  created_at     DateTime @default(now())
+
+  @@index([garage_id])
+  @@index([user_id])
+  @@index([garage_id], map: "idx_garage_review_garage")
+}
+
+model InsurancePolicy {
+  @@map("insurance_policies")
+  id            Int                   @id @default(autoincrement())
+  user_id       String
+  vehicle_id    String
+  product_id    Int
+  policy_number String?
+  status        InsurancePolicyStatus @default(QUOTED)
+  premium       Decimal               @default(0)
+  start_date    DateTime?
+  end_date      DateTime?
+  created_at    DateTime              @default(now())
+  updated_at    DateTime @default(now())
+  @@index([user_id])
+  @@index([vehicle_id])
+}
+
+model InsuranceProduct {
+  @@map("insurance_products")
+  id           Int      @id @default(autoincrement())
+  name         String
+  insurer_name String
+  coverage     Json?
+  base_premium Decimal  @default(0)
+  is_active    Boolean  @default(false)
+  created_at   DateTime @default(now())
+}
+
+model InventoryLog {
+  @@map("inventory_logs")
+  id         Int      @id @default(autoincrement())
+  part_id    Int
+  qty_change Int
+  qty_after  Int
+  type       String
+  note       String?
+  created_at DateTime @default(now())
+
+  @@index([created_at])
+  @@index([part_id, created_at])
+  @@index([part_id])
+  @@index([type])
+
+  // Relations (for prisma include)
+  part                         Part                     @relation(fields: [part_id], references: [id])
+}
+
+model MaintenanceReminder {
+  @@map("maintenance_reminders")
+  id               Int       @id @default(autoincrement())
+  user_id          String
+  vehicle_id       String
+  title            String
+  interval_km      Int?
+  interval_days    Int?
+  base_mileage     Int?
+  due_date         DateTime?
+  source           String    @default("MANUAL")
+  enabled          Boolean   @default(true)
+  last_notified_at DateTime?
+  created_at       DateTime  @default(now())
+  updated_at       DateTime @default(now())
+  @@index([due_date])
+  @@index([enabled])
+  @@index([user_id, enabled])
+  @@index([user_id])
+  @@index([vehicle_id, enabled])
+  @@index([vehicle_id])
+}
+
+model OrderItem {
+  @@map("order_items")
+  id                 Int     @id @default(autoincrement())
+  order_id           Int
+  part_id            Int
+  sku_snapshot       String
+  name_snapshot      String
+  price_snapshot     Decimal
+  qty                Int
+  is_preorder        Boolean @default(false)
+  promised_weeks     Int     @default(0)
+  promised_weeks_min Int?
+  promised_weeks_max Int?
+
+  @@index([order_id])
+
+  order Order @relation(fields: [order_id], references: [id])
+}
+
 model Order {
+  @@map("orders")
   id                    Int         @id @default(autoincrement())
-  order_number          String      @unique 
+  order_number          String      @unique
   workshop_id           Int
   status                OrderStatus @default(PENDING_PAYMENT)
-  
   subtotal_amount       Decimal
   shipping_fee          Decimal     @default(0)
   total_amount          Decimal
-  
-  payment_last_5_digits String?     
+  payment_last_5_digits String?
   deposit_required      Boolean     @default(false)
-  
   shipping_address      String
   tracking_number       String?
-
   created_at            DateTime    @default(now())
-  updated_at            DateTime    @updatedAt
-
-  workshop              Workshop    @relation(fields: [workshop_id], references: [id])
-  items                 OrderItem[]
-
-  @@map("orders")
+  updated_at            DateTime    @default(now())
+  // Relations (for prisma include)
+  workshop                     Workshop                 @relation(fields: [workshop_id], references: [id])
+  items                        OrderItem[]
 }
 
-// 9. 訂單明細
-model OrderItem {
-  id              Int     @id @default(autoincrement())
-  order_id        Int
-  part_id         Int
-  
-  sku_snapshot    String
-  name_snapshot   String
-  price_snapshot  Decimal 
-  
-  qty             Int
-  is_preorder     Boolean @default(false)
-  promised_weeks  Int     @default(0)     
+model PartCaliperFitment {
+  @@map("part_caliper_fitment")
+  id         Int @id @default(autoincrement())
+  pad_id     Int
+  caliper_id Int
 
-  order           Order   @relation(fields: [order_id], references: [id])
-  part            Part    @relation(fields: [part_id], references: [id])
-
-  @@index([order_id])
-  @@map("order_items")
+  @@unique([pad_id, caliper_id])
+  @@index([caliper_id])
 }
 
-// 10. 查詢配額紀錄
-model WorkshopQueryUsage {
+model PartModificationFitment {
+  @@map("part_modification_fitments")
+  id               Int      @id @default(autoincrement())
+  modificationType String
+  modPartId        Int
+  targetPartId     Int
+  fitmentRule      Json
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime
+
+  @@unique([modificationType, modPartId, targetPartId])
+  @@index([modPartId])
+  @@index([targetPartId])
+}
+
+model PartCompatibility {
+  @@map("part_vehicle_compatibility")
+  id         Int @id @default(autoincrement())
+  part_id    Int
+  vehicle_id Int
+
+  @@unique([part_id, vehicle_id])
+  @@index([vehicle_id], map: "idx_part_compat_vehicle")
+  @@index([vehicle_id])
+
+  // Relations (for prisma include)
+  part                         Part                     @relation(fields: [part_id], references: [id])
+  vehicle                      VehicleVariant           @relation(fields: [vehicle_id], references: [id])
+}
+
+model Part {
+  @@map("parts")
+  id                      Int            @id @default(autoincrement())
+  sku                     String         @unique
+  name                    String
+  brand                   String
+  subcategory_id          Int?
+  category                String?
+  image_url               String?
+  description             String?
+  specs                   Json?
+  msrp_price              Decimal        @default(0)
+  wholesale_price         Decimal        @default(0)
+  stock_qty               Int            @default(0)
+  preorder_lead_time_days Int            @default(21)
+  is_active               Boolean        @default(true)
+  created_at              DateTime       @default(now())
+  updated_at              DateTime       @default(now())
+  stock_location          StockLocation?
+  is_universal            Boolean        @default(false)
+  sales_count             Int            @default(0)
+  view_count              Int            @default(0)
+  distributor_stock_qty   Int            @default(0)
+  is_official             Boolean        @default(false)
+  orderItems              ConsumerOrderItem[]
+  wishItems               WishItem[]
+
+  @@index([sales_count])
+  @@index([subcategory_id])
+  @@index([view_count])
+
+  // Relations (for prisma include)
+  subcategory                  Subcategories?            @relation(fields: [subcategory_id], references: [id])
+  parts_on_categories          PartsOnCategories[]
+  compatible_vehicles          PartCompatibility[]
+  inventoryLogs                InventoryLog[]
+  shipmentItems                ShipmentItem[]
+}
+
+model PartsOnCategories {
+  @@map("parts_on_categories")
+  part_id     Int
+  category_id Int
+
+  @@id([part_id, category_id])
+  @@index([category_id])
+  @@index([part_id])
+
+  // Relations (for prisma include)
+  part                         Part                     @relation(fields: [part_id], references: [id])
+  category                     Categories               @relation(fields: [category_id], references: [id])
+}
+
+model PurchaseOrderItem {
+  @@map("purchase_order_items")
+  id                Int     @id @default(autoincrement())
+  purchase_order_id Int
+  part_id           Int
+  sku_snapshot      String
+  name_snapshot     String
+  brand_snapshot    String?
+  price_snapshot    Decimal
+  qty               Int     @default(1)
+  is_preorder       Boolean @default(false)
+
+  @@index([purchase_order_id])
+}
+
+model PurchaseOrder {
+  @@map("purchase_orders")
+  id               Int                 @id @default(autoincrement())
+  po_number        String              @unique
+  workshop_id      Int
+  status           PurchaseOrderStatus @default(SUBMITTED)
+  total_amount     Decimal             @default(0)
+  note             String?
+  contact_name     String?
+  contact_phone    String?
+  shipping_address String?
+  confirmed_at     DateTime?
+  shipped_at       DateTime?
+  completed_at     DateTime?
+  cancelled_at     DateTime?
+  cancel_reason    String?
+  created_at       DateTime            @default(now())
+  updated_at       DateTime @default(now())
+  @@index([status])
+  @@index([workshop_id])
+}
+
+model ServiceRecordItem {
+  @@map("service_record_items")
+  id         Int             @id @default(autoincrement())
+  record_id  Int
+  record     ServiceRecord   @relation(fields: [record_id], references: [id], onDelete: Cascade)
+  kind       ServiceItemKind
+  name       String
+  part_sku   String?
+  part_brand String?
+  quantity   Int             @default(1)
+  unit_price Int             @default(0)
+  note       String?
+}
+
+model ServiceRecord {
+  @@map("service_records")
+  id             Int                 @id @default(autoincrement())
+  vehicle_id     String
+  user_id        String
+  garage_id      Int
+  appointment_id Int?
+  mileage_km     Int?
+  status         ServiceRecordStatus @default(DRAFT)
+  summary        String?
+  total_amount   Int                 @default(0)
+  completed_at   DateTime?
+  created_at     DateTime            @default(now())
+  updated_at     DateTime @default(now())
+  items          ServiceRecordItem[]
+  @@index([garage_id])
+  @@index([garage_id, status])
+  @@index([user_id])
+  @@index([vehicle_id, completed_at])
+  @@index([vehicle_id])
+  @@index([vehicle_id, status])
+}
+
+model ShipmentItem {
+  @@map("shipment_items")
+  id               Int      @id @default(autoincrement())
+  shipment_id      Int
+  part_id          Int
+  qty              Int
+  unit_price_twd   Decimal
+  landed_unit_cost Decimal?
+  shipment         Shipment @relation(fields: [shipment_id], references: [id])
+  part             Part     @relation(fields: [part_id], references: [id])
+
+  @@index([part_id])
+  @@index([shipment_id])
+}
+
+model Shipment {
+  @@map("shipments")
+  id                Int            @id @default(autoincrement())
+  shipment_no       String         @unique
+  type              ShipmentType   @default(IMPORT)
+  status            ShipmentStatus @default(DRAFT)
+  supplier_id       Int
+  currency          String         @default("USD")
+  exchange_rate     Decimal        @default(1)
+  goods_cost_twd    Decimal        @default(0)
+  intl_freight_twd  Decimal        @default(0)
+  local_freight_twd Decimal        @default(0)
+  customs_duty_twd  Decimal        @default(0)
+  customs_other_twd Decimal        @default(0)
+  paid_amount_twd   Decimal        @default(0)
+  allocation_method String         @default("BY_AMOUNT")
+  ordered_at        DateTime?
+  eta_date          DateTime?
+  received_at       DateTime?
+  note              String?
+  created_at        DateTime       @default(now())
+  updated_at        DateTime       @default(now())
+  supplier          Supplier       @relation(fields: [supplier_id], references: [id])
+  items             ShipmentItem[]
+}
+
+model Subcategories {
+  @@map("subcategories")
+  id          Int     @id @default(autoincrement())
+  category_id Int
+  name        String
+  sort_order  Int     @default(0)
+  is_active   Boolean @default(true)
+
+  @@index([category_id])
+
+  // Relations (for prisma include)
+  category                     Categories               @relation(fields: [category_id], references: [id])
+  parts                        Part[]
+}
+
+model Supplier {
+  @@map("suppliers")
+  id             Int      @id @default(autoincrement())
+  name           String
+  country        String?
+  contact_person String?
+  phone          String?
+  email          String?
+  payment_terms  String?
+  currency       String   @default("USD")
+  note           String?
+  is_active      Boolean  @default(true)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @default(now())
+  shipments      Shipment[]
+}
+
+model VehicleModification {
+  @@map("vehicle_modifications")
+  id                 String    @id
+  vehicleId          String
+  category           String
+  partType           String
+  brand              String
+  model              String
+  specJson           Json?
+  installedAt        DateTime?
+  installedMileageKm Int?
+  laborCost          Int?
+  warrantyUntil      DateTime?
+  garageId           Int?
+  beforePhotoUrls    Json?
+  afterPhotoUrls     Json?
+  note               String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime
+
+  @@index([category, partType])
+  @@index([vehicleId])
+
+  // Relations (for prisma include)
+  vehicle                      VehicleProfile           @relation(fields: [vehicleId], references: [id])
+}
+
+model VehicleVariant {
+  @@map("vehicle_variants")
+  id           Int     @id @default(autoincrement())
+  make         String
+  model        String
+  generation   String
+  engine_code  String
+  variant_name String
+  specs        Json?
+  year_start   Int
+  year_end     Int
+  is_approved  Boolean @default(true)
+  drive_type   String?
+
+  @@index([make, model, generation, year_start])
+
+  // Relations (for prisma include)
+  vehicleProfiles   VehicleProfile[]
+  compatibleParts   PartCompatibility[]
+  brakePartFitments BrakePartFitment[]
+}
+
+model WorkOrderItem {
+  @@map("work_order_items")
   id            Int      @id @default(autoincrement())
-  workshop_id   Int
-  year_month    String   
-  query_count   Int      @default(0)
-  rows_returned Int      @default(0) // 新增欄位配合 index.js
-  last_query_at DateTime? @default(now()) // 新增欄位配合 index.js
-  
-  updated_at    DateTime @updatedAt
+  work_order_id Int
+  part_id       Int
+  name          String
+  quantity      Int      @default(1)
+  unit_price    Decimal  @default(0)
+  type          String   @default("PART")
+  created_at    DateTime @default(now())
+  updated_at    DateTime @default(now())
+  @@index([part_id])
+  @@index([work_order_id])
+}
 
-  workshop      Workshop @relation(fields: [workshop_id], references: [id])
+model WorkOrderLaborItem {
+  @@map("work_order_labor_items")
+  id            Int      @id @default(autoincrement())
+  work_order_id Int
+  labor_fee_id  Int?
+  name          String
+  amount        Decimal  @default(0)
+  description   String?
+  type          String   @default("LABOR")
+  created_at    DateTime @default(now())
+  updated_at    DateTime @default(now())
+  @@index([work_order_id])
+}
 
-  @@unique([workshop_id, year_month])
+model WorkOrderStatusHistory {
+  @@map("work_order_status_history")
+  id            Int             @id @default(autoincrement())
+  work_order_id Int
+  from_status   WorkOrderStatus
+  to_status     WorkOrderStatus
+  note          String?
+  changed_by    String?
+  created_at    DateTime        @default(now())
+
+  @@index([work_order_id])
+}
+
+model OrderIssue {
+  id          Int      @id @default(autoincrement())
+  orderId     Int
+  orderItemId Int?
+  issueType   String   // 'DEFECT' 或 'MISMATCH'
+  description String
+  mediaUrls   String[] // 存放檔案路徑陣列
+  adminNotes  Json?    // 🆕 管理員處理紀錄（JSON 陣列，每筆為 { at, by, byName, text }）
+  status      String   @default("REPORTED") // 售後流程：REPORTED(已回報) → PROCESSING(客服處理中) → RESOLVED(結案)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // 關聯到訂單
+  order ConsumerOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("order_issues")
+}
+
+// 🆕 退貨申請
+model OrderReturn {
+  id                Int          @id @default(autoincrement())
+  orderId           Int
+  orderItemId       Int?              // null = 整單退貨
+  returnReason      String            // DEFECT / MISMATCH / CHANGE_MIND / OTHER
+  description       String
+  mediaUrls         String[]
+  status            ReturnStatus @default(PENDING)
+  refundAmount      Decimal?          // 退款金額（管理端核可時確認）
+  returnShippingFee Decimal          @default(0) // 🆕 退貨運費（客戶負擔金額；瑕疵/規格不符為 0）
+  isExchange        Boolean          @default(false) // 🆕 是否換貨（換貨不退款，改寄新品）
+  exchangeTrackingCode String?            // 🆕 換貨出貨單號
+  exchangeShippedAt  DateTime?            // 🆕 換貨出貨時間
+  refundBankCode    String?           // 退款銀行代碼（客戶填寫）
+  refundAccount     String?           // 退款帳號（客戶填寫）
+  refundAccountName String?           // 退款戶名（客戶填寫）
+  adminNotes        Json?             // 處理紀錄（JSON 陣列，每筆為 { at, by, byName, text }）
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  resolvedAt        DateTime?
+
+  // 關聯到訂單
+  order ConsumerOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  items OrderReturnItem[] // 🆕 退貨商品明細（勾選商品與數量）
+
+  @@index([orderId])
+  @@index([status])
+  @@map("order_returns")
+}
+
+// 🆕 退貨商品明細（多商品部分退貨：勾選商品 × 數量）
+model OrderReturnItem {
+  id          Int       @id @default(autoincrement())
+  returnId    Int
+  orderItemId Int
+  qty         Int       // 退貨數量（≤ 購買數量）
+  price       Decimal   @db.Decimal(65, 30) // 退貨時單價快照
+  createdAt   DateTime  @default(now())
+
+  orderItem   ConsumerOrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  orderReturn OrderReturn        @relation(fields: [returnId], references: [id], onDelete: Cascade)
+
+  @@index([returnId])
+  @@index([orderItemId])
+  @@map("order_return_items")
+}
+
+model WorkOrder {
+  @@map("work_orders")
+  id                   Int             @id @default(autoincrement())
+  garage_id            Int
+  vehicle_id           String
+  user_id              String?
+  technician_id        String?
+  bay_id               Int?
+  appointment_id       Int?            @unique
+  service_type         String          @default("REPAIR")
+  status               WorkOrderStatus @default(RECEIVED)
+  initial_notes        String?
+  estimated_completion DateTime?
+  quote_amount         Int?
+  quote_note           String?
+  quote_valid_until    DateTime?
+  quote_sent_at        DateTime?
+  completed_at         DateTime?
+  delivered_at         DateTime?
+  photos               String?
+  created_at           DateTime        @default(now())
+  updated_at           DateTime @default(now())
+  @@index([garage_id, created_at])
+  @@index([garage_id])
+  @@index([garage_id, status])
+  @@index([status])
+  @@index([technician_id])
+  @@index([user_id])
+  @@index([vehicle_id])
+  @@index([vehicle_id, status])
+}
+
+model WorkshopCustomerVisit {
+  @@map("workshop_customer_visits")
+  id           Int      @id @default(autoincrement())
+  customer_id  Int
+  workshop_id  Int
+  status       String
+  service_type String?
+  summary      String?
+  total_amount Int      @default(0)
+  created_at   DateTime @default(now())
+
+  @@index([customer_id])
+  @@index([workshop_id])
+}
+
+model WorkshopCustomer {
+  @@map("workshop_customers")
+  id          Int       @id @default(autoincrement())
+  workshop_id Int
+  name        String
+  phone       String
+  line_id     String?
+  tags        String[]  @default([])
+  note        String?
+  visit_count Int       @default(0)
+  last_visit  DateTime?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime @default(now())
+  @@unique([workshop_id, phone])
+  @@index([workshop_id], map: "idx_workshop_customer_workshop")
+  @@index([workshop_id])
+}
+
+model WorkshopQueryUsage {
   @@map("workshop_query_usage")
+  id            Int       @id @default(autoincrement())
+  workshop_id   Int
+  year_month    String
+  query_count   Int       @default(0)
+  rows_returned Int       @default(0)
+  last_query_at DateTime? @default(now())
+  updated_at    DateTime @default(now())
+  @@unique([workshop_id, year_month])
+}
+
+model Workshop {
+  @@map("workshops")
+  id             Int          @id @default(autoincrement())
+  email          String       @unique
+  password_hash  String
+  company_name   String
+  tax_id         String?
+  line_id        String
+  contact_person String
+  job_title      String?
+  phone          String
+  address        String
+  shop_type      String?
+  role           WorkshopRole @default(TRIAL)
+  is_approved    Boolean      @default(false)
+  is_active      Boolean      @default(true)
+  created_at     DateTime     @default(now())
+  updated_at     DateTime @default(now())
+  garage_address String?
+  garage_name    String?
+  garage_phone   String?
+  garage_slots   Json?
+  is_garage      Boolean      @default(false)
+  lat            Float?
+  lng            Float?
+  rating         Float        @default(5.0)
+  review_count   Int          @default(0)
+  garage_photos  Json?
+  opening_hours  Json?
+  orders           Order[]
+  appointments     Appointment[]
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  ARRIVED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ConsumerOrderStatus {
+  PENDING_PAYMENT
+  PAYMENT_REVIEW
+  PAID
+  SHIPPED
+  COMPLETED
+  CANCELLED
+  DEPOSIT_PAID
+  AWAITING_BALANCE
+}
+
+enum ConsumerOrderType {
+  INSTOCK
+  PREORDER
+  MIXED
+}
+
+// 🆕 退貨狀態
+enum ReturnStatus {
+  PENDING    // 待審核
+  APPROVED   // 已核可（等待客戶寄回商品）
+  REJECTED   // 已駁回
+  RECEIVED   // 已收到退回商品（庫存已回補）
+  REFUNDED   // 已退款
+  EXCHANGED  // 🆕 換貨完成（新品已寄出）
+}
+
+enum InsurancePolicyStatus {
+  QUOTED
+  APPLIED
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAYMENT_REVIEW
+  PAID
+  SHIPPED
+  COMPLETED
+  CANCELLED
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  SUBMITTED
+  CONFIRMED
+  SHIPPED
+  COMPLETED
+  CANCELLED
+}
+
+enum ServiceItemKind {
+  LABOR
+  PART
+}
+
+enum ServiceRecordStatus {
+  DRAFT
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ShipmentStatus {
+  DRAFT
+  ORDERED
+  IN_TRANSIT
+  CUSTOMS
+  RECEIVED
+  CANCELLED
+}
+
+enum ShipmentType {
+  IMPORT
+  DOMESTIC
+}
+
+enum StockLocation {
+  OWN_WAREHOUSE
+  SUPPLIER_WAREHOUSE
+}
+
+enum SupplyStatus {
+  IN_STOCK
+  PREORDER
+  DISCONTINUED
+}
+
+enum WishStatus {
+  PENDING
+  IN_PROGRESS
+  FULFILLED
+  CANCELLED
+}
+
+enum WorkOrderStatus {
+  RECEIVED
+  QUOTING
+  CUSTOMER_CONFIRMED
+  IN_PROGRESS
+  QUALITY_CHECK
+  COMPLETED
+  READY_FOR_PICKUP
+  DELIVERED
+  CANCELLED
+}
+
+enum WorkshopRole {
+  TRIAL
+  VERIFIED
+  ADMIN
+}
+
+// ========== 煞車件資料模型（可套用所有廠牌）==========
+// 設計參考：media/Data/煞車零件關係表設計.md
+// 既有 5 張表（2026-10-20 之前以 raw SQL 建立），此處手寫模型對應實際欄位，
+// 不可用 prisma db pull --force（會摧毀整個 schema）。
+
+/// 煞車件主檔：來令片 / 碟盤，跨廠牌共用同一張表
+model BrakePart {
+  @@map("brake_parts")
+  id             Int      @id @default(autoincrement())
+  brand          String
+  sku            String
+  /// 'pad' | 'disc'
+  part_type      String
+  /// 等級/系列: Prime / Xtra / Greenstuff 2000 / Yellowstuff / COATED DISC LINE
+  product_line   String?
+  /// 'front' | 'rear' | 'both'
+  position       String?
+  name           String
+  name_zh        String?
+  description    String?
+  /// FMSI 編號（用來比對同規格不同品牌）
+  fmsi           String?
+  /// WVA 編號（歐洲標準碼）
+  wva_number     String?
+  ean            String?
+  /// Premium / Standard / Economy
+  brand_class    String?
+  price_eur      Decimal? @db.Decimal(10, 2)
+  image_url      String?
+  is_active      Boolean  @default(true)
+  created_at     DateTime @default(now()) @db.Timestamptz(3)
+  updated_at     DateTime @default(now()) @db.Timestamptz(3)
+  price_msrp     Int?
+  price_wholesale Int?
+
+  specs          BrakePartSpec[]
+  fitments       BrakePartFitment[]
+  oeNumbers      BrakePartOe[]
+  specGroups     BrakePartSpecGroup[]
+
+  @@unique([brand, sku])
+  @@index([part_type])
+  @@index([brand, product_line])
+  @@index([fmsi])
+  @@index([wva_number])
+}
+
+/// 原廠料號對照（多對多）—— 一顆 Brembo 來令片對應 AUDI 80 個、VW 78 個…競品料號
+model BrakePartOe {
+  @@map("brake_part_oe")
+  id            Int    @id @default(autoincrement())
+  brake_part_id Int
+  oe_brand      String
+  oe_number     String
+  /// 'oe'(原廠) | 'fmsi' | 'wva' | 'trade' | 'competitor' | 'accessory'
+  oe_kind       String @default("oe")
+
+  brakePart BrakePart @relation(fields: [brake_part_id], references: [id], onDelete: Cascade)
+
+  @@unique([brake_part_id, oe_brand, oe_number, oe_kind])
+  @@index([oe_number])
+  @@index([brake_part_id])
+}
+
+/// 零件 × 車型 適用關係（EBC 來令片車型關係表.csv 的正規化版本）
+model BrakePartFitment {
+  @@map("brake_part_fitment")
+  id                Int      @id @default(autoincrement())
+  brake_part_id     Int
+  /// 對應本站車型庫；供應商資料常只到 make+model 層級，此時留 NULL
+  vehicle_id        Int?
+  make              String
+  model             String
+  generation        String?
+  engine            String?
+  displacement_cc   Int?
+  bhp_ps            Int?
+  fuel              String?
+  year_start        Int?
+  year_end          Int?
+  year_raw          String?
+  position          String?
+  disc_diameter_mm  Int?
+  disc_thickness_mm Int?
+  disc_style        String?
+  caliper_make      String?
+  source            String?
+  /// 'exact' | 'model' | 'family' | 'manual'
+  confidence        String?
+  created_at        DateTime @default(now()) @db.Timestamptz(3)
+
+  brakePart BrakePart @relation(fields: [brake_part_id], references: [id], onDelete: Cascade)
+  vehicle   VehicleVariant? @relation(fields: [vehicle_id], references: [id], onDelete: Cascade)
+
+  @@unique([brake_part_id, make, model, generation, engine, year_start, year_end, position])
+  @@index([brake_part_id])
+  @@index([vehicle_id])
+  @@index([make, model])
+  @@index([make, model, year_start, year_end])
+}
+
+/// 零件的多值規格（3,200/330/360mm 三種碟徑等）
+model BrakePartSpec {
+  @@map("brake_part_spec")
+  id            Int      @id @default(autoincrement())
+  brake_part_id Int
+  spec_key      String
+  spec_value    String
+  num_value     Decimal? @db.Decimal(12, 3)
+  unit          String?
+
+  brakePart BrakePart @relation(fields: [brake_part_id], references: [id], onDelete: Cascade)
+
+  @@unique([brake_part_id, spec_key, spec_value])
+  @@index([spec_key, spec_value])
+}
+
+/// **共用規格群組** —— 跨廠牌對應的共同鍵。
+///
+/// 同一組物理規格（位置 + 碟徑 + 碟厚 + 碟型 + 卡鉗）只會有一筆，
+/// 不同廠牌的零件只要規格相同就會連到同一筆，
+/// 因此可由「這個零件」查到「其他廠牌的對應零件」。
+///
+/// 規格來源：
+///   - 來令片：由 brake_part_fitment 的 disc_diameter_mm / disc_thickness_mm /
+///             disc_style / caliper_make 彙整
+///   - 碟盤：由碟盤自身的直徑/厚度/通風方式/卡鉗
+model BrakeSpec {
+  @@map("brake_spec")
+  id                Int      @id @default(autoincrement())
+  /// 正規化後的規格鍵（位置+直徑+厚度+碟型+卡鉗），跨廠牌一致
+  spec_key          String   @unique
+  position          String?
+  disc_diameter_mm  Int?
+  disc_thickness_mm Int?
+  disc_style        String?
+  caliper_make      String?
+  /// 人可讀的規格描述，例如「前輪 330mm 通風碟 ×20mm ATE」
+  display_name      String?
+  created_at        DateTime @default(now()) @db.Timestamptz(3)
+
+  parts BrakePartSpecGroup[]
+
+  @@index([position, disc_diameter_mm])
+  @@index([disc_diameter_mm, disc_thickness_mm])
+  @@index([caliper_make])
+}
+
+/// 零件 ↔ 共用規格群組（多對多：一顆來令片可對應多組碟規格）
+model BrakePartSpecGroup {
+  @@map("brake_part_spec_group")
+  id            Int @id @default(autoincrement())
+  brake_part_id Int
+  brake_spec_id Int
+
+  brakePart BrakePart @relation(fields: [brake_part_id], references: [id], onDelete: Cascade)
+  brakeSpec BrakeSpec @relation(fields: [brake_spec_id], references: [id], onDelete: Cascade)
+
+  @@unique([brake_part_id, brake_spec_id])
+  @@index([brake_spec_id])
+}
+
+/// 供應商來源稽核：每個廠牌從哪抓、什麼時候、幾筆
+model BrakeSupplierSource {
+  @@map("brake_supplier_sources")
+  id          Int      @id @default(autoincrement())
+  brand       String
+  source      String
+  source_url  String?
+  fetched_at  DateTime @default(now()) @db.Timestamptz(3)
+  item_count  Int?
+  note        String?
 }

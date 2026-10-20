@@ -555,6 +555,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/vehicles', vehicleModificationRoutes);
 app.use('/api/consumer/parts', consumerPartsRoutes);
+app.use('/api/brake-specs', require('./routes/brakeSpecs')); // 煞車件規格（跨廠牌對應）
 app.use('/api/consumer/orders', consumerOrderRoutes);
 app.use('/api/admin/garages', adminGarageRoutes);
 app.use('/api/garage/appointments', garageAppointmentRoutes);
