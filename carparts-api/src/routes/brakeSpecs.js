@@ -16,6 +16,28 @@ const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
 
+// 煞車規格資料尚未初始化時（正式庫尚未套用 migration 20261020120000_brake_spec_group），
+// 明確回報初始化狀態，而不是籠統的「查詢失敗」。
+function isMissingBrakeSpecTable(err) {
+  const msg = String(err && err.message || '');
+  // Prisma 格式：The table `public.brake_spec` does not exist in the current database.
+  // 原生 PostgreSQL 格式：relation "brake_spec" does not exist
+  return /brake_spec|brake_part_spec_group/.test(msg) && /does not exist/i.test(msg);
+}
+function brakeSpecError(res, err) {
+  if (isMissingBrakeSpecTable(err)) {
+    console.warn('煞車規格資料尚未初始化（請先套用 migration 20261020120000_brake_spec_group 並執行 build_brake_spec_groups.cjs）');
+    return res.status(503).json({
+      success: false,
+      error: '煞車規格資料尚未初始化',
+      hint: '請先套用 migration 20261020120000_brake_spec_group 並執行 scripts/build_brake_spec_groups.cjs',
+    });
+  }
+  console.error('煞車規格查詢錯誤:', err.message);
+  return res.status(500).json({ success: false, error: '規格查詢失敗' });
+}
+
+
 // 規格群組 → 其對應的零件（含跨品牌）
 async function partsOfSpec(specIds, { limit = 200 } = {}) {
   if (!specIds.length) return [];
@@ -99,8 +121,7 @@ router.get('/specs', async (req, res) => {
       pagination: { total, page: Math.max(1, Number(page)), pageSize: take, pages: Math.ceil(total / take) },
     });
   } catch (err) {
-    console.error('GET /api/brake-specs/specs error:', err.message);
-    res.status(500).json({ success: false, error: '規格查詢失敗' });
+    return brakeSpecError(res, err);
   }
 });
 
@@ -150,8 +171,7 @@ router.get('/by-diameter', async (req, res) => {
       })),
     });
   } catch (err) {
-    console.error('GET /api/brake-specs/by-diameter error:', err.message);
-    res.status(500).json({ success: false, error: '規格查詢失敗' });
+    return brakeSpecError(res, err);
   }
 });
 
@@ -220,8 +240,7 @@ router.get('/part/:sku', async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('GET /api/brake-specs/part/:sku error:', err.message);
-    res.status(500).json({ success: false, error: '零件規格查詢失敗' });
+    return brakeSpecError(res, err);
   }
 });
 
@@ -255,8 +274,7 @@ router.get('/cross-reference', async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('GET /api/brake-specs/cross-reference error:', err.message);
-    res.status(500).json({ success: false, error: '跨廠牌對應查詢失敗' });
+    return brakeSpecError(res, err);
   }
 });
 
