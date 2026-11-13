@@ -65,11 +65,11 @@ function ReturnApproveModal({ data, onChange, onClose, onSubmit }) {
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-4" onClick={onClose} role="dialog" aria-label="核可退貨">
       <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" />
-      <div className="relative w-full max-w-md bg-gray-800 border border-gray-600 rounded-xl p-5" onClick={e => e.stopPropagation()}>
+      <div className="relative w-full max-w-md bg-surface-800 border border-surface-600 rounded-xl p-5" onClick={e => e.stopPropagation()}>
         <h3 className="text-lg font-bold text-white mb-4">核可{data.isExchange ? '換貨' : '退貨'}</h3>
 
         {/* 換貨切換 */}
-        <label className="flex items-center gap-2 mb-4 text-sm text-gray-200 cursor-pointer">
+        <label className="flex items-center gap-2 mb-4 text-sm text-surface-200 cursor-pointer">
           <input
             type="checkbox"
             checked={data.isExchange}
@@ -88,7 +88,7 @@ function ReturnApproveModal({ data, onChange, onClose, onSubmit }) {
         </label>
 
         {/* 退貨運費 */}
-        <label className="block text-xs text-gray-400 mb-1">退貨運費（客戶負擔金額，NT$）</label>
+        <label className="block text-xs text-surface-400 mb-1">退貨運費（客戶負擔金額，NT$）</label>
         <input
           type="number"
           min="0"
@@ -101,31 +101,31 @@ function ReturnApproveModal({ data, onChange, onClose, onSubmit }) {
             onChange({ ...data, shippingFee, refundAmount: newRefund });
           }}
           placeholder="0"
-          className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm mb-1"
+          className="w-full px-3 py-2 bg-surface-700 border border-surface-600 rounded-lg text-sm mb-1"
         />
-        <p className="text-xs text-gray-500 mb-3">
+        <p className="text-xs text-surface-500 mb-3">
           瑕疵／規格不符設 0（公司吸收）；其他原因填客戶負擔運費（例：60／100，費率表待新竹物流提供）
         </p>
 
         {/* 退款金額（換貨時免填） */}
         {!data.isExchange && (
           <>
-            <label className="block text-xs text-gray-400 mb-1">退款金額（NT$）</label>
+            <label className="block text-xs text-surface-400 mb-1">退款金額（NT$）</label>
             <input
               type="number"
               min="0"
               value={data.refundAmount}
               onChange={e => onChange({ ...data, refundAmount: e.target.value, refundTouched: true })}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm mb-1"
+              className="w-full px-3 py-2 bg-surface-700 border border-surface-600 rounded-lg text-sm mb-1"
             />
-            <p className="text-xs text-gray-500 mb-4">
+            <p className="text-xs text-surface-500 mb-4">
               預設 = 商品合計 NT$ {itemTotal.toLocaleString()} − 退貨運費 NT$ {shipping.toLocaleString()}
             </p>
           </>
         )}
 
         <div className="flex gap-2 justify-end">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-sm">取消</button>
+          <button onClick={onClose} className="px-4 py-2 rounded-lg bg-surface-700 hover:bg-surface-600 text-sm">取消</button>
           <button onClick={onSubmit} className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-500 text-sm font-bold">✅ 核可</button>
         </div>
       </div>
@@ -365,21 +365,21 @@ export default function AdminOrders() {
       <h1 className="text-2xl font-bold text-white mb-6">📦 訂單管理</h1>
 
       {orders.length === 0 ? (
-        <p className="text-gray-400">尚無訂單</p>
+        <p className="text-surface-400">尚無訂單</p>
       ) : (
         <div className="space-y-4">
           {orders.map(order => {
             const isPreorder = order.orderType === 'PREORDER' || order.orderType === 'MIXED';
             const edit = trackingEdit[order.id] || {};
             return (
-              <div key={order.id} className="bg-gray-800 p-6 rounded-xl">
+              <div key={order.id} className="bg-surface-800 p-6 rounded-xl">
                 <div className="flex flex-wrap justify-between items-start gap-3">
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-bold text-white">{order.order_number}</h3>
                       <span className="px-2 py-0.5 rounded text-xs bg-slate-700 text-slate-300">{orderTypeMap[order.orderType] || '現貨'}</span>
                       {isPreorder && Number(order.depositAmount) > 0 && (
-                        <span className="text-xs text-gray-500">訂金 NT$ {Number(order.depositAmount).toLocaleString()} / 尾款 NT$ {Number(order.balanceAmount).toLocaleString()}</span>
+                        <span className="text-xs text-surface-500">訂金 NT$ {Number(order.depositAmount).toLocaleString()} / 尾款 NT$ {Number(order.balanceAmount).toLocaleString()}</span>
                       )}
                       {/* 🆕 售後異常標籤 */}
                       {order.issues && order.issues.length > 0 && (
@@ -394,14 +394,14 @@ export default function AdminOrders() {
                         </span>
                       )}
                     </div>
-                    <p className="text-gray-400 text-sm mt-1">
+                    <p className="text-surface-400 text-sm mt-1">
                       金額：NT$ {Number(order.total_amount).toLocaleString()}
                       {order.bankLastFiveDigits && <span className="ml-3">匯款末五碼：{order.bankLastFiveDigits}</span>}
                       {order.bankDepositActualAmount != null && (
                         <span className="ml-3 text-cyan-400">匯款金額：NT$ {Number(order.bankDepositActualAmount).toLocaleString()}</span>
                       )}
                       {order.bankDepositDate && (
-                        <span className="ml-3 text-gray-500">匯款日：{new Date(order.bankDepositDate).toLocaleDateString('zh-TW')}</span>
+                        <span className="ml-3 text-surface-500">匯款日：{new Date(order.bankDepositDate).toLocaleDateString('zh-TW')}</span>
                       )}
                       {order.bankRemitterName && <span className="ml-3 text-green-400">匯款人：{order.bankRemitterName}</span>}
                     </p>
@@ -426,7 +426,7 @@ export default function AdminOrders() {
                       </div>
                     )}
                     {order.items?.length > 0 && (
-                      <div className="text-xs text-gray-300 mt-1 bg-slate-900/60 rounded-lg px-2.5 py-1.5">
+                      <div className="text-xs text-surface-300 mt-1 bg-slate-900/60 rounded-lg px-2.5 py-1.5">
                         🛒 商品清單：
                         {order.items.map((it, i) => (
                           <div key={i} className="ml-3 flex justify-between items-center gap-2">
@@ -435,7 +435,7 @@ export default function AdminOrders() {
                               {it.name_snapshot} × {it.qty}{it.is_preorder && <span className="text-amber-400 ml-1">（代購）</span>}
                             </span>
                             <span className="flex items-center gap-2">
-                              <span className="font-mono text-gray-400">NT$ {(Number(it.price_snapshot) * it.qty).toLocaleString()}</span>
+                              <span className="font-mono text-surface-400">NT$ {(Number(it.price_snapshot) * it.qty).toLocaleString()}</span>
                               {it.shipped_at ? (
                                 <span className="text-cyan-400">🚚 已出貨<span className="font-mono ml-1">{it.tracking_code}</span></span>
                               ) : it.arrived_at ? (
@@ -485,7 +485,7 @@ export default function AdminOrders() {
                       <div className="mt-3 bg-red-900/10 border border-red-700/40 rounded-xl p-3">
                         <h4 className="font-bold text-red-400 mb-2 flex items-center gap-1.5 text-sm">
                           ⚠️ 售後問題回報
-                          <span className="text-xs font-normal text-gray-400">（共 {order.issues.length} 筆）</span>
+                          <span className="text-xs font-normal text-surface-400">（共 {order.issues.length} 筆）</span>
                         </h4>
                         <div className="space-y-3">
                           {order.issues.map(issue => {
@@ -497,19 +497,19 @@ export default function AdminOrders() {
                                     <span className="px-2 py-0.5 rounded bg-red-900/50 text-red-200 text-xs font-bold">
                                       {issue.issueType === 'DEFECT' ? '商品瑕疵/損壞' : '規格/型號不符'}
                                     </span>
-                                    <span className={`px-2 py-0.5 rounded text-xs font-bold ${issue.status === 'RESOLVED' ? 'bg-green-900/50 text-green-200' : issue.status === 'PROCESSING' ? 'bg-amber-900/50 text-amber-200' : 'bg-slate-700/60 text-gray-300'}`}>
+                                    <span className={`px-2 py-0.5 rounded text-xs font-bold ${issue.status === 'RESOLVED' ? 'bg-green-900/50 text-green-200' : issue.status === 'PROCESSING' ? 'bg-amber-900/50 text-amber-200' : 'bg-slate-700/60 text-surface-300'}`}>
                                       {issue.status === 'RESOLVED' ? '結案' : issue.status === 'PROCESSING' ? '客服處理中' : '已回報'}
                                     </span>
-                                    <span className="text-gray-400 text-xs">
+                                    <span className="text-surface-400 text-xs">
                                       商品：{order.items?.find(it => it.id === issue.orderItemId)?.name_snapshot || '未知商品'}
                                     </span>
                                   </div>
-                                  <span className="text-gray-500 text-xs whitespace-nowrap">
+                                  <span className="text-surface-500 text-xs whitespace-nowrap">
                                     {new Date(issue.createdAt).toLocaleString('zh-TW')}
                                   </span>
                                 </div>
 
-                                <p className="text-gray-200 mt-1 bg-slate-800/60 rounded px-2 py-1 whitespace-pre-wrap">
+                                <p className="text-surface-200 mt-1 bg-slate-800/60 rounded px-2 py-1 whitespace-pre-wrap">
                                   {issue.description}
                                 </p>
 
@@ -562,7 +562,7 @@ export default function AdminOrders() {
                                 <div className="mt-2 pt-2 border-t border-amber-700/30">
                                   <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                                     <span className="text-amber-300 font-bold text-[11px]">📝 處理紀錄</span>
-                                    <span className="text-gray-500 text-[10px]">{notes.length} 筆</span>
+                                    <span className="text-surface-500 text-[10px]">{notes.length} 筆</span>
                                     {/* 🆕 售後流程操作：已回報 → 客服處理中 → 結案 */}
                                     {issue.status !== 'RESOLVED' && (
                                       <span className="flex gap-1.5 ml-auto">
@@ -595,7 +595,7 @@ export default function AdminOrders() {
                                     <div className="space-y-1 mb-2">
                                       {notes.map((note, i) => (
                                         <div key={i} className="bg-amber-900/10 border border-amber-700/30 rounded px-2 py-1 text-[11px]">
-                                          <div className="flex justify-between text-gray-400 mb-0.5">
+                                          <div className="flex justify-between text-surface-400 mb-0.5">
                                             <span>👤 {note.byName || '管理員'}</span>
                                             <span>{new Date(note.at).toLocaleString('zh-TW')}</span>
                                           </div>
@@ -642,7 +642,7 @@ export default function AdminOrders() {
                       <div className="mt-3 bg-orange-900/10 border border-orange-700/40 rounded-xl p-3">
                         <h4 className="font-bold text-orange-400 mb-2 flex items-center gap-1.5 text-sm">
                           🔄 退貨申請
-                          <span className="text-xs font-normal text-gray-400">（共 {order.returns.length} 筆）</span>
+                          <span className="text-xs font-normal text-surface-400">（共 {order.returns.length} 筆）</span>
                         </h4>
                         <div className="space-y-3">
                           {order.returns.map(ret => {
@@ -656,17 +656,17 @@ export default function AdminOrders() {
                               <div key={ret.id} className="bg-slate-900/60 border border-orange-700/30 rounded-lg p-2.5 text-xs">
                                 <div className="flex justify-between items-start gap-2 mb-1 flex-wrap">
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    <span className={`px-2 py-0.5 rounded bg-orange-900/50 text-xs font-bold ${RETURN_STATUS_COLOR[ret.status] || 'text-gray-400'}`}>
+                                    <span className={`px-2 py-0.5 rounded bg-orange-900/50 text-xs font-bold ${RETURN_STATUS_COLOR[ret.status] || 'text-surface-400'}`}>
                                       {RETURN_STATUS_MAP[ret.status] || ret.status}
                                     </span>
-                                    <span className="text-gray-400 text-xs">
+                                    <span className="text-surface-400 text-xs">
                                       {RETURN_REASON_MAP[ret.returnReason] || ret.returnReason}
                                     </span>
-                                    <span className="text-gray-400 text-xs">
+                                    <span className="text-surface-400 text-xs">
                                       商品：{retItemList ? `${retItemList.length} 項` : itemName}
                                     </span>
                                   </div>
-                                  <span className="text-gray-500 text-xs whitespace-nowrap">
+                                  <span className="text-surface-500 text-xs whitespace-nowrap">
                                     {new Date(ret.createdAt).toLocaleString('zh-TW')}
                                   </span>
                                 </div>
@@ -677,13 +677,13 @@ export default function AdminOrders() {
                                     {retItemList.map(ri => (
                                       <li key={ri.id}>
                                         📦 {ri.orderItem?.name_snapshot || '未知商品'} ×{ri.qty}
-                                        <span className="text-gray-500"> ｜ NT$ {(Number(ri.price) * ri.qty).toLocaleString()}</span>
+                                        <span className="text-surface-500"> ｜ NT$ {(Number(ri.price) * ri.qty).toLocaleString()}</span>
                                       </li>
                                     ))}
                                   </ul>
                                 )}
 
-                                <p className="text-gray-200 mt-1 bg-slate-800/60 rounded px-2 py-1 whitespace-pre-wrap">
+                                <p className="text-surface-200 mt-1 bg-slate-800/60 rounded px-2 py-1 whitespace-pre-wrap">
                                   {ret.description}
                                 </p>
 
@@ -697,7 +697,7 @@ export default function AdminOrders() {
                                   </p>
                                 )}
                                 {Number(ret.returnShippingFee || 0) > 0 && (
-                                  <p className="text-gray-500 mt-0.5">
+                                  <p className="text-surface-500 mt-0.5">
                                     🚚 退貨運費：NT$ {Number(ret.returnShippingFee).toLocaleString()}（客戶負擔，已自退款扣除）
                                   </p>
                                 )}
@@ -708,7 +708,7 @@ export default function AdminOrders() {
                                       value={exchangeShip[ret.id] || ''}
                                       onChange={e => setExchangeShip(prev => ({ ...prev, [ret.id]: e.target.value }))}
                                       placeholder="換貨出貨單號"
-                                      className="flex-1 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-xs"
+                                      className="flex-1 px-2 py-1 bg-surface-700 border border-surface-600 rounded text-xs"
                                     />
                                     <button
                                       onClick={() => exchangeShipReturn(order.id, ret.id)}
@@ -721,11 +721,11 @@ export default function AdminOrders() {
                                 {ret.isExchange && ret.status === 'EXCHANGED' && (
                                   <p className="text-cyan-400 mt-0.5">
                                     🔄 換貨已出貨：<span className="font-mono">{ret.exchangeTrackingCode}</span>
-                                    {ret.exchangeShippedAt && <span className="text-gray-500 ml-1">（{new Date(ret.exchangeShippedAt).toLocaleString('zh-TW')}）</span>}
+                                    {ret.exchangeShippedAt && <span className="text-surface-500 ml-1">（{new Date(ret.exchangeShippedAt).toLocaleString('zh-TW')}）</span>}
                                   </p>
                                 )}
                                 {ret.refundAccount && !ret.isExchange && (
-                                  <p className="text-gray-500 mt-0.5">
+                                  <p className="text-surface-500 mt-0.5">
                                     🏦 退款帳戶：{ret.refundBankCode}-{ret.refundAccount}｜{ret.refundAccountName}
                                   </p>
                                 )}
@@ -768,12 +768,12 @@ export default function AdminOrders() {
                                   <div className="mt-2 pt-2 border-t border-amber-700/30">
                                     <div className="flex items-center gap-2 mb-1">
                                       <span className="text-amber-300 font-bold text-[11px]">📝 處理紀錄</span>
-                                      <span className="text-gray-500 text-[10px]">{notes.length} 筆</span>
+                                      <span className="text-surface-500 text-[10px]">{notes.length} 筆</span>
                                     </div>
                                     <div className="space-y-1">
                                       {notes.map((note, i) => (
                                         <div key={i} className="bg-amber-900/10 border border-amber-700/30 rounded px-2 py-1 text-[11px]">
-                                          <div className="flex justify-between text-gray-400 mb-0.5">
+                                          <div className="flex justify-between text-surface-400 mb-0.5">
                                             <span>👤 {note.byName || '管理員'}</span>
                                             <span>{new Date(note.at).toLocaleString('zh-TW')}</span>
                                           </div>
@@ -826,7 +826,7 @@ export default function AdminOrders() {
                       </div>
                     )}
 
-                    <p className="text-gray-500 text-sm mt-2">
+                    <p className="text-surface-500 text-sm mt-2">
                       {order.receiver_name}｜{order.receiver_phone}｜{order.shipping_address}
                     </p>
                     {/* 🆕 下單備註顯示 */}
@@ -835,7 +835,7 @@ export default function AdminOrders() {
                         📝 備註：{order.note}
                       </p>
                     )}
-                    <p className="text-gray-500 text-sm">{new Date(order.created_at).toLocaleString()}</p>
+                    <p className="text-surface-500 text-sm">{new Date(order.created_at).toLocaleString()}</p>
                     {(order.trackingCodeDomestic || order.trackingCodeInternational) && (
                       <p className="text-cyan-400 text-sm mt-1">
                         📦 {order.trackingCodeDomestic && <>國內{order.domesticCarrier ? `（${order.domesticCarrier.name}）` : ''} <a className="font-mono underline decoration-dotted underline-offset-2 hover:text-cyan-100" href={order.domesticCarrier?.trackingUrl?.includes('{number}') ? order.domesticCarrier.trackingUrl.replace('{number}', encodeURIComponent(order.trackingCodeDomestic)) : (order.domesticCarrier?.trackingUrl || `https://www.17track.net/zh-tw/track?nums=${encodeURIComponent(order.trackingCodeDomestic)}`)} target="_blank" rel="noopener noreferrer">{order.trackingCodeDomestic}</a></>}
@@ -845,13 +845,13 @@ export default function AdminOrders() {
                   </div>
 
                   <div className="text-right">
-                    <p className={`font-bold mb-2 ${statusColor[order.status] || 'text-gray-400'}`}>
+                    <p className={`font-bold mb-2 ${statusColor[order.status] || 'text-surface-400'}`}>
                       {statusMap[order.status] || order.status}
                     </p>
                     <select
                       value={order.status}
                       onChange={(e) => updateStatus(order.id, e.target.value)}
-                      className="p-2 rounded bg-gray-700 text-white text-sm mb-2"
+                      className="p-2 rounded bg-surface-700 text-white text-sm mb-2"
                     >
                       {allStatuses.map(s => <option key={s} value={s}>{statusMap[s]}</option>)}
                     </select>
@@ -880,13 +880,13 @@ export default function AdminOrders() {
 
                 {/* 🆕 追蹤碼輸入區 */}
                 {trackingEdit[order.id] && (
-                  <div className="mt-4 pt-4 border-t border-gray-700 grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
+                  <div className="mt-4 pt-4 border-t border-surface-700 grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">物流業者</label>
+                      <label className="block text-xs text-surface-400 mb-1">物流業者</label>
                       <select
                         value={edit.carrierId || ''}
                         onChange={e => setTrackingEdit(prev => ({ ...prev, [order.id]: { ...edit, carrierId: e.target.value } }))}
-                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm"
+                        className="w-full px-3 py-2 bg-surface-700 border border-surface-600 rounded-lg text-sm"
                       >
                         <option value="">未指定</option>
                         {carriers.filter(c => c.enabled).map(c => (
@@ -895,50 +895,50 @@ export default function AdminOrders() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">國內追蹤碼（填寫後自動出貨）</label>
+                      <label className="block text-xs text-surface-400 mb-1">國內追蹤碼（填寫後自動出貨）</label>
                       <input
                         value={edit.domestic || ''}
                         onChange={e => setTrackingEdit(prev => ({ ...prev, [order.id]: { ...edit, domestic: e.target.value } }))}
                         placeholder="例：ZEC-123456789"
-                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm font-mono"
+                        className="w-full px-3 py-2 bg-surface-700 border border-surface-600 rounded-lg text-sm font-mono"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">國際追蹤碼（代購用）</label>
+                      <label className="block text-xs text-surface-400 mb-1">國際追蹤碼（代購用）</label>
                       <input
                         value={edit.intl || ''}
                         onChange={e => setTrackingEdit(prev => ({ ...prev, [order.id]: { ...edit, intl: e.target.value } }))}
                         placeholder="例：EE123456789TW"
-                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm font-mono"
+                        className="w-full px-3 py-2 bg-surface-700 border border-surface-600 rounded-lg text-sm font-mono"
                       />
                     </div>
                     <div className="flex gap-2">
                       <button onClick={() => saveTracking(order)} className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 rounded-lg text-xs font-bold">儲存並出貨</button>
-                      <button onClick={() => setTrackingEdit(prev => ({ ...prev, [order.id]: undefined }))} className="px-3 py-2 bg-gray-700 rounded-lg text-xs">取消</button>
+                      <button onClick={() => setTrackingEdit(prev => ({ ...prev, [order.id]: undefined }))} className="px-3 py-2 bg-surface-700 rounded-lg text-xs">取消</button>
                     </div>
                   </div>
                 )}
 
               {/* 🆕 客戶車型與改裝項目顯示區 */}
               {order.vehicle && (
-                <div className="mt-4 pt-4 border-t border-gray-700">
+                <div className="mt-4 pt-4 border-t border-surface-700">
                   <h4 className="font-bold text-white mb-3">🚗 客戶車型與改裝項目 (人工確認規格)</h4>
-                  <div className="bg-gray-900/50 rounded-xl p-4 border border-gray-700">
+                  <div className="bg-surface-900/50 rounded-xl p-4 border border-surface-700">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                       <div>
-                        <p className="text-xs text-gray-400">品牌 / 車系</p>
+                        <p className="text-xs text-surface-400">品牌 / 車系</p>
                         <p className="text-white font-medium">{order.vehicle.make} {order.vehicle.model}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-400">世代 / 年份</p>
+                        <p className="text-xs text-surface-400">世代 / 年份</p>
                         <p className="text-white">{order.vehicle.generation || '—'} {order.vehicle.year ? `· ${order.vehicle.year}` : ''}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-400">引擎 / 車牌</p>
+                        <p className="text-xs text-surface-400">引擎 / 車牌</p>
                         <p className="text-white">{order.vehicle.engine || '—'} / {order.vehicle.licensePlate || '—'}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-400">目前里程</p>
+                        <p className="text-xs text-surface-400">目前里程</p>
                         <p className="text-white">{order.mileage_km ? Number(order.mileage_km).toLocaleString() + ' km' : '—'}</p>
                       </div>
                     </div>
@@ -949,7 +949,7 @@ export default function AdminOrders() {
                         <h5 className="font-medium text-emerald-400 mb-2">🔧 改裝項目</h5>
                         <div className="space-y-2">
                           {order.modifications.map(mod => (
-                            <div key={mod.id} className="bg-gray-900 rounded-lg p-3 border border-gray-700">
+                            <div key={mod.id} className="bg-surface-900 rounded-lg p-3 border border-surface-700">
                               <div className="flex justify-between items-start mb-2">
                                 <span className="font-medium text-emerald-400">{mod.category} - {mod.partType}</span>
                                 <span className="text-slate-400 text-sm">{mod.brand} {mod.model}</span>
@@ -964,7 +964,7 @@ export default function AdminOrders() {
                         </div>
                       </div>
                     ) : (
-                      <p className="text-gray-500 text-sm">無改裝項目記錄</p>
+                      <p className="text-surface-500 text-sm">無改裝項目記錄</p>
                     )}
                   </div>
                 </div>

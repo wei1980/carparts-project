@@ -43,7 +43,7 @@ export default function CouponsModal({ coupons = [], onRedeem, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-gray-800 rounded-2xl border border-gray-600 max-w-md w-full p-4 text-white max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-surface-800 rounded-2xl border border-surface-600 max-w-md w-full p-4 text-white max-h-[90vh] overflow-y-auto">
         {/* 標題列 */}
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-bold">🎟️ 優惠券</h3>
@@ -63,7 +63,7 @@ export default function CouponsModal({ coupons = [], onRedeem, onClose }) {
               className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition ${
                 tab === t.key
                   ? 'bg-blue-600 text-white'
-                  : 'bg-gray-700/60 text-slate-400 hover:text-white'
+                  : 'bg-surface-700/60 text-slate-400 hover:text-white'
               }`}
             >
               {t.label}
@@ -86,7 +86,7 @@ export default function CouponsModal({ coupons = [], onRedeem, onClose }) {
                     key={c.id}
                     className={`rounded-xl border p-3 ${
                       dim
-                        ? 'border-gray-700/40 bg-gray-900/30 opacity-55'
+                        ? 'border-surface-700/40 bg-surface-900/30 opacity-55'
                         : 'border-blue-500/40 bg-blue-500/5'
                     }`}
                   >
@@ -100,7 +100,7 @@ export default function CouponsModal({ coupons = [], onRedeem, onClose }) {
                       </span>
                     </div>
                     <div className="flex items-center justify-between mt-2">
-                      <code className="text-xs font-mono bg-gray-900/70 border border-gray-700/60 rounded px-2 py-0.5 text-slate-300">
+                      <code className="text-xs font-mono bg-surface-900/70 border border-surface-700/60 rounded px-2 py-0.5 text-slate-300">
                         {c.code}
                       </code>
                       <span className="text-[10px] text-slate-500">
@@ -125,7 +125,7 @@ export default function CouponsModal({ coupons = [], onRedeem, onClose }) {
                 value={code}
                 onChange={e => setCode(e.target.value.toUpperCase())}
                 placeholder="例如：VIPFREE26Q4"
-                className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm font-mono uppercase placeholder:normal-case"
+                className="flex-1 px-3 py-2 bg-surface-700 border border-surface-600 rounded-lg text-sm font-mono uppercase placeholder:normal-case"
                 onKeyDown={e => e.key === 'Enter' && handleRedeem()}
               />
               <button
@@ -136,14 +136,14 @@ export default function CouponsModal({ coupons = [], onRedeem, onClose }) {
                 {redeeming ? '兌換中…' : '兌換'}
               </button>
             </div>
-            <div className="bg-gray-900/40 border border-gray-700/40 rounded-lg p-3">
+            <div className="bg-surface-900/40 border border-surface-700/40 rounded-lg p-3">
               <p className="text-[10px] text-slate-500 mb-1">本次可試用：</p>
               <div className="flex flex-wrap gap-1.5">
                 {['NEWMEMBER50', 'MOD90', 'SAVE300'].map(sample => (
                   <button
                     key={sample}
                     onClick={() => setCode(sample)}
-                    className="text-[10px] font-mono px-2 py-0.5 rounded border border-gray-600 text-slate-400 hover:text-white hover:border-blue-500/50"
+                    className="text-[10px] font-mono px-2 py-0.5 rounded border border-surface-600 text-slate-400 hover:text-white hover:border-blue-500/50"
                   >
                     {sample}
                   </button>

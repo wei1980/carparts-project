@@ -4,10 +4,9 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { PrismaClient } = require('@prisma/client');
 const auth = require('../middleware/authMiddleware');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 // 設定圖片上傳
 const uploadDir = path.join(__dirname, '../../media/ai_uploads');
@@ -78,7 +77,7 @@ router.post('/search-part', upload.single('image'), async (req, res) => {
     });
   } catch (error) {
     console.error('提交草稿失敗:', error);
-    res.status(500).json({ error: '處理失敗', detail: error.message });
+    res.status(500).json({ error: '處理失敗',  });
   }
 });
 

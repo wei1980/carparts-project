@@ -38,7 +38,7 @@ export default function AdminAppointments() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-8">
+    <div className="min-h-screen bg-surface-900 text-white p-8">
       <button onClick={() => navigate('/admin')} className="text-blue-400 mb-4 block">
         ← 返回後台
       </button>
@@ -51,7 +51,7 @@ export default function AdminAppointments() {
             key={s}
             onClick={() => setFilter(s)}
             className={`px-4 py-2 rounded ${
-              filter === s ? 'bg-blue-600' : 'bg-gray-700'
+              filter === s ? 'bg-blue-600' : 'bg-surface-700'
             }`}
           >
             {statusMap[s]}
@@ -62,35 +62,35 @@ export default function AdminAppointments() {
       {/* 預約列表 */}
       <div className="space-y-4">
         {appointments.length === 0 && (
-          <p className="text-gray-400">目前沒有 {statusMap[filter]} 的預約</p>
+          <p className="text-surface-400">目前沒有 {statusMap[filter]} 的預約</p>
         )}
         {appointments.map((a) => (
-          <div key={a.id} className="bg-gray-800 p-6 rounded-xl">
+          <div key={a.id} className="bg-surface-800 p-6 rounded-xl">
             <div className="flex justify-between items-start">
               <div>
                 <h3 className="font-bold text-lg">
                   {a.vehicle?.make} {a.vehicle?.model}
-                  <span className="text-gray-400 text-sm ml-2">
+                  <span className="text-surface-400 text-sm ml-2">
                     ({a.vehicle?.licensePlate || '無車牌'})
                   </span>
                 </h3>
-                <p className="text-gray-400">
+                <p className="text-surface-400">
                   車主：{a.user?.name} | 電話：{a.user?.phone}
                 </p>
-                <p className="text-gray-400">
+                <p className="text-surface-400">
                   車廠：{a.garage?.garage_name || a.garage?.company_name}
                 </p>
-                <p className="text-gray-400">
+                <p className="text-surface-400">
                   預約時間：{new Date(a.scheduled_at).toLocaleString()}
                 </p>
                 {a.part_ids && a.part_ids.length > 0 && (
-                  <p className="text-gray-500">預計安裝零件 ID：{JSON.stringify(a.part_ids)}</p>
+                  <p className="text-surface-500">預計安裝零件 ID：{JSON.stringify(a.part_ids)}</p>
                 )}
-                {a.note && <p className="text-gray-500 mt-1">備註：{a.note}</p>}
+                {a.note && <p className="text-surface-500 mt-1">備註：{a.note}</p>}
               </div>
 
               <div className="flex flex-col gap-2">
-                <span className={`font-bold ${statusColor[a.status] || 'text-gray-400'}`}>
+                <span className={`font-bold ${statusColor[a.status] || 'text-surface-400'}`}>
                   {statusMap[a.status] || a.status}
                 </span>
                 {a.status === 'PENDING' && (

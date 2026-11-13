@@ -26,6 +26,7 @@ async function compatibility(vehicle, part) {
   const noop = (req, res, next) => next();
   const context = {
     require(name) {
+      if (name === '../lib/prisma' || name === './lib/prisma' || name.endsWith('/lib/prisma')) return prisma;
       if (name === '@prisma/client') return { PrismaClient: class { constructor() { return prisma; } } };
       if (name.startsWith('./routes/')) return noop;
       if (name === './middleware/csrfProtection') return { csrfProtection: noop, verifyCsrfToken: noop };

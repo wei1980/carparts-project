@@ -18,7 +18,7 @@ export default function VipTierModal({ currentTier = 'GOLD', currentYearSpent = 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-gray-800 rounded-2xl border border-gray-600 max-w-lg w-full p-4 text-white max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-surface-800 rounded-2xl border border-surface-600 max-w-lg w-full p-4 text-white max-h-[90vh] overflow-y-auto">
         {/* 標題列 */}
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-bold">🏆 VIP 會員等級</h3>
@@ -38,7 +38,7 @@ export default function VipTierModal({ currentTier = 'GOLD', currentYearSpent = 
 
         {/* 升級進度 */}
         {next ? (
-          <div className="bg-gray-900/50 border border-gray-700/50 rounded-xl p-3 mb-3">
+          <div className="bg-surface-900/50 border border-surface-700/50 rounded-xl p-3 mb-3">
             <div className="flex justify-between text-xs mb-1.5">
               <span className="text-slate-400">距離下一等級「{next.name}」</span>
               <span className="text-slate-300 font-bold">還差 NT$ {remaining.toLocaleString()}</span>
@@ -47,7 +47,7 @@ export default function VipTierModal({ currentTier = 'GOLD', currentYearSpent = 
               <span className="font-mono">年度累積消費 NT$ {currentYearSpent.toLocaleString()}</span>
               <span className="font-mono text-slate-400">/ NT$ {next.minAnnualSpent.toLocaleString()}</span>
             </div>
-            <div className="h-2.5 bg-gray-700 rounded-full overflow-hidden">
+            <div className="h-2.5 bg-surface-700 rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all ${style.bar}`}
                 style={{ width: `${status.progressPercentage}%` }}
@@ -58,16 +58,16 @@ export default function VipTierModal({ currentTier = 'GOLD', currentYearSpent = 
             </div>
           </div>
         ) : (
-          <div className="bg-gray-900/50 border border-gray-700/50 rounded-xl p-3 mb-3 text-sm text-cyan-300">
+          <div className="bg-surface-900/50 border border-surface-700/50 rounded-xl p-3 mb-3 text-sm text-cyan-300">
             ✦ 已達最高等級，專屬權益全面啟用
           </div>
         )}
 
         {/* 四等級權益對比表 */}
-        <div className="border border-gray-700/60 rounded-xl overflow-hidden">
+        <div className="border border-surface-700/60 rounded-xl overflow-hidden">
           <table className="w-full text-xs">
             <thead>
-              <tr className="bg-gray-900/60 text-slate-400">
+              <tr className="bg-surface-900/60 text-slate-400">
                 <th className="text-left px-2.5 py-2 font-medium">等級</th>
                 <th className="text-right px-2.5 py-2 font-medium">年度消費門檻</th>
                 <th className="text-right px-2.5 py-2 font-medium">點數回饋</th>
@@ -81,7 +81,7 @@ export default function VipTierModal({ currentTier = 'GOLD', currentYearSpent = 
                 return (
                   <tr
                     key={t.tier}
-                    className={`border-t border-gray-700/50 ${active ? 'bg-yellow-500/10' : ''}`}
+                    className={`border-t border-surface-700/50 ${active ? 'bg-yellow-500/10' : ''}`}
                   >
                     <td className="px-2.5 py-2">
                       <span className={`px-1.5 py-0.5 rounded border text-[10px] font-bold ${ts.badge}`}>

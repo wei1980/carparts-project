@@ -375,12 +375,12 @@ export default function Garage() {
   // ==================== 新增車輛頁面 ====================
   if (isNew) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white p-8">
+      <div className="min-h-screen bg-surface-900 text-white p-8">
         <button onClick={() => navigate('/')} className="text-blue-400 mb-6 block">← 回首頁</button>
         <h1 className="text-3xl font-bold mb-6">新增車輛</h1>
 
         {/* 行照掃描區 */}
-        <div className="bg-gray-800 p-6 rounded-xl max-w-lg mb-6">
+        <div className="bg-surface-800 p-6 rounded-xl max-w-lg mb-6">
           <h2 className="text-lg font-bold mb-3">📷 快速掃描行照</h2>
           <input
             type="file"
@@ -397,52 +397,52 @@ export default function Garage() {
           >
             {recognizingReg ? '辨識中...' : '掃描行照，自動帶入資料'}
           </button>
-          <p className="text-xs text-gray-400 mt-2">
+          <p className="text-xs text-surface-400 mt-2">
             支援拍行照或上傳行照圖片，系統將自動辨識車牌、VIN、廠牌、車型等資訊，並自動收錄新車型
           </p>
         </div>
 
         {/* 手動建立車輛表單 */}
-        <div className="bg-gray-800 p-6 rounded-xl max-w-lg">
+        <div className="bg-surface-800 p-6 rounded-xl max-w-lg">
           <h2 className="text-lg font-bold mb-4">手動輸入</h2>
-          <label className="block text-sm text-gray-400 mb-1">年份</label>
+          <label className="block text-sm text-surface-400 mb-1">年份</label>
           <select
             value={pick.year}
             onChange={e => setPick(s => ({ ...s, year: e.target.value }))}
-            className="w-full p-3 rounded bg-gray-700 text-white mb-4"
+            className="w-full p-3 rounded bg-surface-700 text-white mb-4"
           >
             <option value="">選擇年份</option>
             {years.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
 
-          <label className="block text-sm text-gray-400 mb-1">品牌</label>
+          <label className="block text-sm text-surface-400 mb-1">品牌</label>
           <select
             value={pick.make}
             onChange={e => setPick(s => ({ ...s, make: e.target.value }))}
             disabled={!pick.year}
-            className="w-full p-3 rounded bg-gray-700 text-white mb-4 disabled:opacity-50"
+            className="w-full p-3 rounded bg-surface-700 text-white mb-4 disabled:opacity-50"
           >
             <option value="">選擇品牌</option>
             {makes.map(m => <option key={m} value={m}>{m}</option>)}
           </select>
 
-          <label className="block text-sm text-gray-400 mb-1">車系</label>
+          <label className="block text-sm text-surface-400 mb-1">車系</label>
           <select
             value={pick.model}
             onChange={e => setPick(s => ({ ...s, model: e.target.value }))}
             disabled={!pick.make}
-            className="w-full p-3 rounded bg-gray-700 text-white mb-4 disabled:opacity-50"
+            className="w-full p-3 rounded bg-surface-700 text-white mb-4 disabled:opacity-50"
           >
             <option value="">選擇車系</option>
             {models.map(m => <option key={m} value={m}>{m}</option>)}
           </select>
 
-          <label className="block text-sm text-gray-400 mb-1">世代 / 引擎</label>
+          <label className="block text-sm text-surface-400 mb-1">世代 / 引擎</label>
           <select
             value={pick.variantId}
             onChange={e => setPick(s => ({ ...s, variantId: e.target.value }))}
             disabled={!pick.model}
-            className="w-full p-3 rounded bg-gray-700 text-white mb-6 disabled:opacity-50"
+            className="w-full p-3 rounded bg-surface-700 text-white mb-6 disabled:opacity-50"
           >
             <option value="">選擇世代（可略）</option>
             {variants.map(v => (
@@ -452,21 +452,21 @@ export default function Garage() {
             ))}
           </select>
 
-          <hr className="border-gray-600 mb-4" />
-          <p className="text-sm text-gray-400 mb-4">以下選填，可由行照掃描自動填入</p>
-          <label className="block text-sm text-gray-400 mb-1">車牌號碼（選填）</label>
+          <hr className="border-surface-600 mb-4" />
+          <p className="text-sm text-surface-400 mb-4">以下選填，可由行照掃描自動填入</p>
+          <label className="block text-sm text-surface-400 mb-1">車牌號碼（選填）</label>
           <input
             value={licensePlate}
             onChange={e => setLicensePlate(e.target.value)}
             placeholder="ABC-1234"
-            className="w-full p-3 rounded bg-gray-700 text-white mb-4"
+            className="w-full p-3 rounded bg-surface-700 text-white mb-4"
           />
-          <label className="block text-sm text-gray-400 mb-1">VIN 碼</label>
+          <label className="block text-sm text-surface-400 mb-1">VIN 碼</label>
           <input
             value={vin}
             onChange={e => setVin(e.target.value)}
             placeholder="VIN..."
-            className="w-full p-3 rounded bg-gray-700 text-white mb-6"
+            className="w-full p-3 rounded bg-surface-700 text-white mb-6"
           />
           <button
             onClick={handleCreate}
@@ -480,17 +480,17 @@ export default function Garage() {
   }
 
   // ==================== 編輯車輛頁面 ====================
-  if (!vehicle) return <div className="min-h-screen bg-gray-900 text-white p-8">載入中...</div>;
+  if (!vehicle) return <div className="min-h-screen bg-surface-900 text-white p-8">載入中...</div>;
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-8">
+    <div className="min-h-screen bg-surface-900 text-white p-8">
       <Navbar />
       <h1 className="text-3xl font-bold mt-6">{vehicle.make} {vehicle.model}</h1>
-      <p className="text-gray-400 text-lg">{vehicle.generation} | {vehicle.year} | {vehicle.engine}</p>
-      <p className="text-gray-500">VIN: {vehicle.vin || '無'} | 車牌: {vehicle.licensePlate || '無'}</p>
+      <p className="text-surface-400 text-lg">{vehicle.generation} | {vehicle.year} | {vehicle.engine}</p>
+      <p className="text-surface-500">VIN: {vehicle.vin || '無'} | 車牌: {vehicle.licensePlate || '無'}</p>
 
       {/* 改裝履歷編輯器 */}
-      <div className="mt-8 bg-gray-800 p-6 rounded-xl">
+      <div className="mt-8 bg-surface-800 p-6 rounded-xl">
         <h2 className="text-xl font-bold mb-4">🔧 改裝履歷</h2>
 
         {/* 拍照辨識按鈕 */}
@@ -520,7 +520,7 @@ export default function Garage() {
               setSelectedBrand('');
               setSelectedModel('');
             }}
-            className="p-2 rounded bg-gray-700 text-white"
+            className="p-2 rounded bg-surface-700 text-white"
           >
             <option value="">選擇類別</option>
             {modificationCategories.map(cat => (
@@ -536,7 +536,7 @@ export default function Garage() {
               setSelectedModel('');
             }}
             disabled={!selectedCategory}
-            className="p-2 rounded bg-gray-700 text-white disabled:opacity-50"
+            className="p-2 rounded bg-surface-700 text-white disabled:opacity-50"
           >
             <option value="">選擇零件</option>
             {currentCategory?.parts.map(p => (
@@ -551,7 +551,7 @@ export default function Garage() {
               setSelectedModel('');
             }}
             disabled={!selectedPart}
-            className="p-2 rounded bg-gray-700 text-white disabled:opacity-50"
+            className="p-2 rounded bg-surface-700 text-white disabled:opacity-50"
           >
             <option value="">選擇品牌</option>
             {currentPart?.brands.map(b => (
@@ -563,7 +563,7 @@ export default function Garage() {
             value={selectedModel}
             onChange={e => setSelectedModel(e.target.value)}
             disabled={!selectedBrand}
-            className="p-2 rounded bg-gray-700 text-white disabled:opacity-50"
+            className="p-2 rounded bg-surface-700 text-white disabled:opacity-50"
           >
             <option value="">選擇型號</option>
             {currentBrand?.models.map(m => (
@@ -588,9 +588,9 @@ export default function Garage() {
               .find(c => c.key === mod.category)
               ?.parts.find(p => p.key === mod.part)?.name || mod.part;
             return (
-              <div key={index} className="flex justify-between items-center bg-gray-700 p-3 rounded">
+              <div key={index} className="flex justify-between items-center bg-surface-700 p-3 rounded">
                 <div>
-                  <span className="text-sm text-gray-300">{catName} &gt; {partName}</span>
+                  <span className="text-sm text-surface-300">{catName} &gt; {partName}</span>
                   <span className="ml-3 text-white font-medium">{mod.brand} {mod.model}</span>
                 </div>
                 <button onClick={() => removeModification(index)} className="text-red-400 hover:text-red-300 text-sm">
@@ -599,7 +599,7 @@ export default function Garage() {
               </div>
             );
           })}
-          {modList.length === 0 && <p className="text-gray-500 text-center py-4">尚未新增任何改裝件</p>}
+          {modList.length === 0 && <p className="text-surface-500 text-center py-4">尚未新增任何改裝件</p>}
         </div>
 
         <button

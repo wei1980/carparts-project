@@ -44,7 +44,7 @@ function normalizeBrand(make) {
 async function main() {
   console.log('🚀 開始從 CSV 匯入 VehicleVariant...');
   
-  const filePath = 'C:\\carparts\\carparts-api\\media\\Data\\Makes_20260831(資料庫版).csv';
+  const filePath = 'C:\\carparts\\carparts-api\\media\\Data\\Makes_20260921(資料庫版) .csv';
   
   const results = [];
   

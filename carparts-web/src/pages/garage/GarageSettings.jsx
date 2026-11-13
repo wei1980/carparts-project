@@ -1,9 +1,9 @@
 // src/pages/garage/GarageSettings.jsx — 車廠門店設定（店面照 / 營業時間 / 標準工資表）
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { garageClient as api } from '../../api/client';
 import toast from 'react-hot-toast';
 import { confirmDialog } from '../../components/ConfirmDialog';
+import GarageNav from '../../components/GarageNav';
 
 const DAYS = [
   ['mon', '週一'], ['tue', '週二'], ['wed', '週三'], ['thu', '週四'],
@@ -11,7 +11,6 @@ const DAYS = [
 ];
 
 export default function GarageSettings() {
-  const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [msg, setMsg] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
@@ -22,6 +21,7 @@ export default function GarageSettings() {
     contact_person: '', shop_type: '',
   });
   const [hours, setHours] = useState({});
+  const [capacity, setCapacity] = useState(1);
 
   // 工資表
   const [fees, setFees] = useState([]);
@@ -41,6 +41,7 @@ export default function GarageSettings() {
           shop_type: res.data.shop_type || '',
         });
         setHours(res.data.opening_hours || {});
+        setCapacity(Number(res.data.booking_capacity) || 1);
         setFees(res.data.labor_fees || []);
       })
       .catch(err => console.warn('載入設定失敗:', err?.message || err));
@@ -53,7 +54,7 @@ export default function GarageSettings() {
   const saveProfile = async () => {
     setSavingProfile(true);
     try {
-      await api.patch('/garage/settings', { ...profile, opening_hours: hours });
+      await api.patch('/garage/settings', { ...profile, opening_hours: hours, booking_capacity: capacity });
       flash('✅ 已儲存');
     } catch (err) {
       toast.error(err.response?.data?.error || '儲存失敗');
@@ -132,19 +133,11 @@ export default function GarageSettings() {
   if (!data) return <div className="min-h-screen bg-slate-950 text-slate-100 p-6">載入中…</div>;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      {/* 頂部列 */}
-      <header className="bg-slate-900 border-b border-slate-800 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/garage/dashboard')}>
-          <span className="text-xl font-bold text-emerald-400">🔧 門店設定</span>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={() => navigate('/garage/work-orders')} className="px-4 py-2 rounded-lg text-sm bg-slate-800 hover:bg-slate-700">工單管理</button>
-          <button onClick={() => navigate('/garage/dashboard')} className="px-4 py-2 rounded-lg text-sm bg-slate-800 hover:bg-slate-700">返回首頁</button>
-        </div>
-      </header>
+    <div className="min-h-screen bg-[#0b0f14] text-slate-100">
+      <GarageNav active="settings" />
 
       <main className="max-w-3xl mx-auto p-4 space-y-6 pb-24">
+        <h1 className="text-2xl font-bold">門店設定</h1>
         {msg && <div className="bg-emerald-600/20 border border-emerald-500/40 text-emerald-300 rounded-lg px-4 py-2 text-sm">{msg}</div>}
 
         {/* 基本資料 */}
@@ -183,6 +176,26 @@ export default function GarageSettings() {
               />
             </div>
           ))}
+        </section>
+
+        {/* 預約容量 */}
+        <section className="bg-slate-900 rounded-xl border border-slate-800 p-5 space-y-3">
+          <h2 className="font-bold text-lg">預約容量</h2>
+          <p className="text-xs text-slate-500">
+            同一時段可以同時接幾台車（1–20）。車主預約時會看到每個時段剩餘名額；額滿後就無法再選。
+          </p>
+          <div className="flex items-center gap-3">
+            <input
+              type="number"
+              min="1"
+              max="20"
+              value={capacity}
+              onChange={e => setCapacity(e.target.value)}
+              className="w-24 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500"
+            />
+            <span className="text-sm text-slate-400">台／時段</span>
+          </div>
+          <p className="text-xs text-slate-500">提示：若你已在「工位」設定多個 bays，系統會以啟用中的工位數為預設容量。</p>
         </section>
 
         {/* 店面照片 */}
@@ -256,7 +269,7 @@ export default function GarageSettings() {
 
         {/* 儲存按鈕 */}
         <button onClick={saveProfile} disabled={savingProfile} className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-bold disabled:opacity-50">
-          {savingProfile ? '儲存中…' : '儲存基本資料與營業時間'}
+          {savingProfile ? '儲存中…' : '儲存基本資料、營業時間與容量'}
         </button>
       </main>
     </div>

@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { garageClient as api } from '../../api/client';
 import toast from 'react-hot-toast';
 import { confirmDialog } from '../../components/ConfirmDialog';
+import GarageNav from '../../components/GarageNav';
 
 export default function GarageCustomers() {
   const [customers, setCustomers] = useState([]);
@@ -89,16 +90,18 @@ export default function GarageCustomers() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      {/* 頂部列 */}
-      <header className="bg-slate-900 border-b border-slate-800 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.history.back()}>
-          <span className="text-xl font-bold text-emerald-400">👥 客戶管理</span>
-        </div>
-        <button onClick={openNew} className="px-4 py-2 rounded-lg text-sm bg-emerald-600 hover:bg-emerald-500">＋ 新增客戶</button>
-      </header>
+    <div className="min-h-screen bg-[#0b0f14] text-slate-100">
+      <GarageNav
+        active="customers"
+        right={
+          <button onClick={openNew} className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-500">
+            ＋ 新增客戶
+          </button>
+        }
+      />
 
       <main className="max-w-7xl mx-auto p-4 space-y-6 pb-24">
+        <h1 className="text-2xl font-bold">客戶管理</h1>
         {/* 搜尋與篩選 */}
         <div className="bg-slate-900 rounded-xl border border-slate-800 p-4 space-y-4">
           <div className="flex flex-wrap gap-3">

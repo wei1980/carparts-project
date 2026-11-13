@@ -1,12 +1,15 @@
 // src/pages/MyAppointments.jsx — 車主：我的預約（含取消功能）
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { consumerClient as api } from '../api/client';
 import Navbar from '../components/Navbar';
 import ErrorState from '../components/ErrorState';
+import EmptyState from '../components/ui/EmptyState';
 import toast from 'react-hot-toast';
 import { confirmDialog } from '../components/ConfirmDialog';
 
 export default function MyAppointments() {
+  const navigate = useNavigate();
   const [appointments, setAppointments] = useState([]);
   const [cancellingId, setCancellingId] = useState(null);
   const [loadError, setLoadError] = useState(false);
@@ -66,34 +69,39 @@ export default function MyAppointments() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="min-h-screen bg-surface-900 text-white">
       <Navbar />
-      <main className="p-8 max-w-4xl mx-auto">
+      <main className="p-8 page-shell max-w-4xl">
         <h1 className="text-2xl font-bold mb-6">📋 我的預約</h1>
         {loadError ? (
           <ErrorState message="預約記錄載入失敗" onRetry={load} />
         ) : appointments.length === 0 ? (
-          <p className="text-gray-400">尚無預約記錄</p>
+          <EmptyState
+            icon={<span className="text-6xl">📋</span>}
+            title="尚無預約記錄"
+            description="預約保養或到店安裝，車廠會先與你確認時程"
+            primaryAction={{ label: '找車廠保養', onClick: () => navigate('/garages') }}
+          />
         ) : (
           <div className="space-y-4">
             {appointments.map(a => (
-              <div key={a.id} className="bg-gray-800 p-6 rounded-xl">
+              <div key={a.id} className="bg-surface-800 p-6 rounded-xl">
                 <div className="flex justify-between">
                   <h3 className="font-bold">{a.vehicle?.make} {a.vehicle?.model}</h3>
-                  <span className={statusColor[a.status] || 'text-gray-400'}>
+                  <span className={statusColor[a.status] || 'text-surface-400'}>
                     {statusMap[a.status] || a.status}
                   </span>
                 </div>
-                <p className="text-gray-400">{a.garage?.garage_name} - {a.garage?.garage_address}</p>
-                <p className="text-gray-500">預約時間：{new Date(a.scheduled_at).toLocaleString()}</p>
-                <p className="text-gray-500">項目：{a.service_type || '—'}</p>
+                <p className="text-surface-400">{a.garage?.garage_name} - {a.garage?.garage_address}</p>
+                <p className="text-surface-500">預約時間：{new Date(a.scheduled_at).toLocaleString()}</p>
+                <p className="text-surface-500">項目：{a.service_type || '—'}</p>
 
                 {/* 🆕 安裝項目清單 */}
                 {Array.isArray(a.install_items) && a.install_items.length > 0 && (
-                  <div className="mt-3 bg-gray-700/40 rounded-lg px-3 py-2">
-                    <p className="text-xs text-gray-400 mb-1">🔧 安裝項目：</p>
+                  <div className="mt-3 bg-surface-700/40 rounded-lg px-3 py-2">
+                    <p className="text-xs text-surface-400 mb-1">🔧 安裝項目：</p>
                     {a.install_items.map((it, i) => (
-                      <p key={i} className="text-sm text-gray-300">· {it.name} ×{it.qty}</p>
+                      <p key={i} className="text-sm text-surface-300">· {it.name} ×{it.qty}</p>
                     ))}
                   </div>
                 )}
@@ -112,7 +120,7 @@ export default function MyAppointments() {
                   <div className="mt-3 bg-purple-900/20 border border-purple-600/30 rounded-lg p-3">
                     <p className="text-sm text-purple-300 font-bold mb-1">📅 車廠建議時間</p>
                     <p className="text-white font-medium">{new Date(a.proposed_at).toLocaleString('zh-TW')}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">（原指定：{new Date(a.scheduled_at).toLocaleString()}）</p>
+                    <p className="text-xs text-surface-500 mt-0.5">（原指定：{new Date(a.scheduled_at).toLocaleString()}）</p>
                     <button
                       onClick={() => acceptProposal(a.id)}
                       disabled={acceptingId === a.id}
@@ -129,7 +137,7 @@ export default function MyAppointments() {
                     <button
                       onClick={() => cancelAppointment(a.id)}
                       disabled={cancellingId === a.id}
-                      className="bg-gray-700 hover:bg-red-600 disabled:opacity-50 px-4 py-2 rounded-lg text-sm font-medium text-gray-300 hover:text-white transition"
+                      className="bg-surface-700 hover:bg-red-600 disabled:opacity-50 px-4 py-2 rounded-lg text-sm font-medium text-surface-300 hover:text-white transition"
                     >
                       {cancellingId === a.id ? '取消中…' : '✕ 取消預約'}
                     </button>
@@ -198,7 +206,7 @@ function ReviewSection({ appointmentId, garageName, onSaved }) {
   };
 
   return (
-    <div className="mt-4 bg-gray-700/30 border border-gray-600/40 rounded-lg p-3">
+    <div className="mt-4 bg-surface-700/30 border border-surface-600/40 rounded-lg p-3">
       <p className="text-xs text-slate-400 mb-2">⭐ 評價{garageName || ''}的服務</p>
       {/* 星等選擇 */}
       <div className="flex gap-1 mb-2" role="radiogroup" aria-label="選擇星等">
@@ -216,9 +224,9 @@ function ReviewSection({ appointmentId, garageName, onSaved }) {
       <textarea value={comment} onChange={e => setComment(e.target.value.slice(0, 200))}
         rows={2} maxLength={200}
         placeholder="分享你的安裝體驗（選填，最多 200 字）"
-        className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-sm text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 outline-none resize-none" />
+        className="w-full px-3 py-2 bg-surface-800 border border-surface-600 rounded-lg text-sm text-white placeholder-surface-500 focus:ring-2 focus:ring-blue-500 outline-none resize-none" />
       <div className="flex items-center justify-between mt-2">
-        <p className="text-[10px] text-gray-600">{comment.length}/200</p>
+        <p className="text-[10px] text-surface-600">{comment.length}/200</p>
         <button onClick={submit} disabled={saving || rating === 0}
           className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 px-4 py-1.5 rounded-lg text-sm font-bold transition">
           {saving ? '送出中…' : '送出評價'}

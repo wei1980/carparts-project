@@ -15,9 +15,9 @@ export const statusMap = {
 export const statusColor = {
   PENDING_PAYMENT: 'text-amber-400 bg-amber-900/30',  // 待付款：需注意
   PAYMENT_REVIEW: 'text-amber-400 bg-amber-900/30',   // 審核中：需注意
-  DEPOSIT_PAID: 'text-gray-400 bg-gray-800/40',       // 訂金已付：中性進度
+  DEPOSIT_PAID: 'text-surface-400 bg-surface-800/40',       // 訂金已付：中性進度
   AWAITING_BALANCE: 'text-amber-400 bg-amber-900/30', // 待補尾款：需行動
-  PAID: 'text-gray-400 bg-gray-800/40',               // 已付款：中性
+  PAID: 'text-surface-400 bg-surface-800/40',               // 已付款：中性
   SHIPPED: 'text-green-400 bg-green-900/30',          // 已出貨：完成
   COMPLETED: 'text-green-400 bg-green-900/30',        // 已完成：完成
   CANCELLED: 'text-red-400 bg-red-900/30',            // 已取消：負面
@@ -62,9 +62,9 @@ export const RETURN_STATUS_MAP = {
 };
 export const RETURN_STATUS_COLOR = {
   PENDING: 'text-amber-400 bg-amber-900/30',     // 待審核：需注意
-  APPROVED: 'text-gray-400 bg-gray-800/40',      // 已核可：中性進度
+  APPROVED: 'text-surface-400 bg-surface-800/40',      // 已核可：中性進度
   REJECTED: 'text-red-400 bg-red-900/30',        // 已駁回：負面
-  RECEIVED: 'text-gray-400 bg-gray-800/40',      // 已收貨：中性進度
+  RECEIVED: 'text-surface-400 bg-surface-800/40',      // 已收貨：中性進度
   REFUNDED: 'text-green-400 bg-green-900/30',    // 已退款：完成
   EXCHANGED: 'text-cyan-300 bg-cyan-900/30',     // 換貨完成：完成
 };

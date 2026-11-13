@@ -1,16 +1,42 @@
 // src/routes/garageServiceRecords.js — 車廠端：開立 / 管理工單
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
 const garageAuth = require('../middleware/garageAuth');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 const { generateRemindersFromRecord } = require('../services/maintenanceReminderService');
 router.use(garageAuth);
 
 // 計算工單總額
 const calcTotal = (items) =>
   items.reduce((sum, it) => sum + (Number(it.unit_price) || 0) * (Number(it.quantity) || 1), 0);
+
+// ServiceRecord 沒有 vehicle / user 關聯，改用獨立查詢補上（避免 Prisma 500）
+async function attachRefs(records) {
+  const vehicleIds = [...new Set(records.map(r => r.vehicle_id).filter(Boolean))];
+  const userIds = [...new Set(records.map(r => r.user_id).filter(Boolean))];
+  const [vehicles, users] = await Promise.all([
+    vehicleIds.length
+      ? prisma.vehicleProfile.findMany({
+          where: { id: { in: vehicleIds } },
+          select: { id: true, make: true, model: true, licensePlate: true },
+        })
+      : [],
+    userIds.length
+      ? prisma.endUser.findMany({
+          where: { id: { in: userIds } },
+          select: { id: true, name: true, phone: true },
+        })
+      : [],
+  ]);
+  const vMap = Object.fromEntries(vehicles.map(v => [v.id, v]));
+  const uMap = Object.fromEntries(users.map(u => [u.id, u]));
+  return records.map(r => ({
+    ...r,
+    vehicle: vMap[r.vehicle_id] || null,
+    user: uMap[r.user_id] || null,
+  }));
+}
 
 // GET /api/garage/service-records — 本廠所有工單
 router.get('/', async (req, res) => {
@@ -21,15 +47,12 @@ router.get('/', async (req, res) => {
 
     const records = await prisma.serviceRecord.findMany({
       where,
-      include: {
-        vehicle: { select: { make: true, model: true, licensePlate: true } },
-        user: { select: { name: true, phone: true } },
-        items: true,
-      },
+      include: { items: true },
       orderBy: { created_at: 'desc' },
     });
-    res.json(records);
+    res.json(await attachRefs(records));
   } catch (error) {
+    console.error('取得車廠工單失敗:', error);
     res.status(500).json({ error: '伺服器內部錯誤，請稍後再試' });
   }
 });

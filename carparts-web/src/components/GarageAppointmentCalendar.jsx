@@ -90,7 +90,7 @@ export function GarageAppointmentCalendar({ appointments, onSelect }) {
   const DAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
 
   return (
-    <div className="bg-gray-800 rounded-2xl border border-gray-700 p-6">
+    <div className="bg-surface-800 rounded-2xl border border-surface-700 p-6">
       {/* 統計卡片 */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         <StatCard label="今日預約" value={stats.today} color="blue" icon="📅" />
@@ -102,13 +102,13 @@ export function GarageAppointmentCalendar({ appointments, onSelect }) {
 
       {/* 視圖切換 */}
       <div className="flex items-center gap-4 mb-4">
-        <div className="flex items-center gap-1 bg-gray-700 rounded-lg p-1">
+        <div className="flex items-center gap-1 bg-surface-700 rounded-lg p-1">
           {['month', 'week', 'list'].map(mode => (
             <button
               key={mode}
               onClick={() => setViewMode(mode)}
               className={`px-3 py-1.5 rounded text-sm font-medium transition ${
-                viewMode === mode ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
+                viewMode === mode ? 'bg-blue-600 text-white' : 'text-surface-400 hover:text-white'
               }`}
             >
               {mode === 'month' ? '月曆' : mode === 'week' ? '周曆' : '列表'}
@@ -117,12 +117,12 @@ export function GarageAppointmentCalendar({ appointments, onSelect }) {
         </div>
         <div className="flex-1" />
         <div className="flex items-center gap-2">
-          <button onClick={prevMonth} className="p-2 bg-gray-700 rounded-lg hover:bg-gray-600">←</button>
+          <button onClick={prevMonth} className="p-2 bg-surface-700 rounded-lg hover:bg-surface-600">←</button>
           <span className="font-bold text-lg min-w-[160px] text-center">
             {currentMonth.getFullYear()} 年 {currentMonth.getMonth() + 1} 月
           </span>
-          <button onClick={nextMonth} className="p-2 bg-gray-700 rounded-lg hover:bg-gray-600">→</button>
-          <button onClick={todayMonth} className="ml-2 px-3 py-1.5 bg-gray-700 rounded-lg text-sm hover:bg-gray-600">回今日</button>
+          <button onClick={nextMonth} className="p-2 bg-surface-700 rounded-lg hover:bg-surface-600">→</button>
+          <button onClick={todayMonth} className="ml-2 px-3 py-1.5 bg-surface-700 rounded-lg text-sm hover:bg-surface-600">回今日</button>
         </div>
       </div>
 
@@ -130,7 +130,7 @@ export function GarageAppointmentCalendar({ appointments, onSelect }) {
       {viewMode === 'month' && (
         <div className="grid grid-cols-7 gap-0.5">
           {DAY_LABELS.map(d => (
-            <div key={d} className="text-center text-xs text-gray-500 py-2 font-bold">{d}</div>
+            <div key={d} className="text-center text-xs text-surface-500 py-2 font-bold">{d}</div>
           ))}
           {weeks.map((week, wIdx) => (
             <div key={wIdx} className="contents">
@@ -158,7 +158,7 @@ export function GarageAppointmentCalendar({ appointments, onSelect }) {
               <AppointmentListItem key={a.id} appointment={a} onClick={() => onSelect?.(a)} />
           ))}
           {activeAppointments.length === 0 && (
-            <div className="text-center py-10 text-gray-500">暫無預約</div>
+            <div className="text-center py-10 text-surface-500">暫無預約</div>
           )}
         </div>
       )}
@@ -188,7 +188,7 @@ function StatCard({ label, value, color, icon }) {
 
 // 月曆單元格
 function CalendarCell({ cell, appointments, onClick, selectedDate, onDateClick }) {
-  if (!cell) return <div className="aspect-square p-2 bg-gray-900/30" />;
+  if (!cell) return <div className="aspect-square p-2 bg-surface-900/30" />;
   
   const hasAppointments = appointments.length > 0;
   const isSelected = selectedDate?.toDateString() === cell.date.toDateString();
@@ -198,7 +198,7 @@ function CalendarCell({ cell, appointments, onClick, selectedDate, onDateClick }
     <div
       className={`relative aspect-square p-2 cursor-pointer transition ${
         isSelected ? 'ring-2 ring-blue-500' : ''
-      } ${isToday ? 'bg-blue-500/10' : 'hover:bg-gray-700/50'}`}
+      } ${isToday ? 'bg-blue-500/10' : 'hover:bg-surface-700/50'}`}
       onClick={() => onDateClick(cell.date)}
     >
       <div className="flex justify-between items-start mb-1">
@@ -215,17 +215,17 @@ function CalendarCell({ cell, appointments, onClick, selectedDate, onDateClick }
       {hasAppointments && (
         <div className="space-y-1 max-h-[120px] overflow-y-auto">
           {appointments.slice(0, 3).map(a => (
-            <div key={a.id} className="text-[10px] px-1.5 py-0.5 bg-gray-700 rounded truncate"
+            <div key={a.id} className="text-[10px] px-1.5 py-0.5 bg-surface-700 rounded truncate"
               onClick={(e) => { e.stopPropagation(); onClick?.(a); }}
             >
               {a.vehicle?.make} {a.vehicle?.model}
-              <span className={`ml-1 ${a.status === 'PENDING' ? 'text-yellow-400' : a.status === 'CONFIRMED' ? 'text-cyan-400' : 'text-gray-400'}`}>
+              <span className={`ml-1 ${a.status === 'PENDING' ? 'text-yellow-400' : a.status === 'CONFIRMED' ? 'text-cyan-400' : 'text-surface-400'}`}>
                 {a.status === 'PENDING' ? '待' : a.status === 'CONFIRMED' ? '確' : a.status[0]}
               </span>
             </div>
           ))}
           {appointments.length > 3 && (
-            <div className="text-[10px] text-gray-500 text-center px-1">+{appointments.length - 3} 筆</div>
+            <div className="text-[10px] text-surface-500 text-center px-1">+{appointments.length - 3} 筆</div>
           )}
         </div>
       )}
@@ -247,12 +247,12 @@ function AppointmentListItem({ appointment, onClick }) {
   return (
     <button
       onClick={() => onClick(appointment)}
-      className={`w-full text-left p-4 rounded-xl border ${statusColors[appointment.status]} hover:bg-gray-700/50 transition`}
+      className={`w-full text-left p-4 rounded-xl border ${statusColors[appointment.status]} hover:bg-surface-700/50 transition`}
     >
       <div className="flex justify-between items-start">
         <div>
           <p className="font-bold text-white">{appointment.vehicle?.make} {appointment.vehicle?.model}</p>
-          <p className="text-sm text-gray-400 mt-0.5">
+          <p className="text-sm text-surface-400 mt-0.5">
             {new Date(appointment.scheduled_at).toLocaleString('zh-TW')} · 
             {appointment.user?.name || appointment.user?.phone}
             {appointment.install_items?.length > 0 && ` · 🔧 ${appointment.install_items.length} 項`}

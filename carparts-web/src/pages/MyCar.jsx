@@ -12,6 +12,7 @@ import { confirmDialog } from '../components/ConfirmDialog';
 import { calcMembershipStatus } from '../types/membership';
 import { mockMembership } from '../data/membershipMock';
 import GarageSyncSection from '../components/mycar/GarageSyncSection';
+import EmptyState from '../components/ui/EmptyState';
 
 const NT = (n) => `NT$ ${Number(n || 0).toLocaleString()}`;
 const DT = (d) => d ? new Date(d).toLocaleDateString('zh-TW') : '—';
@@ -41,9 +42,6 @@ function MyCar() {
   const [error, setError] = useState('');
   const [showMileageEdit, setShowMileageEdit] = useState(false);
   const [mileageInput, setMileageInput] = useState('');
-  // 🆕 里程智慧更新：OCR 辨識狀態 + 推算提示
-  const [ocrPhase, setOcrPhase] = useState('idle'); // idle | scanning | done
-  const ocrFileRef = useRef(null);
   const [mileageSuggestion, setMileageSuggestion] = useState(null); // { estimate, months, base }
   const [showVehicleManager, setShowVehicleManager] = useState(Boolean(location.state?.openVehicleManager));
   const [activeTab, setActiveTab] = useState('vehicle');
@@ -322,31 +320,17 @@ function MyCar() {
   };
 
   const openMileageEdit = () => {
-    setOcrPhase('idle');
     setMileageInput(data?.current_mileage_km != null ? String(data.current_mileage_km) : '');
     setShowMileageEdit(true);
   };
 
-  // 📷 拍照/上傳儀表板辨識（AI OCR 模擬，辨識服務 http://127.0.0.1:8080，Loading 1.5 秒）
-  const handleOcrFile = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setOcrPhase('scanning');
-    setTimeout(() => {
-      const current = data?.current_mileage_km ?? 0;
-      const recognized = Math.round((current + 500 + Math.random() * 2000) / 50) * 50;
-      setMileageInput(String(recognized));
-      setOcrPhase('done');
-      toast.success(`📷 辨識完成：${recognized.toLocaleString()} km`);
-    }, 1500);
-    e.target.value = '';
-  };
+  // 里程更新：只接受使用者手動輸入（不再提供模擬 OCR，避免污染保養提醒）
 
   const handleMileageSave = async () => {
     if (!data?.vehicle) return;
     const mileage = parseInt(mileageInput);
     if (isNaN(mileage) || mileage < 0) return toast.error('請輸入有效的里程數');
-    const source = ocrPhase === 'done' ? 'ocr' : 'manual';
+    const source = 'manual';
     try {
       await myCarAPI.updateMileage(data.vehicle.id, { mileage_km: mileage, source });
       setData(prev => ({
@@ -357,7 +341,6 @@ function MyCar() {
         mileage_updated_at: new Date().toISOString(),
       }));
       setShowMileageEdit(false);
-      setOcrPhase('idle');
       setMileageInput('');
       setMileageSuggestion(null);
       localStorage.setItem(`mileage-hint-dismissed-${data.vehicle.id}`, '1');
@@ -390,6 +373,7 @@ function MyCar() {
   const mileageSourceText = (d) => {
     const date = d.mileage_updated_at ? new Date(d.mileage_updated_at).toLocaleDateString('zh-TW') : '';
     switch (d.mileage_source) {
+      case 'customer': return `預約時填寫 (${date})`;
       case 'garage': return `已由【${(d.mileage_source_note || '合作車廠工單').replace('工單', '')}】工單自動更新 (${date})`;
       case 'ocr': return `📷 儀表板辨識更新 (${date})`;
       case 'estimated': return `📈 系統推算更新 (${date})`;
@@ -430,7 +414,7 @@ function MyCar() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0b0f14] text-white">
+      <div className="min-h-screen bg-surface-900 text-white">
         <Navbar />
         <main className="page-shell">
           <div className="skeleton h-40 rounded-2xl mb-6" />
@@ -444,7 +428,7 @@ function MyCar() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0b0f14] text-white">
+    <div className="min-h-screen bg-surface-900 text-white">
       <Navbar />
       <main className="page-shell">
         <>
@@ -467,7 +451,7 @@ function MyCar() {
 
             {/* 車輛摘要與唯一管理入口 */}
             {!error && data && (
-              <section className="mb-6 p-5 bg-[#131a22] border border-[#26313d] rounded-2xl flex flex-wrap items-center justify-between gap-4">
+              <section className="mb-6 p-5 bg-surface-800 border border-surface-600 rounded-2xl flex flex-wrap items-center justify-between gap-4">
                 <div>
                   <h2 className="text-xl font-bold">{data.vehicle ? `${data.vehicle.make} ${data.vehicle.model}` : '還沒有登記車輛'}</h2>
                   {data.vehicle && <p className="text-sm text-slate-400 mt-1">{data.vehicle.year} · {data.vehicle.licensePlate || '未填車牌'} · {data.vehicle.engine || '未填引擎'}</p>}
@@ -483,11 +467,15 @@ function MyCar() {
                     )
                   )}
                 </div>
-                <div className="flex gap-3">
-                  {data.vehicle && <button className="btn-primary px-4 py-2" onClick={() => { setActiveTab('vehicle'); startEditVehicle(data.vehicle); }}>🛠 管理</button>}
-                  {data.vehicle && <button className="btn-secondary px-4 py-2" onClick={openMileageEdit}>📷 更新里程</button>}
-                  <button className={`px-4 py-2 ${canAddVehicle ? 'btn-secondary' : 'btn-secondary opacity-60'}`} onClick={tryAddVehicle}>
-                    {canAddVehicle ? '＋ 新增車輛' : '🔒 新增車輛（需銀卡）'}
+                <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-nowrap">
+                  {data.vehicle && <button className="btn-primary whitespace-nowrap px-3 py-2 text-sm" onClick={() => { setActiveTab('vehicle'); startEditVehicle(data.vehicle); }}>🛠 管理</button>}
+                  {data.vehicle && <button className="btn-secondary whitespace-nowrap px-3 py-2 text-sm" onClick={openMileageEdit}>📷 更新里程</button>}
+                  <button
+                    className={`whitespace-nowrap px-3 py-2 text-sm ${canAddVehicle ? 'btn-secondary' : 'btn-secondary opacity-60'}`}
+                    onClick={tryAddVehicle}
+                    title={canAddVehicle ? '新增車輛' : '需銀卡會員以上才能新增第二台車'}
+                  >
+                    {canAddVehicle ? '＋ 新增車輛' : '🔒 新增車輛'}
                   </button>
                 </div>
               </section>
@@ -510,7 +498,11 @@ function MyCar() {
               </div>
             )}
             {!error && data?.vehicle && <div role="tablist" aria-label="愛車內容" className="flex gap-2 mb-6 border-b border-slate-700">
-              {[['vehicle', '車輛資料'], ['mods', '目前改裝品'], ['history', '保養紀錄']].map(([key, label]) => (
+              {[
+                ['vehicle', '車輛資料'],
+                ['mods', '改裝項目'],
+                ['maintenance', '保養'],
+              ].map(([key, label]) => (
                 <button key={key} id={`tab-${key}`} role="tab" aria-selected={activeTab === key} aria-controls={`panel-${key}`} onClick={() => setActiveTab(key)} className={`px-4 py-3 text-sm font-bold border-b-2 ${activeTab === key ? 'border-blue-400 text-blue-400' : 'border-transparent text-slate-400'}`}>{label}</button>
               ))}
             </div>}
@@ -518,10 +510,101 @@ function MyCar() {
             {/* 有車輛 - 車輛管理面板 + 內容區 */}
             {!error && data && (
               <>
+                {/* ===== 保養內容區（保養總覽 + 保養紀錄 合併為單一保養分頁） ===== */}
+                {data.vehicle && activeTab === 'maintenance' && !showVehicleManager && (
+                  <div role="tabpanel" id="panel-maintenance" aria-labelledby="tab-maintenance" className="space-y-6">
+                    {data.vehicle ? (
+                      <section className="bg-surface-800 border border-surface-600 rounded-2xl p-5">
+                        <h3 className="font-bold text-lg mb-4">🛡 保養總覽</h3>
+                        <div className="space-y-3">
+                          {data.reminders.filter(r => r.enabled).length > 0 ? (
+                            data.reminders.filter(r => r.enabled).map((r, i) => (
+                              <div key={i} className="bg-surface-800 rounded-xl px-4 py-3 border border-surface-600">
+                                <p className="font-medium text-slate-200">{r.title}</p>
+                                <p className="text-xs text-slate-500 mt-0.5">
+                                  週期：{[r.interval_km ? `${r.interval_km} km` : null, r.interval_days ? `${Math.round(r.interval_days / 30)} 個月` : null].filter(Boolean).join(' / ')}
+                                </p>
+                                <div className="mt-2 flex items-center gap-2">
+                                  <DueBadge state={r.state} days={r.days_to_go} km={r.km_to_go} />
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-slate-500 text-sm py-6 text-center">目前沒有啟用的保養提醒 — 完成一次保養後會依項目自動產生</p>
+                          )}
+                          {data.suggestions.slice(0, 3).map((s, i) => (
+                            <div key={`${s.title}-${i}`} className="bg-surface-800 rounded-xl px-4 py-3 border border-surface-600">
+                              <p className="font-medium text-slate-200">{s.title}</p>
+                              <p className="text-xs text-slate-500 mt-0.5">
+                                建議週期：{[s.interval_km ? `${s.interval_km.toLocaleString()} km` : null, s.interval_days ? `${Math.round(s.interval_days / 30)} 個月` : null].filter(Boolean).join(' / ')}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-4 flex gap-2 flex-wrap">
+                          <button className="btn-primary px-3 py-2 text-sm" onClick={() => { setActiveTab('vehicle'); startEditVehicle(data.vehicle); }}>🛠 管理車輛</button>
+                        </div>
+                      </section>
+                    ) : (
+                      <EmptyState
+                        icon={<span className="text-6xl">🚗</span>}
+                        title="還沒有登記車輛"
+                        description="登記你的愛車，開始建立保養總覽與保養預約"
+                        primaryAction={{ label: '新增車輛', onClick: () => tryAddVehicle() }}
+                      />
+                    )}
+
+                    {/* ===== 車廠工單同步（車主回訪理由） ===== */}
+                    <GarageSyncSection vehicleId={data.vehicle.id} onSynced={() => window.location.reload()} />
+
+                    {/* ===== 保養歷史時間軸 ===== */}
+                    <section className="bg-surface-800 rounded-2xl p-5 border border-surface-600">
+                      <h3 className="font-bold text-lg mb-5">📋 保養歷史</h3>
+                      {data.history.length === 0 ? (
+                        <p className="text-slate-500 text-sm py-8 text-center">
+                          還沒有保養紀錄 — 到<a onClick={() => navigate('/garages')} className="text-blue-400 underline underline-offset-2 cursor-pointer mx-1">合作車廠</a>完成第一次保養吧
+                        </p>
+                      ) : (
+                        <ol className="relative ml-3 border-l-2 border-surface-600 space-y-6">
+                          {data.history.map(h => (
+                            <li key={h.id} className="ml-6 relative">
+                              {/* 時間軸圓點 */}
+                              <span className={`absolute -left-[31px] top-1 w-3.5 h-3.5 rounded-full border-2 ${h.status === 'COMPLETED' ? 'bg-emerald-500 border-emerald-300' : 'bg-slate-600 border-slate-400'}`} />
+
+                              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                                <p className={`font-bold ${h.status === 'COMPLETED' ? 'text-emerald-400' : 'text-slate-300'}`}>
+                                  {DT(h.completed_at)}
+                                </p>
+                                <p className="text-sm text-slate-400">
+                                  {h.mileage_km != null ? `${Number(h.mileage_km).toLocaleString()} km` : '里程未記錄'}
+                                  {h.garage_name ? ` · ${h.garage_name}` : ''}
+                                </p>
+                                <p className="ml-auto font-black text-white">{NT(h.total_amount)}</p>
+                              </div>
+
+                              {h.summary && <p className="text-sm text-slate-300 mt-1.5">{h.summary}</p>}
+
+                              {h.items.length > 0 && (
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                  {h.items.map((it, i) => (
+                                    <span key={i} className="text-[11px] px-2 py-1 rounded-md bg-surface-700 border border-surface-600 text-slate-300">
+                                      {it.kind === 'PART' ? '🔧' : '👷'} {it.name}{it.quantity > 1 ? ` ×${it.quantity}` : ''}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </li>
+                          ))}
+                        </ol>
+                      )}
+                    </section>
+                  </div>
+                )}
+
                 {/* ===== 車輛管理面板（頂部） ===== */}
-                {activeTab === 'vehicle' && <div role="tabpanel" id="panel-vehicle" aria-labelledby="tab-vehicle" className="mb-6">
+                {(!data.vehicle || activeTab === 'vehicle' || (data.vehicle && showVehicleManager)) && <div role="tabpanel" id="panel-vehicle" aria-labelledby="tab-vehicle" className="mb-6">
                   {showVehicleManager && (
-                    <div className="bg-[#131a22] rounded-2xl p-5 border border-[#26313d] animate-slide-in">
+                    <div className="bg-surface-800 rounded-2xl p-5 border border-surface-600 animate-slide-in">
                       <div className="flex items-center justify-between mb-4">
                         <h3 className="font-bold text-lg">{editingVehicle ? '編輯車輛' : '新增車輛'}</h3>
                         <div className="flex items-center gap-2">
@@ -609,8 +692,18 @@ function MyCar() {
                     </div>
                   )}
 
+                  {/* 無車輛 → 引導新增車輛（CTA 由上方車輛摘要提供） */}
+                  {!data.vehicle && !showVehicleManager && (
+                    <EmptyState
+                      icon={<span className="text-6xl">🚗</span>}
+                      title="還沒有登記車輛"
+                      description="登記你的愛車，開始建立保養總覽與保養預約"
+                    />
+                  )}
+
                   {/* 車輛列表 */}
-                  <div className="border-t border-[#26313d] pt-4">
+                  {data.vehicle && (
+                  <div className="border-t border-surface-600 pt-4">
                     <h4 className="font-medium text-slate-300 mb-3">我的車輛列表</h4>
                     {loadingVehicles ? (
                       <div className="space-y-2">{[...Array(3)].map((_, i) => (<div key={i} className="skeleton h-16 rounded-xl" />))}</div>
@@ -619,7 +712,7 @@ function MyCar() {
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                         {vehicles.map(v => (
-                          <div key={v.id} className={`bg-[#101720] rounded-xl p-4 border ${data?.vehicle?.id === v.id ? 'border-blue-500 ring-1 ring-blue-500' : 'border-[#212c38]'}`}>
+                          <div key={v.id} className={`bg-surface-800 rounded-xl p-4 border ${data?.vehicle?.id === v.id ? 'border-blue-500 ring-1 ring-blue-500' : 'border-surface-600'}`}>
                             <div className="flex items-start justify-between">
                               <div>
                                 <p className="font-bold text-white">{v.make} {v.model}</p>
@@ -643,6 +736,7 @@ function MyCar() {
                       </div>
                     )}
                   </div>
+                  )}
                 </div>}
 
                 {data.vehicle && activeTab === 'mods' && <div role="tabpanel" id="panel-mods" aria-labelledby="tab-mods">
@@ -655,100 +749,6 @@ function MyCar() {
                   </div>
                   <ModificationEditor key={data.vehicle.id} vehicleId={data.vehicle.id} vehicleInfo={data.vehicle} />
                 </div>}
-                {/* ===== 保養內容區 ===== */}
-                {data.vehicle && activeTab === 'history' && <div role="tabpanel" id="panel-history" aria-labelledby="tab-history" className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-                  {/* ===== 保養提醒 ===== */}
-                  <section className="bg-[#131a22] rounded-2xl p-5 border border-[#26313d]">
-                    <h3 className="font-bold text-lg mb-4">🔔 保養提醒</h3>
-                    {data.reminders.filter(r => r.enabled).length === 0 ? (
-                      <p className="text-slate-500 text-sm py-6 text-center">
-                        尚無提醒 — 完成一次保養後會依項目自動產生
-                      </p>
-                    ) : (
-                      <ul className="space-y-3">
-                        {data.reminders.filter(r => r.enabled).map(r => (
-                          <li key={r.id} className="flex items-center justify-between gap-3 bg-[#101720] rounded-xl px-4 py-3 border border-[#212c38]">
-                            <div className="min-w-0">
-                              <p className="font-medium truncate">{r.title}</p>
-                              <p className="text-xs text-slate-500 mt-0.5">
-                                週期：{[r.interval_km ? `${r.interval_km} km` : null, r.interval_days ? `${Math.round(r.interval_days / 30)} 個月` : null].filter(Boolean).join(' / ')}
-                              </p>
-                            </div>
-                            <DueBadge state={r.state} days={r.days_to_go} km={r.km_to_go} />
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </section>
-
-                  {/* ===== 建議保養 ===== */}
-                  <section className="bg-[#131a22] rounded-2xl p-5 border border-[#26313d]">
-                    <h3 className="font-bold text-lg mb-4">💡 建議保養項目</h3>
-                    {data.suggestions.length === 0 ? (
-                      <p className="text-slate-500 text-sm py-6 text-center">目前沒有額外建議項目</p>
-                    ) : (
-                      <ul className="space-y-3">
-                        {data.suggestions.map((s, i) => (
-                          <li key={`${s.title}-${i}`} className="flex items-center justify-between gap-3 bg-[#101720] rounded-xl px-4 py-3 border border-[#212c38]">
-                            <div>
-                              <p className="font-medium">{s.title}</p>
-                              <p className="text-xs text-slate-500 mt-0.5">
-                                建議週期：{[s.interval_km ? `${s.interval_km.toLocaleString()} km` : null, s.interval_days ? `${Math.round(s.interval_days / 30)} 個月` : null].filter(Boolean).join(' / ')}
-                              </p>
-                            </div>
-                            {!s.ever_done && <span className="chip shrink-0">尚未做過</span>}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </section>
-
-                  {/* ===== 車廠工單同步（車主回訪理由） ===== */}
-                  <GarageSyncSection vehicleId={data.vehicle.id} onSynced={() => window.location.reload()} />
-
-                  {/* ===== 保養歷史時間軸（跨兩欄） ===== */}
-                  <section className="lg:col-span-2 bg-[#131a22] rounded-2xl p-5 border border-[#26313d]">
-                    <h3 className="font-bold text-lg mb-5">📋 保養歷史</h3>
-                    {data.history.length === 0 ? (
-                      <p className="text-slate-500 text-sm py-8 text-center">
-                        還沒有保養紀錄 — 到<a onClick={() => navigate('/garages')} className="text-blue-400 underline underline-offset-2 cursor-pointer mx-1">合作車廠</a>完成第一次保養吧
-                      </p>
-                    ) : (
-                      <ol className="relative ml-3 border-l-2 border-[#26313d] space-y-6">
-                        {data.history.map(h => (
-                          <li key={h.id} className="ml-6 relative">
-                            {/* 時間軸圓點 */}
-                            <span className={`absolute -left-[31px] top-1 w-3.5 h-3.5 rounded-full border-2 ${h.status === 'COMPLETED' ? 'bg-emerald-500 border-emerald-300' : 'bg-slate-600 border-slate-400'}`} />
-
-                            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                              <p className={`font-bold ${h.status === 'COMPLETED' ? 'text-emerald-400' : 'text-slate-300'}`}>
-                                {DT(h.completed_at)}
-                              </p>
-                              <p className="text-sm text-slate-400">
-                                {h.mileage_km != null ? `${Number(h.mileage_km).toLocaleString()} km` : '里程未記錄'}
-                                {h.garage_name ? ` · ${h.garage_name}` : ''}
-                              </p>
-                              <p className="ml-auto font-black text-white">{NT(h.total_amount)}</p>
-                            </div>
-
-                            {h.summary && <p className="text-sm text-slate-300 mt-1.5">{h.summary}</p>}
-
-                            {h.items.length > 0 && (
-                              <div className="mt-2 flex flex-wrap gap-2">
-                                {h.items.map((it, i) => (
-                                  <span key={i} className="text-[11px] px-2 py-1 rounded-md bg-[#1a232e] border border-[#26313d] text-slate-300">
-                                    {it.kind === 'PART' ? '🔧' : '👷'} {it.name}{it.quantity > 1 ? ` ×${it.quantity}` : ''}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </li>
-                        ))}
-                      </ol>
-                    )}
-                  </section>
-                </div>}
               </>
             )}
           </>
@@ -757,7 +757,7 @@ function MyCar() {
       {/* 📷 更新里程數 Modal（含拍照/上傳儀表板辨識） */}
       {showMileageEdit && data?.vehicle && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowMileageEdit(false)}>
-          <div className="w-full max-w-md bg-[#131a22] border border-[#26313d] rounded-2xl p-5" onClick={e => e.stopPropagation()}>
+          <div className="w-full max-w-md bg-surface-800 border border-surface-600 rounded-2xl p-5" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-bold mb-1">更新里程數</h3>
             <p className="text-xs text-slate-500 mb-4">目前紀錄：{data.current_mileage_km != null ? `${Number(data.current_mileage_km).toLocaleString()} km` : '—'}</p>
 
@@ -770,22 +770,13 @@ function MyCar() {
               value={mileageInput}
               onChange={e => setMileageInput(e.target.value)}
               placeholder="例如：42500"
-              className="w-full bg-[#0b0f14] border border-[#26313d] rounded-lg px-3 py-2 text-lg font-bold mb-3 focus:border-blue-500 outline-none"
+              className="w-full bg-surface-900 border border-surface-600 rounded-lg px-3 py-2 text-lg font-bold mb-3 focus:border-blue-500 outline-none"
             />
 
-            {/* 拍照/上傳儀表板辨識 */}
-            <button
-              type="button"
-              onClick={() => ocrFileRef.current?.click()}
-              disabled={ocrPhase === 'scanning'}
-              className="w-full border border-blue-500/50 text-blue-300 hover:bg-blue-500/10 rounded-lg px-4 py-2.5 text-sm font-medium disabled:opacity-50 transition"
-            >
-              {ocrPhase === 'scanning' ? '⏳ 儀表板辨識中…（約 1.5 秒）' : '📷 拍照/上傳儀表板辨識'}
-            </button>
-            <input ref={ocrFileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleOcrFile} />
-            {ocrPhase === 'done' && mileageInput && (
-              <p className="text-xs text-green-400 mt-2">✅ 已自動填入辨識結果 <b>{Number(mileageInput).toLocaleString()} km</b>，確認後套用</p>
-            )}
+            {/* 里程以手動輸入為準；技師於工單回寫的里程會自動同步 */}
+            <p className="mt-1 text-xs text-slate-500">
+              小提醒：回廠保養時由車廠更新里程，系統會自動同步，不需要每次手動修改。
+            </p>
 
             <div className="flex gap-2 mt-4">
               <button className="btn-primary flex-1 py-2" onClick={handleMileageSave}>確認套用</button>
@@ -798,7 +789,7 @@ function MyCar() {
       {/* ⇄ 全域車輛切換器（與導航列右上角同一來源） */}
       {showVehicleSwitcher && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowVehicleSwitcher(false)}>
-          <div className="w-full max-w-sm bg-[#131a22] border border-[#26313d] rounded-2xl p-5" onClick={e => e.stopPropagation()}>
+          <div className="w-full max-w-sm bg-surface-800 border border-surface-600 rounded-2xl p-5" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-bold mb-1">切換車輛</h3>
             <p className="text-xs text-slate-500 mb-4">全域當前車輛 — 導航列與本頁同步更新</p>
             <div className="space-y-2 max-h-80 overflow-y-auto">
@@ -806,7 +797,7 @@ function MyCar() {
                 <button
                   key={v.id}
                   onClick={async () => { setShowVehicleSwitcher(false); await switchVehicle(v.id); }}
-                  className={`w-full text-left px-4 py-3 rounded-xl border transition ${data?.vehicle?.id === v.id ? 'border-blue-500 bg-blue-500/10' : 'border-[#212c38] bg-[#101720] hover:border-slate-600'}`}
+                  className={`w-full text-left px-4 py-3 rounded-xl border transition ${data?.vehicle?.id === v.id ? 'border-blue-500 bg-blue-500/10' : 'border-surface-600 bg-surface-800 hover:border-slate-600'}`}
                 >
                   <p className="font-bold text-white text-sm">{v.make} {v.model}{v.generation ? ` ${v.generation}` : ''}</p>
                   <p className="text-xs text-slate-500 mt-0.5">{v.year ? `${v.year} · ` : ''}{v.engine || '未填引擎'} · {v.licensePlate || '未填車牌'}</p>

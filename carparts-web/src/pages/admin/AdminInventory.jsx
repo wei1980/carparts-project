@@ -113,10 +113,10 @@ export default function AdminInventory() {
   const PartCard = ({ part, onClick, isSelected }) => (
     <div
       onClick={onClick}
-      className={`group cursor-pointer bg-gray-800/90 hover:bg-gray-800 rounded-2xl p-5 border transition-all duration-200 flex flex-col justify-between shadow-lg ${
+      className={`group cursor-pointer bg-surface-800/90 hover:bg-surface-800 rounded-2xl p-5 border transition-all duration-200 flex flex-col justify-between shadow-lg ${
         isSelected 
-          ? 'ring-2 ring-blue-500 border-blue-500 bg-gray-800' 
-          : 'border-gray-700/80 hover:border-gray-600'
+          ? 'ring-2 ring-blue-500 border-blue-500 bg-surface-800' 
+          : 'border-surface-700/80 hover:border-surface-600'
       }`}
     >
       <div>
@@ -138,29 +138,29 @@ export default function AdminInventory() {
         </h3>
 
         {/* SKU 料號 */}
-        <p className="text-xs text-gray-400 font-mono mb-4">
+        <p className="text-xs text-surface-400 font-mono mb-4">
           SKU: {part.sku}
         </p>
       </div>
 
       <div>
         {/* 中間：數據區塊（庫存、批發價、售價） */}
-        <div className="grid grid-cols-3 gap-2 bg-gray-900/60 rounded-xl p-3 mb-3 border border-gray-750">
-          <div className="text-center border-r border-gray-700/50 pr-1">
-            <span className="block text-[10px] text-gray-400 mb-0.5">自有庫存</span>
+        <div className="grid grid-cols-3 gap-2 bg-surface-900/60 rounded-xl p-3 mb-3 border border-surface-750">
+          <div className="text-center border-r border-surface-700/50 pr-1">
+            <span className="block text-[10px] text-surface-400 mb-0.5">自有庫存</span>
             <span className={`font-bold text-base ${part.stock_qty <= 5 ? 'text-yellow-400' : 'text-green-400'}`}>
               {part.stock_qty}
             </span>
-            <span className="block text-[9px] text-gray-500 mt-0.5">總代理：<span className="text-blue-400">{part.distributor_stock_qty || 0}</span></span>
+            <span className="block text-[9px] text-surface-500 mt-0.5">總代理：<span className="text-blue-400">{part.distributor_stock_qty || 0}</span></span>
           </div>
-          <div className="text-center border-r border-gray-700/50 px-1">
-            <span className="block text-[10px] text-gray-400 mb-0.5">批發價</span>
-            <span className="font-semibold text-gray-200 text-xs">
+          <div className="text-center border-r border-surface-700/50 px-1">
+            <span className="block text-[10px] text-surface-400 mb-0.5">批發價</span>
+            <span className="font-semibold text-surface-200 text-xs">
               {part.wholesale_price ? `NT$ ${Number(part.wholesale_price).toLocaleString()}` : '—'}
             </span>
           </div>
           <div className="text-center pl-1">
-            <span className="block text-[10px] text-gray-400 mb-0.5">建議售價</span>
+            <span className="block text-[10px] text-surface-400 mb-0.5">建議售價</span>
             <span className="font-semibold text-blue-400 text-xs">
               {part.msrp_price ? `NT$ ${Number(part.msrp_price).toLocaleString()}` : '—'}
             </span>
@@ -168,8 +168,8 @@ export default function AdminInventory() {
         </div>
 
         {/* 底部：分類標籤 */}
-        <div className="flex items-center justify-between text-xs text-gray-500 pt-1">
-          <span className="bg-gray-700/50 px-2 py-1 rounded text-gray-300 truncate max-w-[140px]">
+        <div className="flex items-center justify-between text-xs text-surface-500 pt-1">
+          <span className="bg-surface-700/50 px-2 py-1 rounded text-surface-300 truncate max-w-[140px]">
             {part.subcategory?.category?.name || part.category || '一般零件'}
           </span>
           <span className="text-blue-400 text-[11px] font-medium group-hover:underline">
@@ -192,7 +192,7 @@ export default function AdminInventory() {
             onChange={e => setSearch(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && loadParts()}
             placeholder="搜尋 SKU / 名稱 / 品牌..."
-            className="w-full p-3 rounded bg-gray-700 text-white"
+            className="w-full p-3 rounded bg-surface-700 text-white"
           />
         </div>
         <label className="flex items-center gap-2 text-white whitespace-nowrap">
@@ -203,7 +203,7 @@ export default function AdminInventory() {
           <input type="checkbox" checked={inStockOnly} onChange={e => setInStockOnly(e.target.checked)} />
           僅顯示有庫存
         </label>
-        <button onClick={() => setViewMode(v => v === 'grid' ? 'table' : 'grid')} className="px-4 py-2 rounded bg-gray-700 hover:bg-gray-600 text-white text-sm">
+        <button onClick={() => setViewMode(v => v === 'grid' ? 'table' : 'grid')} className="px-4 py-2 rounded bg-surface-700 hover:bg-surface-600 text-white text-sm">
           {viewMode === 'grid' ? '📋 表格' : '🔲 卡片'}
         </button>
         <button onClick={() => setShowNewStock(true)} className="bg-emerald-600 px-6 py-3 rounded text-white hover:bg-emerald-500 transition-colors">➕ 新增庫存</button>
@@ -212,35 +212,35 @@ export default function AdminInventory() {
       {/* 新增庫存 Modal */}
       {showNewStock && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setShowNewStock(false)}>
-          <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+          <div className="bg-surface-800 rounded-xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-bold mb-4">➕ 新增商品庫存</h3>
             <div className="space-y-3">
               <label className="block">
-                <span className="text-xs text-gray-400">商品料號 (SKU) *</span>
-                <input value={newStockForm.sku} onChange={e => setNewStockForm({...newStockForm, sku: e.target.value})} className="w-full mt-1 p-2 rounded bg-gray-700 text-white" placeholder="如：BRK-001" />
+                <span className="text-xs text-surface-400">商品料號 (SKU) *</span>
+                <input value={newStockForm.sku} onChange={e => setNewStockForm({...newStockForm, sku: e.target.value})} className="w-full mt-1 p-2 rounded bg-surface-700 text-white" placeholder="如：BRK-001" />
               </label>
               <label className="block">
-                <span className="text-xs text-gray-400">商品名稱 *</span>
-                <input value={newStockForm.name} onChange={e => setNewStockForm({...newStockForm, name: e.target.value})} className="w-full mt-1 p-2 rounded bg-gray-700 text-white" placeholder="如：前煞車卡鉗 6活塞" />
+                <span className="text-xs text-surface-400">商品名稱 *</span>
+                <input value={newStockForm.name} onChange={e => setNewStockForm({...newStockForm, name: e.target.value})} className="w-full mt-1 p-2 rounded bg-surface-700 text-white" placeholder="如：前煞車卡鉗 6活塞" />
               </label>
               <label className="block">
-                <span className="text-xs text-gray-400">品牌 *</span>
-                <input value={newStockForm.brand} onChange={e => setNewStockForm({...newStockForm, brand: e.target.value})} className="w-full mt-1 p-2 rounded bg-gray-700 text-white" placeholder="如：Brembo" />
+                <span className="text-xs text-surface-400">品牌 *</span>
+                <input value={newStockForm.brand} onChange={e => setNewStockForm({...newStockForm, brand: e.target.value})} className="w-full mt-1 p-2 rounded bg-surface-700 text-white" placeholder="如：Brembo" />
               </label>
               <label className="block">
-                <span className="text-xs text-gray-400">入庫數量 *</span>
-                <input type="number" value={newStockForm.qty} onChange={e => setNewStockForm({...newStockForm, qty: parseInt(e.target.value) || 0})} className="w-full mt-1 p-2 rounded bg-gray-700 text-white" min="1" />
+                <span className="text-xs text-surface-400">入庫數量 *</span>
+                <input type="number" value={newStockForm.qty} onChange={e => setNewStockForm({...newStockForm, qty: parseInt(e.target.value) || 0})} className="w-full mt-1 p-2 rounded bg-surface-700 text-white" min="1" />
               </label>
               <label className="block">
-                <span className="text-xs text-gray-400">入庫時間 *</span>
-                <input type="datetime-local" value={newStockForm.stockInAt} onChange={e => setNewStockForm({...newStockForm, stockInAt: e.target.value})} className="w-full mt-1 p-2 rounded bg-gray-700 text-white" />
+                <span className="text-xs text-surface-400">入庫時間 *</span>
+                <input type="datetime-local" value={newStockForm.stockInAt} onChange={e => setNewStockForm({...newStockForm, stockInAt: e.target.value})} className="w-full mt-1 p-2 rounded bg-surface-700 text-white" />
               </label>
               <label className="block">
-                <span className="text-xs text-gray-400">備註</span>
-                <input value={newStockForm.note} onChange={e => setNewStockForm({...newStockForm, note: e.target.value})} className="w-full mt-1 p-2 rounded bg-gray-700 text-white" placeholder="如：採購單 PO-20240101" />
+                <span className="text-xs text-surface-400">備註</span>
+                <input value={newStockForm.note} onChange={e => setNewStockForm({...newStockForm, note: e.target.value})} className="w-full mt-1 p-2 rounded bg-surface-700 text-white" placeholder="如：採購單 PO-20240101" />
               </label>
               <div className="flex gap-2 pt-2">
-                <button onClick={() => setShowNewStock(false)} className="flex-1 px-4 py-2 rounded bg-gray-700 text-white hover:bg-gray-600 transition-colors">取消</button>
+                <button onClick={() => setShowNewStock(false)} className="flex-1 px-4 py-2 rounded bg-surface-700 text-white hover:bg-surface-600 transition-colors">取消</button>
                 <button onClick={handleNewStock} className="flex-1 px-4 py-2 rounded bg-emerald-600 text-white font-bold hover:bg-emerald-500 transition-colors">確認新增</button>
               </div>
             </div>
@@ -254,17 +254,17 @@ export default function AdminInventory() {
             <PartCard key={part.id} part={part} onClick={() => loadLogs(part.id)} isSelected={selectedPart === part.id} />
           ))}
           {parts.length === 0 && (
-            <div className="col-span-full text-center py-12 text-gray-500">
+            <div className="col-span-full text-center py-12 text-surface-500">
               <p>無庫存資料</p>
             </div>
           )}
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-gray-800 rounded-xl overflow-hidden">
+          <div className="lg:col-span-2 bg-surface-800 rounded-xl overflow-hidden">
             <table className="w-full text-white text-sm">
               <thead>
-                <tr className="bg-gray-700">
+                <tr className="bg-surface-700">
                   <th className="p-3 text-left">SKU</th>
                   <th className="p-3 text-left">名稱</th>
                   <th className="p-3 text-left">品牌</th>
@@ -279,7 +279,7 @@ export default function AdminInventory() {
                   <tr
                     key={p.id}
                     onClick={() => loadLogs(p.id)}
-                    className={`border-t border-gray-700 cursor-pointer hover:bg-gray-750 ${selectedPart === p.id ? 'bg-blue-900' : ''} ${p.stock_qty <= 5 ? 'text-yellow-400' : ''}`}
+                    className={`border-t border-surface-700 cursor-pointer hover:bg-surface-750 ${selectedPart === p.id ? 'bg-blue-900' : ''} ${p.stock_qty <= 5 ? 'text-yellow-400' : ''}`}
                   >
                     <td className="p-3 font-mono">{p.sku}</td>
                     <td className="p-3">{p.name}</td>
@@ -297,7 +297,7 @@ export default function AdminInventory() {
           {/* 異動記錄 + 調整 */}
           <div className="space-y-4">
             {selectedPart && (
-              <div className="bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-700">
+              <div className="bg-surface-800 p-4 rounded-xl shadow-lg border border-surface-700">
                 {/* 【新增】：標題區塊與刪除按鈕 */}
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-bold text-white flex items-center gap-2">
@@ -317,11 +317,11 @@ export default function AdminInventory() {
                 
                 <div className="space-y-3">
                   <div>
-                    <label className="text-xs text-gray-400 block mb-1">調整類型</label>
+                    <label className="text-xs text-surface-400 block mb-1">調整類型</label>
                     <select
                       value={adjustForm.type}
                       onChange={e => setAdjustForm({ ...adjustForm, type: e.target.value })}
-                      className="w-full p-2.5 rounded-lg bg-gray-700 text-white border border-gray-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
+                      className="w-full p-2.5 rounded-lg bg-surface-700 text-white border border-surface-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
                     >
                       <option value="IN">📦 進貨 (增加)</option>
                       <option value="OUT">📤 出貨 (減少)</option>
@@ -330,23 +330,23 @@ export default function AdminInventory() {
                   </div>
                   
                   <div>
-                    <label className="text-xs text-gray-400 block mb-1">調整數量</label>
+                    <label className="text-xs text-surface-400 block mb-1">調整數量</label>
                     <input
                       type="number"
                       value={Math.abs(adjustForm.qty_change) || ''} // 【修復】：永遠顯示為正數
                       onChange={e => setAdjustForm({ ...adjustForm, qty_change: parseInt(e.target.value) || 0 })}
-                      className="w-full p-2.5 rounded-lg bg-gray-700 text-white border border-gray-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
+                      className="w-full p-2.5 rounded-lg bg-surface-700 text-white border border-surface-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
                       placeholder="請輸入數量 (僅需填寫正數)"
                       min="1"
                     />
                   </div>
 
                   <div>
-                    <label className="text-xs text-gray-400 block mb-1">備註說明</label>
+                    <label className="text-xs text-surface-400 block mb-1">備註說明</label>
                     <input
                       value={adjustForm.note}
                       onChange={e => setAdjustForm({ ...adjustForm, note: e.target.value })}
-                      className="w-full p-2.5 rounded-lg bg-gray-700 text-white border border-gray-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
+                      className="w-full p-2.5 rounded-lg bg-surface-700 text-white border border-surface-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
                       placeholder="例如：採購單號或損耗原因"
                     />
                   </div>
@@ -362,13 +362,13 @@ export default function AdminInventory() {
             )}
 
             {logs.length > 0 && (
-              <div className="bg-gray-800 p-4 rounded-xl border border-gray-700">
+              <div className="bg-surface-800 p-4 rounded-xl border border-surface-700">
                 <h3 className="font-bold text-white mb-4 flex items-center gap-2">
                   <span className="text-xl">📋</span> 異動記錄
                 </h3>
                 <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                   {logs.map(log => (
-                    <div key={log.id} className="text-sm bg-gray-900/50 p-3 rounded-lg border border-gray-750">
+                    <div key={log.id} className="text-sm bg-surface-900/50 p-3 rounded-lg border border-surface-750">
                       <div className="flex justify-between items-center mb-1">
                         <div className="flex items-center gap-2">
                           <span className={`font-bold px-2 py-0.5 rounded text-xs ${
@@ -376,27 +376,27 @@ export default function AdminInventory() {
                           }`}>
                             {log.qty_change > 0 ? '增加' : '減少'} {Math.abs(log.qty_change)}
                           </span>
-                          <span className="text-gray-300 font-medium">
+                          <span className="text-surface-300 font-medium">
                             {typeMap[log.type] || log.type}
                           </span>
                         </div>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-surface-500">
                           {new Date(log.created_at).toLocaleString('zh-TW', {
                             month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
                           })}
                         </span>
                       </div>
                       <div className="flex justify-between items-end mt-2 text-xs">
-                        <span className="text-gray-400">
+                        <span className="text-surface-400">
                           {log.note ? `📝 ${log.note}` : '無備註'}
                         </span>
                         <div className="flex items-center gap-2">
-                          <span className="bg-gray-700 px-2 py-1 rounded text-gray-300">
+                          <span className="bg-surface-700 px-2 py-1 rounded text-surface-300">
                             結算庫存: <strong className="text-white">{log.qty_after}</strong>
                           </span>
                           <button
                             onClick={e => { e.stopPropagation(); setEditLog({ ...log, qty_change: Math.abs(log.qty_change) }); }}
-                            className="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-gray-400 hover:text-white"
+                            className="text-xs px-2 py-1 bg-surface-700 hover:bg-surface-600 rounded text-surface-400 hover:text-white"
                             title="編輯異動記錄"
                           >
                             ✏️
@@ -412,26 +412,26 @@ export default function AdminInventory() {
             {/* 編輯異動記錄 Modal */}
             {editLog && (
               <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={() => setEditLog(null)}>
-                <div className="bg-gray-800 rounded-xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+                <div className="bg-surface-800 rounded-xl p-6 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
                   <h3 className="text-lg font-bold text-white mb-4">✏️ 編輯異動記錄</h3>
                   <div className="space-y-4">
                     <label className="block">
-                      <span className="text-xs text-gray-400">類型</span>
-                      <select value={editLog.type} onChange={e => setEditLog({...editLog, type: e.target.value})} className="w-full mt-1 p-2 rounded bg-gray-700 text-white">
+                      <span className="text-xs text-surface-400">類型</span>
+                      <select value={editLog.type} onChange={e => setEditLog({...editLog, type: e.target.value})} className="w-full mt-1 p-2 rounded bg-surface-700 text-white">
                         {Object.entries(typeMap).filter(([k]) => k !== 'NEW_STOCK').map(([val, label]) => <option key={val} value={val}>{label}</option>)}
                       </select>
                     </label>
                     <label className="block">
-                      <span className="text-xs text-gray-400">異動數量 (正數)</span>
-                      <input type="number" value={editLog.qty_change} onChange={e => setEditLog({...editLog, qty_change: parseInt(e.target.value) || 0})} className="w-full mt-1 p-2 rounded bg-gray-700 text-white" min="0" />
+                      <span className="text-xs text-surface-400">異動數量 (正數)</span>
+                      <input type="number" value={editLog.qty_change} onChange={e => setEditLog({...editLog, qty_change: parseInt(e.target.value) || 0})} className="w-full mt-1 p-2 rounded bg-surface-700 text-white" min="0" />
                     </label>
                     <label className="block">
-                      <span className="text-xs text-gray-400">備註</span>
-                      <input value={editLog.note || ''} onChange={e => setEditLog({...editLog, note: e.target.value})} className="w-full mt-1 p-2 rounded bg-gray-700 text-white" />
+                      <span className="text-xs text-surface-400">備註</span>
+                      <input value={editLog.note || ''} onChange={e => setEditLog({...editLog, note: e.target.value})} className="w-full mt-1 p-2 rounded bg-surface-700 text-white" />
                     </label>
                   </div>
                   <div className="flex gap-2 pt-4">
-                    <button onClick={() => setEditLog(null)} className="flex-1 px-4 py-2 rounded bg-gray-700 text-white hover:bg-gray-600">取消</button>
+                    <button onClick={() => setEditLog(null)} className="flex-1 px-4 py-2 rounded bg-surface-700 text-white hover:bg-surface-600">取消</button>
                     <button onClick={handleSaveLog} className="flex-1 px-4 py-2 rounded bg-blue-600 text-white font-bold hover:bg-blue-500">確認</button>
                   </div>
                 </div>

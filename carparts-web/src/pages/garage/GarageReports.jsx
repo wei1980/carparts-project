@@ -1,12 +1,11 @@
 // src/pages/garage/GarageReports.jsx — 車廠月報表（工單數/營收/熱門工項/趨勢）
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { garageClient as api } from '../../api/client';
+import GarageNav from '../../components/GarageNav';
 
 const fmt = n => Number(n || 0).toLocaleString();
 
 export default function GarageReports() {
-  const navigate = useNavigate();
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -24,18 +23,23 @@ export default function GarageReports() {
   const maxTrend = Math.max(1, ...(data?.revenue_trend || []).map(t => t.revenue));
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <header className="bg-slate-900 border-b border-slate-800 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
-        <span className="text-xl font-bold text-emerald-400 cursor-pointer" onClick={() => navigate('/garage/dashboard')}>🔧 月報表</span>
-        <div className="flex gap-2 items-center">
-          <input type="month" value={month} max={new Date().toISOString().slice(0, 7)}
+    <div className="min-h-screen bg-[#0b0f14] text-slate-100">
+      <GarageNav
+        active="reports"
+        right={
+          <input
+            type="month"
+            value={month}
+            max={new Date().toISOString().slice(0, 7)}
             onChange={e => setMonth(e.target.value)}
-            className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm" />
-          <button onClick={() => navigate('/garage/settings')} className="px-4 py-2 rounded-lg text-sm bg-slate-800 hover:bg-slate-700">門店設定</button>
-        </div>
-      </header>
+            aria-label="選擇月份"
+            className="rounded-lg border border-[#26313d] bg-[#131a22] px-2.5 py-1.5 text-xs text-slate-200"
+          />
+        }
+      />
 
       <main className="max-w-3xl mx-auto p-4 space-y-5 pb-24">
+        <h1 className="text-2xl font-bold">月報表</h1>
         {loading && <div className="text-slate-400 p-6">載入中…</div>}
         {!loading && !data && <div className="text-slate-500 p-6">無資料</div>}
 

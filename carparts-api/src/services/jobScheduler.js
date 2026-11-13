@@ -5,6 +5,8 @@
 const { initQueues, registerWorker, addJob } = require('./jobQueue');
 const { WORKER_PROCESSORS } = require('./jobWorkers');
 const cron = require('node-cron');
+// 共用 Prisma 單例：cron 內不可 $disconnect（會抽掉全應用的連線池）
+const prisma = require('../lib/prisma');
 
 let queuesInitialized = false;
 let schedulerStarted = false;
@@ -55,8 +57,6 @@ function setupCronJobs() {
       const { JOB_TYPES } = require('./jobQueue');
       
       // 找出所有啟用的提醒
-      const { PrismaClient } = require('@prisma/client');
-      const prisma = new PrismaClient();
       
       const reminders = await prisma.maintenanceReminder.findMany({
         where: { enabled: true },
@@ -68,7 +68,6 @@ function setupCronJobs() {
       }
 
       console.log(`✅ Scheduled ${reminders.length} maintenance reminders`);
-      await prisma.$disconnect();
     } catch (err) {
       console.error('Daily maintenance reminder cron failed:', err.message);
     }
@@ -80,8 +79,6 @@ function setupCronJobs() {
   cron.schedule('0 * * * *', async () => {
     try {
       const { addJob } = require('./jobQueue');
-      const { PrismaClient } = require('@prisma/client');
-      const prisma = new PrismaClient();
 
       const oneHourLater = new Date(Date.now() + 60 * 60 * 1000);
       const oneHourWindow = new Date(oneHourLater.getTime() + 5 * 60 * 1000);
@@ -102,7 +99,6 @@ function setupCronJobs() {
       }
 
       console.log(`✅ Scheduled ${appointments.length} 1-hour appointment reminders`);
-      await prisma.$disconnect();
     } catch (err) {
       console.error('Hourly appointment reminder cron failed:', err.message);
     }
@@ -114,8 +110,6 @@ function setupCronJobs() {
   cron.schedule('0 9 * * *', async () => {
     try {
       const { addJob } = require('./jobQueue');
-      const { PrismaClient } = require('@prisma/client');
-      const prisma = new PrismaClient();
 
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
@@ -139,7 +133,6 @@ function setupCronJobs() {
       }
 
       console.log(`✅ Scheduled ${appointments.length} 1-day appointment reminders`);
-      await prisma.$disconnect();
     } catch (err) {
       console.error('Daily appointment reminder cron failed:', err.message);
     }
@@ -177,8 +170,6 @@ function setupCronJobs() {
   cron.schedule('0 6 1 * *', async () => {
     try {
       const { addJob, JOB_TYPES } = require('./jobQueue');
-      const { PrismaClient } = require('@prisma/client');
-      const prisma = new PrismaClient();
 
       const garages = await prisma.workshop.findMany({
         where: { is_garage: true, is_active: true },
@@ -192,7 +183,6 @@ function setupCronJobs() {
       }
 
       console.log(`✅ Scheduled ${garages.length} garage monthly reports`);
-      await prisma.$disconnect();
     } catch (err) {
       console.error('Monthly garage report cron failed:', err.message);
     }

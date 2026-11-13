@@ -1,10 +1,9 @@
 // src/routes/garageCustomers.js — 車廠：客戶管理 API
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
 const garageAuth = require('../middleware/garageAuth');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 router.use(garageAuth);
 
 // GET /api/garage/customers — 客戶列表（支援搜尋、標籤篩選、分頁）
@@ -38,8 +37,8 @@ router.get('/', async (req, res) => {
 
     if (conditions.length > 0) where.AND = conditions;
 
-    // 查詢客戶（包含來車次數、最近來車、標籤）
-    const [customers, total] = await Promise.all([
+    // 查詢客戶（來車記錄以獨立查詢補上，schema 沒有 visits 關聯）
+    const [baseCustomers, total] = await Promise.all([
       prisma.workshopCustomer.findMany({
         where,
         select: {
@@ -52,19 +51,6 @@ router.get('/', async (req, res) => {
           visit_count: true,
           last_visit: true,
           created_at: true,
-          // 來車記錄（最近 5 筆）
-          visits: {
-            select: {
-              id: true,
-              created_at: true,
-              status: true,
-              service_type: true,
-              summary: true,
-              total_amount: true,
-            },
-            orderBy: { created_at: 'desc' },
-            take: 5,
-          },
         },
         orderBy: { updated_at: 'desc' },
         skip,
@@ -72,6 +58,29 @@ router.get('/', async (req, res) => {
       }),
       prisma.workshopCustomer.count({ where }),
     ]);
+
+    const customerIds = baseCustomers.map(c => c.id);
+    const visits = customerIds.length
+      ? await prisma.workshopCustomerVisit.findMany({
+          where: { customer_id: { in: customerIds } },
+          select: {
+            id: true,
+            customer_id: true,
+            created_at: true,
+            status: true,
+            service_type: true,
+            summary: true,
+            total_amount: true,
+          },
+          orderBy: { created_at: 'desc' },
+        })
+      : [];
+    const visitsByCustomer = {};
+    for (const v of visits) {
+      const list = visitsByCustomer[v.customer_id] || (visitsByCustomer[v.customer_id] = []);
+      if (list.length < 5) list.push(v);
+    }
+    const customers = baseCustomers.map(c => ({ ...c, visits: visitsByCustomer[c.id] || [] }));
 
     // 取得所有標籤（給前端篩選用）
     const allCustomers = await prisma.workshopCustomer.findMany({

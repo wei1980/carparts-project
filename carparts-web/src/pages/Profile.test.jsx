@@ -9,7 +9,8 @@ jest.mock('../context/AuthContext', () => ({ useAuth: () => ({ user: { name: '�
 jest.mock('../components/Navbar', () => () => null);
 jest.mock('../api', () => ({ vehicleAPI: { getAll: jest.fn(async () => ({ data: [] })) } }));
 jest.mock('../api/client', () => ({ consumerClient: { get: jest.fn(async () => ({ data: {} })), post: jest.fn(async () => ({ data: {} })) } }));
-it('會員頁保留個人資料與 VIP/資產卡片，車輛管理只提供愛車頁入口', async () => {
+
+it('會員頁保留個人資料與常用入口，不再顯示模擬 VIP／點數／優惠券', async () => {
   render(<Profile />);
   // 個人資料卡片
   expect(screen.getByText('會員')).toBeInTheDocument();
@@ -17,14 +18,21 @@ it('會員頁保留個人資料與 VIP/資產卡片，車輛管理只提供愛�
   expect(screen.getByRole('button', { name: /編輯個人／收件資料/ })).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: /編輯個人／收件資料/ }));
   expect(mockNavigate).toHaveBeenCalledWith('/settings');
-  // VIP 升級進度卡（區塊 A 右側，填補留白）
-  expect(screen.getByText('本年度累積消費')).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /查看 VIP 完整權益/ })).toBeInTheDocument();
-  // 資產橫條（區塊 B）
-  expect(screen.getByText('🪙 紅利點數')).toBeInTheDocument();
-  expect(screen.getByText('🎟️ 可用優惠券')).toBeInTheDocument();
-  expect(screen.getByText('💰 本年消費總額')).toBeInTheDocument();
-  // 設定與安全（區塊 C）
+
+  // 會員權益卡：只說「規劃中」，不得出現任何模擬數字或假綁定
+  expect(screen.getByText('會員權益')).toBeInTheDocument();
+  expect(screen.getByText(/紅利點數、會員等級與優惠券正在規劃中/)).toBeInTheDocument();
+  expect(screen.queryByText('本年度累積消費')).not.toBeInTheDocument();
+  expect(screen.queryByText('🪙 紅利點數')).not.toBeInTheDocument();
+  expect(screen.queryByText('🎟️ 可用優惠券')).not.toBeInTheDocument();
+  expect(screen.queryByText(/Google/)).not.toBeInTheDocument();
+
+  // 常用入口（真實頁面）
+  expect(screen.getAllByRole('button', { name: /我的訂單/ }).length).toBeGreaterThan(0);
+  expect(screen.getAllByRole('button', { name: /我的預約/ }).length).toBeGreaterThan(0);
+  expect(screen.getAllByRole('button', { name: /願望清單/ }).length).toBeGreaterThan(0);
+
+  // 設定與安全
   expect(screen.getByText('📍 預設收件地址')).toBeInTheDocument();
   expect(screen.getByText('🔒 帳號安全與連動')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: '修改密碼' })).toBeInTheDocument();

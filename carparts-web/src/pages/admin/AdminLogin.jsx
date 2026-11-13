@@ -22,21 +22,21 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900">
-      <form onSubmit={handleSubmit} className="bg-gray-800 p-8 rounded-xl w-96">
+    <div className="min-h-screen flex items-center justify-center bg-surface-900">
+      <form onSubmit={handleSubmit} className="bg-surface-800 p-8 rounded-xl w-96">
         <h1 className="text-2xl font-bold text-white mb-6">🔧 車大師後台</h1>
         <input
           value={phone}
           onChange={e => setPhone(e.target.value)}
           placeholder="手機號碼"
-          className="w-full p-3 mb-4 rounded bg-gray-700 text-white"
+          className="w-full p-3 mb-4 rounded bg-surface-700 text-white"
         />
         <input
           value={password}
           onChange={e => setPassword(e.target.value)}
           type="password"
           placeholder="密碼"
-          className="w-full p-3 mb-6 rounded bg-gray-700 text-white"
+          className="w-full p-3 mb-6 rounded bg-surface-700 text-white"
         />
         <button type="submit" className="w-full bg-blue-600 p-3 rounded font-bold text-white">
           登入後台

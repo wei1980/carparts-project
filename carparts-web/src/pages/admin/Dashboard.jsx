@@ -7,7 +7,7 @@ import { PartialErrorBoundary } from '../../components/ErrorBoundary';
 const DashboardCharts = lazy(() => import('./DashboardCharts'));
 const ChartsLoading = () => (
   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-    {[...Array(2)].map((_, i) => <div key={i} className="bg-gray-800 p-6 rounded-xl"><div className="skeleton h-[250px]" /></div>)}
+    {[...Array(2)].map((_, i) => <div key={i} className="bg-surface-800 p-6 rounded-xl"><div className="skeleton h-[250px]" /></div>)}
   </div>
 );
 
@@ -42,9 +42,9 @@ export default function Dashboard() {
   }, [reload]);
 
   const retry = <button onClick={() => setReload(n => n + 1)} className="ml-3 text-blue-400 underline">重新載入</button>;
-  if (loading) return <div className="p-8 text-gray-400">載入中...</div>;
+  if (loading) return <div className="p-8 text-surface-400">載入中...</div>;
   if (errors.auth) return <div role="alert" className="p-8 text-amber-300">管理員登入已失效或權限不足，請重新登入。<a href="/admin/login" className="ml-3 underline">管理員登入</a></div>;
-  if (!stats) return <div role="alert" className="p-8 text-gray-400">無法載入數據，請稍後重試。{retry}</div>;
+  if (!stats) return <div role="alert" className="p-8 text-surface-400">無法載入數據，請稍後重試。{retry}</div>;
 
   const { overview, recentOrders, monthlySales, topParts } = stats;
 
@@ -94,12 +94,12 @@ export default function Dashboard() {
       </PartialErrorBoundary>
 
       {/* 最近訂單 */}
-      <div className="bg-gray-800 p-6 rounded-xl">
+      <div className="bg-surface-800 p-6 rounded-xl">
         <h2 className="text-lg font-bold text-white mb-4">📋 最近訂單</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-white text-sm">
             <thead>
-              <tr className="text-gray-400 border-b border-gray-700">
+              <tr className="text-surface-400 border-b border-surface-700">
                 <th className="p-3 text-left">訂單編號</th>
                 <th className="p-3 text-left">金額</th>
                 <th className="p-3 text-left">狀態</th>
@@ -108,11 +108,11 @@ export default function Dashboard() {
             </thead>
             <tbody>
               {recentOrders.map(order => (
-                <tr key={order.id} className="border-b border-gray-700 hover:bg-gray-750">
+                <tr key={order.id} className="border-b border-surface-700 hover:bg-surface-750">
                   <td className="p-3 font-mono">{order.order_number}</td>
                   <td className="p-3">NT$ {order.total_amount.toLocaleString()}</td>
                   <td className="p-3">{orderStatusMap[order.status] || order.status}</td>
-                  <td className="p-3 text-gray-400">{new Date(order.created_at).toLocaleDateString()}</td>
+                  <td className="p-3 text-surface-400">{new Date(order.created_at).toLocaleDateString()}</td>
                 </tr>
               ))}
             </tbody>
@@ -137,7 +137,7 @@ function Insights({ insights }) {
     <>
       {/* ⚠️ 代購逾期警示列（有逾期才顯示） */}
       {summary.overdue_count > 0 && (
-        <div className="bg-gray-800 p-6 rounded-xl mb-6 border-2 border-red-500/60">
+        <div className="bg-surface-800 p-6 rounded-xl mb-6 border-2 border-red-500/60">
           <h2 className="text-lg font-bold text-white mb-4">
             <span className="inline-block w-3 h-3 bg-red-500 rounded-full mr-2 animate-pulse" />
             ⚠️ 代購逾期警示 — {summary.overdue_count} 筆未到貨
@@ -145,7 +145,7 @@ function Insights({ insights }) {
           <div className="overflow-x-auto">
             <table className="w-full text-white text-sm">
               <thead>
-                <tr className="text-gray-400 border-b border-gray-700">
+                <tr className="text-surface-400 border-b border-surface-700">
                   <th className="p-2 text-left">訂單</th>
                   <th className="p-2 text-left">客戶</th>
                   <th className="p-2 text-left">零件</th>
@@ -156,12 +156,12 @@ function Insights({ insights }) {
               </thead>
               <tbody>
                 {overdue_preorders.slice(0, 10).map((o, i) => (
-                  <tr key={`${o.source}-${o.order_id}-${i}`} className="border-b border-gray-700">
+                  <tr key={`${o.source}-${o.order_id}-${i}`} className="border-b border-surface-700">
                     <td className="p-2 font-mono">{o.order_no}</td>
                     <td className="p-2">{o.customer_name}</td>
                     <td className="p-2 truncate max-w-[220px]">{o.sku} · {o.name}</td>
                     <td className="p-2 text-right">{o.qty}</td>
-                    <td className="p-2 text-gray-400">{new Date(o.due_at).toLocaleDateString('zh-TW')}</td>
+                    <td className="p-2 text-surface-400">{new Date(o.due_at).toLocaleDateString('zh-TW')}</td>
                     <td className="p-2 text-right">
                       <span className={`px-2 py-0.5 rounded font-bold ${o.days_overdue > 14 ? 'bg-red-600' : 'bg-red-500/70'}`}>
                         {o.days_overdue} 天
@@ -178,26 +178,26 @@ function Insights({ insights }) {
       {/* 熱銷排行 + 庫存週轉並排 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* 🔥 近 30 天熱銷排行 */}
-        <div className="bg-gray-800 p-6 rounded-xl">
+        <div className="bg-surface-800 p-6 rounded-xl">
           <h2 className="text-lg font-bold text-white mb-4">🔥 熱銷排行（近 30 天）</h2>
           {best_sellers.length === 0 ? (
-            <p className="text-gray-500 text-sm py-8 text-center">期間內尚無銷售資料</p>
+            <p className="text-surface-500 text-sm py-8 text-center">期間內尚無銷售資料</p>
           ) : (
             <ol className="space-y-3">
               {best_sellers.map((s, i) => (
                 <li key={`${s.part_id || s.sku}-${i}`}>
                   <div className="flex items-center gap-3 mb-1.5">
-                    <span className={`w-6 h-6 shrink-0 rounded-md flex items-center justify-center text-xs font-black ${i === 0 ? 'bg-amber-500 text-black' : i === 1 ? 'bg-gray-400 text-black' : i === 2 ? 'bg-amber-700 text-white' : 'bg-gray-700 text-gray-300'}`}>
+                    <span className={`w-6 h-6 shrink-0 rounded-md flex items-center justify-center text-xs font-black ${i === 0 ? 'bg-amber-500 text-black' : i === 1 ? 'bg-surface-400 text-black' : i === 2 ? 'bg-amber-700 text-white' : 'bg-surface-700 text-surface-300'}`}>
                       {i + 1}
                     </span>
                     <span className="truncate flex-1 text-sm">{s.name}</span>
                     <span className="text-blue-400 font-bold text-sm shrink-0">{s.total_qty} 件</span>
                   </div>
                   {/* 條狀圖 */}
-                  <div className="ml-9 h-2 bg-gray-700 rounded-full overflow-hidden">
+                  <div className="ml-9 h-2 bg-surface-700 rounded-full overflow-hidden">
                     <div className="h-full bg-gradient-to-r from-blue-600 to-blue-400 rounded-full" style={{ width: `${(s.total_qty / maxQty) * 100}%` }} />
                   </div>
-                  <p className="ml-9 mt-1 text-xs text-gray-500">營收 NT$ {Math.round(s.total_revenue).toLocaleString()}{s.current_stock != null ? ` · 庫存 ${s.current_stock}` : ''}</p>
+                  <p className="ml-9 mt-1 text-xs text-surface-500">營收 NT$ {Math.round(s.total_revenue).toLocaleString()}{s.current_stock != null ? ` · 庫存 ${s.current_stock}` : ''}</p>
                 </li>
               ))}
             </ol>
@@ -205,23 +205,23 @@ function Insights({ insights }) {
         </div>
 
         {/* 📦 庫存週轉警示 */}
-        <div className="bg-gray-800 p-6 rounded-xl">
+        <div className="bg-surface-800 p-6 rounded-xl">
           <h2 className="text-lg font-bold text-white mb-4">
             📦 庫存週轉警示
-            <span className="text-xs font-normal text-gray-400 ml-2">銷量 ÷ 現有庫存，≥1 代表賣比補快</span>
+            <span className="text-xs font-normal text-surface-400 ml-2">銷量 ÷ 現有庫存，≥1 代表賣比補快</span>
           </h2>
           {turnover.length === 0 ? (
-            <p className="text-gray-500 text-sm py-8 text-center">期間內尚無可計算的品項</p>
+            <p className="text-surface-500 text-sm py-8 text-center">期間內尚無可計算的品項</p>
           ) : (
             <ul className="space-y-2.5">
               {turnover.slice(0, 10).map((t, i) => {
                 const level = t.turnover_ratio >= 2 ? 'high' : t.turnover_ratio >= 1 ? 'mid' : 'low';
                 const color = level === 'high' ? 'bg-red-500' : level === 'mid' ? 'bg-amber-500' : 'bg-green-600';
                 return (
-                  <li key={`${t.part_id || t.sku}-${i}`} className="flex items-center gap-3 bg-gray-750 bg-gray-700/40 rounded-lg px-3 py-2">
+                  <li key={`${t.part_id || t.sku}-${i}`} className="flex items-center gap-3 bg-surface-750 bg-surface-700/40 rounded-lg px-3 py-2">
                     <span className={`w-2 h-2 rounded-full shrink-0 ${color}`} />
                     <span className="truncate flex-1 text-sm">{t.name}</span>
-                    <span className="text-xs text-gray-400 shrink-0">賣 {t.sold_qty} / 存 {t.current_stock ?? '?'}</span>
+                    <span className="text-xs text-surface-400 shrink-0">賣 {t.sold_qty} / 存 {t.current_stock ?? '?'}</span>
                     <span className={`font-black text-sm shrink-0 ${level === 'high' ? 'text-red-400' : level === 'mid' ? 'text-amber-400' : 'text-green-400'}`}>
                       ×{t.turnover_ratio}
                     </span>

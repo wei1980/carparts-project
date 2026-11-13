@@ -2,26 +2,32 @@
 // 🆕 B2B 採購單（車廠向平台進貨）— 真實化原本的 alert() 假按鈕
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
 const garageAuth = require('../middleware/garageAuth');
 const { notifyOrderUpdate } = require('../services/lineService');
 const { notifyAdmin } = require('../services/notifyService');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 router.use(garageAuth);
 
 // 🔁 GET /api/garage/purchase-orders/recent-parts — 該車廠最常採購的零件（回購快捷列用）
 router.get('/recent-parts', async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 6, 20);
-    // 彙整此車廠所有採購單明細：同 part_id 加總 qty，取前 N 名
-    const items = await prisma.purchaseOrderItem.findMany({
-      where: { purchase_order: { workshop_id: req.workshopId } },
-      select: {
-        part_id: true, name_snapshot: true, brand_snapshot: true,
-        price_snapshot: true, sku_snapshot: true, qty: true,
-      },
+    // schema 沒有 PurchaseOrderItem.purchase_order 關聯，先取本廠採購單再取明細
+    const orders = await prisma.purchaseOrder.findMany({
+      where: { workshop_id: req.workshopId, status: { not: 'CANCELLED' } },
+      select: { id: true },
     });
+    const orderIds = orders.map(o => o.id);
+    const items = orderIds.length
+      ? await prisma.purchaseOrderItem.findMany({
+          where: { purchase_order_id: { in: orderIds } },
+          select: {
+            part_id: true, name_snapshot: true, brand_snapshot: true,
+            price_snapshot: true, sku_snapshot: true, qty: true,
+          },
+        })
+      : [];
     const agg = new Map();
     for (const it of items) {
       const a = agg.get(it.part_id) || { ...it, totalQty: 0 };

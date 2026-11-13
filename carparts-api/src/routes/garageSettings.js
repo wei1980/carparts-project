@@ -4,11 +4,11 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { PrismaClient } = require('@prisma/client');
 const garageAuth = require('../middleware/garageAuth');
 const { compressImage } = require('../services/imageService');
+const { getBookingCapacity } = require('../utils/bookingCapacity');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 router.use(garageAuth);
 
 // 店面照上傳目錄
@@ -64,16 +64,19 @@ function serializeWorkshop(w) {
     opening_hours: parseJsonField(w.opening_hours),
     garage_photos: (parseJsonField(w.garage_photos) || []).sort((a, b) => (a.sort || 0) - (b.sort || 0)),
     labor_fees: w.laborFees || [],
+    booking_capacity: getBookingCapacity(w.garage_slots),
   };
 }
 
 async function loadWorkshop(workshopId) {
-  return prisma.workshop.findUnique({
-    where: { id: workshopId },
-    include: {
-      laborFees: { where: { is_active: true }, orderBy: [{ sort_order: 'asc' }, { id: 'asc' }] },
-    },
+  const workshop = await prisma.workshop.findUnique({ where: { id: workshopId } });
+  if (!workshop) return null;
+  // schema 沒有 Workshop.laborFees 關聯，獨立查詢後組回
+  const laborFees = await prisma.garageLaborFee.findMany({
+    where: { workshop_id: workshopId, is_active: true },
+    orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
   });
+  return { ...workshop, laborFees };
 }
 
 // GET /api/garage/settings — 取得自己的門店設定
@@ -113,14 +116,29 @@ router.patch('/', async (req, res) => {
       }
     }
 
+    // 同時可接車數（存在 garage_slots.booking_capacity，保留其他 garage_slots 設定）
+    if (req.body.booking_capacity !== undefined) {
+      const capacity = parseInt(req.body.booking_capacity, 10);
+      if (!Number.isInteger(capacity) || capacity < 1 || capacity > 20) {
+        return res.status(400).json({ error: '同時可接車數需為 1–20 的整數' });
+      }
+      const current = await prisma.workshop.findUnique({
+        where: { id: req.workshopId },
+        select: { garage_slots: true },
+      });
+      const slots = parseJsonField(current?.garage_slots) || {};
+      data.garage_slots = { ...slots, booking_capacity: capacity };
+    }
+
     const workshop = await prisma.workshop.update({
       where: { id: req.workshopId },
       data,
-      include: {
-        laborFees: { where: { is_active: true }, orderBy: [{ sort_order: 'asc' }, { id: 'asc' }] },
-      },
     });
-    res.json(serializeWorkshop(workshop));
+    const laborFees = await prisma.garageLaborFee.findMany({
+      where: { workshop_id: req.workshopId, is_active: true },
+      orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
+    });
+    res.json(serializeWorkshop({ ...workshop, laborFees }));
   } catch (error) {
     console.error('更新車廠設定失敗:', error.message);
     res.status(500).json({ error: '伺服器內部錯誤，請稍後再試' });

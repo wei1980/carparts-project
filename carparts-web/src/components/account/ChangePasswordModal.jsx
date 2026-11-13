@@ -29,12 +29,12 @@ export default function ChangePasswordModal({ onClose }) {
     }
   };
 
-  const inputCls = 'w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent';
+  const inputCls = 'w-full px-3 py-2 bg-surface-700 border border-surface-600 rounded-lg text-sm text-white placeholder-surface-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-gray-800 rounded-2xl border border-gray-600 max-w-sm w-full p-4 text-white max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-surface-800 rounded-2xl border border-surface-600 max-w-sm w-full p-4 text-white max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-bold">🔒 修改密碼</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-white text-xl leading-none px-2">✕</button>

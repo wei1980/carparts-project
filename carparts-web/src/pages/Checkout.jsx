@@ -6,6 +6,7 @@ import { useCart } from '../context/CartContext';
 import { vehicleAPI } from '../api';
 import Navbar from '../components/Navbar';
 import { confirmDialog } from '../components/ConfirmDialog';
+import EmptyState from '../components/ui/EmptyState';
 
 export default function Checkout() {
   const { cart, totalAmount, clearCart } = useCart();
@@ -285,17 +286,24 @@ export default function Checkout() {
 
   if (cart.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white">
+      <div className="min-h-screen bg-surface-900 text-white">
         <Navbar />
-        <div className="p-8 text-center text-gray-400">🛒 購物車是空的</div>
+        <main className="page-shell max-w-6xl py-6">
+          <EmptyState
+            icon={<span className="text-6xl">🛒</span>}
+            title="購物車是空的"
+            description="去逛逛，為你的愛車挑選適合的零件"
+            primaryAction={{ label: '去逛商城', onClick: () => navigate('/shop') }}
+          />
+        </main>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="min-h-screen bg-surface-900 text-white">
       <Navbar />
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="page-shell max-w-6xl py-6">
         <h1 className="text-2xl font-bold mb-6">📦 結帳</h1>
 
         {/* 🆕 提交失敗 inline 橫幅 */}
@@ -315,14 +323,14 @@ export default function Checkout() {
         {/* 左右並列：訂單摘要 + 收貨資料 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-4">
           {/* 左側：訂單摘要 */}
-          <div className="bg-gray-800/50 rounded-2xl p-5 border border-gray-700/50 flex flex-col">
+          <div className="bg-surface-800/50 rounded-2xl p-5 border border-surface-700/50 flex flex-col">
             <h2 className="font-bold mb-3 text-base">📋 訂單摘要</h2>
             <div className="flex-1 space-y-2 max-h-52 overflow-y-auto">
               {cart.map(item => (
-                <div key={item.partId} className="flex justify-between text-sm py-1 border-b border-gray-700/30">
+                <div key={item.partId} className="flex justify-between text-sm py-1 border-b border-surface-700/30">
                   <span className="flex-1 truncate mr-2">
                     {item.part.name} 
-                    <span className="text-gray-400 ml-2">x {item.qty}</span>
+                    <span className="text-surface-400 ml-2">x {item.qty}</span>
                   </span>
                   <span className="font-medium whitespace-nowrap">
                     NT$ {(Number(item.part.msrp_price) * item.qty).toLocaleString()}
@@ -330,10 +338,10 @@ export default function Checkout() {
                 </div>
               ))}
             </div>
-            <hr className="my-3 border-gray-600" />
+            <hr className="my-3 border-surface-600" />
             {/* 🆕 現貨/代購拆分顯示 */}
             {instockItems.length > 0 && (
-              <div className="flex justify-between text-sm text-gray-300">
+              <div className="flex justify-between text-sm text-surface-300">
                 <span>📦 現貨小計（{instockItems.length} 項）</span>
                 <span>NT$ {instockSubtotal.toLocaleString()}</span>
               </div>
@@ -344,7 +352,7 @@ export default function Checkout() {
                   <span>🚢 代購小計（{preorderItems.length} 項）</span>
                   <span>NT$ {preorderSubtotal.toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between text-gray-400 mt-1">
+                <div className="flex justify-between text-surface-400 mt-1">
                   <span>　└ 訂金 50%</span>
                   <span>NT$ {(preorderSubtotal * 0.5).toLocaleString()}</span>
                 </div>
@@ -352,23 +360,23 @@ export default function Checkout() {
             )}
             {/* 🆕 訂單加收費用（系統設定開啟時顯示） */}
             {feeConfig.enabled && (
-              <div className="text-sm mt-2 text-gray-300">
+              <div className="text-sm mt-2 text-surface-300">
                 <div className="flex justify-between">
                   <span>🚚 訂單運費</span>
                   <span>NT$ {feeConfig.shippingFee.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>🧾 稅金 5%（暫未開發票）</span>
+                  <span>🧾 稅金（{Math.round(feeConfig.taxRate * 100)}%）</span>
                   <span>NT$ {Math.round(subtotal * feeConfig.taxRate).toLocaleString()}</span>
                 </div>
               </div>
             )}
-            <div className="flex justify-between text-sm text-blue-300 font-bold mt-3 pt-3 border-t border-gray-600">
+            <div className="flex justify-between text-sm text-blue-300 font-bold mt-3 pt-3 border-t border-surface-600">
               <span>💰 本次應付（匯款）金額</span>
               <span>NT$ {payableAmount.toLocaleString()}</span>
             </div>
             {hasPreorder && (
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-surface-500 mt-1">
                 尾款 NT$ {(grandTotal - payableAmount).toLocaleString()} 於代購到貨後通知補付
               </p>
             )}
@@ -383,51 +391,61 @@ export default function Checkout() {
                   <p className="text-xs text-green-200/70">戶名請見下單完成頁面／LINE 通知</p>
                 </div>
               ) : (
-                <p className="text-xs text-gray-400">載入帳戶資訊中…</p>
+                <p className="text-xs text-surface-400">載入帳戶資訊中…</p>
               )}
             </div>
 
+                <div className="flex justify-between text-lg font-bold mt-4">
+              <span>商品總額（不含運費與稅金）</span>
+              <span className="text-green-400">NT$ {subtotal.toLocaleString()}</span>
+            </div>
+            {orderFee > 0 && (
+              <div className="flex justify-between text-sm mt-2">
+                <span>運費＋稅金</span>
+                <span>NT$ {orderFee.toLocaleString()}</span>
+              </div>
+            )}
             <div className="flex justify-between text-lg font-bold mt-4">
-              <span>商品總額（含運費與稅金）</span>
+              <span>應付總額</span>
               <span className="text-green-400">NT$ {grandTotal.toLocaleString()}</span>
             </div>
           </div>
 
           {/* 右側：收貨資料 */}
-          <div className="bg-gray-800/50 rounded-2xl p-5 border border-gray-700/50">
+          <div className="bg-surface-800/50 rounded-2xl p-5 border border-surface-700/50">
             <h2 className="font-bold mb-3 text-base">📬 收貨資料</h2>
             <div className="space-y-3">
               <div>
-                <label htmlFor="ck-name" className="block text-xs text-gray-400 mb-1">收件人姓名 *</label>
+                <label htmlFor="ck-name" className="block text-xs text-surface-400 mb-1">收件人姓名 *</label>
                 <input
                   id="ck-name" ref={nameRef} aria-invalid={!!fieldErrors.receiverName}
                   value={receiverName}
                   onChange={clearErr('receiverName')(setReceiverName)}
-                  className={`w-full px-3 py-2.5 bg-gray-700 border rounded-xl text-white placeholder-gray-400 focus:ring-2 focus:border-transparent transition text-sm ${fieldErrors.receiverName ? 'border-red-500 focus:ring-red-500' : 'border-gray-600 focus:ring-blue-500'}`}
+                  className={`w-full px-3 py-2.5 bg-surface-700 border rounded-xl text-white placeholder-surface-400 focus:ring-2 focus:border-transparent transition text-sm ${fieldErrors.receiverName ? 'border-red-500 focus:ring-red-500' : 'border-surface-600 focus:ring-blue-500'}`}
                   placeholder="請輸入收件人姓名"
                 />
                 {fieldErrors.receiverName && <p className="text-red-400 text-xs mt-1">{fieldErrors.receiverName}</p>}
               </div>
 
               <div>
-                <label htmlFor="ck-phone" className="block text-xs text-gray-400 mb-1">聯絡電話 *</label>
+                <label htmlFor="ck-phone" className="block text-xs text-surface-400 mb-1">聯絡電話 *</label>
                 <input
                   id="ck-phone" ref={phoneRef} type="tel" inputMode="tel" aria-invalid={!!fieldErrors.receiverPhone}
                   value={receiverPhone}
                   onChange={clearErr('receiverPhone')(setReceiverPhone)}
-                  className={`w-full px-3 py-2.5 bg-gray-700 border rounded-xl text-white placeholder-gray-400 focus:ring-2 focus:border-transparent transition text-sm ${fieldErrors.receiverPhone ? 'border-red-500 focus:ring-red-500' : 'border-gray-600 focus:ring-blue-500'}`}
+                  className={`w-full px-3 py-2.5 bg-surface-700 border rounded-xl text-white placeholder-surface-400 focus:ring-2 focus:border-transparent transition text-sm ${fieldErrors.receiverPhone ? 'border-red-500 focus:ring-red-500' : 'border-surface-600 focus:ring-blue-500'}`}
                   placeholder="09xxxxxxxx"
                 />
                 {fieldErrors.receiverPhone && <p className="text-red-400 text-xs mt-1">{fieldErrors.receiverPhone}</p>}
               </div>
 
               <div>
-                <label htmlFor="ck-address" className="block text-xs text-gray-400 mb-1">收貨地址 *</label>
+                <label htmlFor="ck-address" className="block text-xs text-surface-400 mb-1">收貨地址 *</label>
                 <input
                   id="ck-address" ref={addressRef} aria-invalid={!!fieldErrors.shippingAddress}
                   value={shippingAddress}
                   onChange={clearErr('shippingAddress')(setShippingAddress)}
-                  className={`w-full px-3 py-2.5 bg-gray-700 border rounded-xl text-white placeholder-gray-400 focus:ring-2 focus:border-transparent transition text-sm ${fieldErrors.shippingAddress ? 'border-red-500 focus:ring-red-500' : 'border-gray-600 focus:ring-blue-500'}`}
+                  className={`w-full px-3 py-2.5 bg-surface-700 border rounded-xl text-white placeholder-surface-400 focus:ring-2 focus:border-transparent transition text-sm ${fieldErrors.shippingAddress ? 'border-red-500 focus:ring-red-500' : 'border-surface-600 focus:ring-blue-500'}`}
                   placeholder="請輸入完整收貨地址（縣市/路街/巷弄號）"
                 />
                 {fieldErrors.shippingAddress && <p className="text-red-400 text-xs mt-1">{fieldErrors.shippingAddress}</p>}
@@ -435,29 +453,29 @@ export default function Checkout() {
 
               {/* 🆕 下單備註 */}
               <div>
-                <label className="block text-xs text-gray-400 mb-1">
-                  訂單備註<span className="text-gray-500">（選填，例：到貨時間、特殊交代）</span>
+                <label className="block text-xs text-surface-400 mb-1">
+                  訂單備註<span className="text-surface-500">（選填，例：到貨時間、特殊交代）</span>
                 </label>
                 <textarea
                   value={orderNote}
                   onChange={e => setOrderNote(e.target.value.slice(0, 200))}
                   rows={2}
                   maxLength={200}
-                  className="w-full px-3 py-2.5 bg-gray-700 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm resize-none"
+                  className="w-full px-3 py-2.5 bg-surface-700 border border-surface-600 rounded-xl text-white placeholder-surface-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm resize-none"
                   placeholder="有什麼想告訴商家的嗎？（最多 200 字）"
                 />
-                <p className="text-[10px] text-right text-gray-600">{orderNote.length}/200</p>
+                <p className="text-[10px] text-right text-surface-600">{orderNote.length}/200</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* 安裝服務 - 一行搞定 */}
-        <div className="bg-gray-800/50 rounded-2xl px-4 py-3 mb-4 border border-purple-500/30">
+        <div className="bg-surface-800/50 rounded-2xl px-4 py-3 mb-4 border border-purple-500/30">
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">
               <span className="text-base">🔧</span>
-              <label className="text-sm font-medium text-gray-300">需要安裝</label>
+              <label className="text-sm font-medium text-surface-300">需要安裝</label>
               <input
                 type="checkbox"
                 checked={needInstallation}
@@ -465,20 +483,20 @@ export default function Checkout() {
                   setNeedInstallation(e.target.checked);
                   if (!e.target.checked) setSelectedVehicle('');
                 }}
-                className="w-4 h-4 rounded bg-gray-700 border-gray-600 text-purple-600 focus:ring-purple-500 focus:ring-offset-gray-900"
+                className="w-4 h-4 rounded bg-surface-700 border-surface-600 text-purple-600 focus:ring-purple-500 focus:ring-offset-surface-900"
               />
             </div>
             
             {needInstallation && (
               <>
-                <span className="text-gray-600">|</span>
+                <span className="text-surface-600">|</span>
                 <div className="flex items-center gap-2 flex-1 min-w-[180px]">
-                  <label className="text-xs text-gray-400 whitespace-nowrap">車輛</label>
+                  <label className="text-xs text-surface-400 whitespace-nowrap">車輛</label>
                   <select
                     ref={vehicleRef} aria-invalid={!!fieldErrors.selectedVehicle}
                     value={selectedVehicle}
                     onChange={e => { setSelectedVehicle(e.target.value); if (fieldErrors.selectedVehicle) setFieldErrors(prev => { const n = { ...prev }; delete n.selectedVehicle; return n; }); }}
-                    className={`flex-1 px-3 py-1.5 bg-gray-700 border rounded-lg text-white text-sm focus:ring-2 focus:border-transparent transition ${fieldErrors.selectedVehicle ? 'border-red-500' : 'border-gray-600 focus:ring-purple-500'}`}
+                    className={`flex-1 px-3 py-1.5 bg-surface-700 border rounded-lg text-white text-sm focus:ring-2 focus:border-transparent transition ${fieldErrors.selectedVehicle ? 'border-red-500' : 'border-surface-600 focus:ring-purple-500'}`}
                   >
                     <option value="">請選擇</option>
                     {vehicles.map(v => (

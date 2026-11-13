@@ -36,6 +36,7 @@ it('MyCar follows Navbar changes',async()=>{axios.get.mockResolvedValue({data:[]
 it('MyCar list switching performs only one guarded dashboard refresh',async()=>{
  axios.get.mockResolvedValue({data:[]});
  render(<CurrentVehicleProvider><CartProvider><MyCar/></CartProvider></CurrentVehicleProvider>);
+ fireEvent.click(await screen.findByRole('tab',{name:'車輛資料'}));
  const button=await screen.findByRole('button',{name:'切換至這台車'});
  const before=myCarAPI.dashboard.mock.calls.length;
  myCarAPI.dashboard.mockResolvedValue({data:{vehicle:vehicles[1],history:[],reminders:[],suggestions:[]}});

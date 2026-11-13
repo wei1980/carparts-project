@@ -132,12 +132,12 @@ export default function AdminGarageSettings() {
     <div className="p-8">
       <h1 className="text-2xl font-bold text-white mb-6">🏪 車廠管理</h1>
 
-      {loading && <p role="status" className="text-gray-400">載入車廠中…</p>}
+      {loading && <p role="status" className="text-surface-400">載入車廠中…</p>}
       {loadError && <div role="alert" className="mb-4 text-red-300">{loadError}
         <button onClick={loadWorkshops} className="ml-3 underline">重試</button>
         {loadError.includes('登入') && <a href="/admin/login" className="ml-3 underline">管理員登入</a>}
       </div>}
-      {!loading && !loadError && workshops.length === 0 && <p className="text-gray-400">目前沒有車廠資料</p>}
+      {!loading && !loadError && workshops.length === 0 && <p className="text-surface-400">目前沒有車廠資料</p>}
       <div className="space-y-4">
         {workshops.map((w) => {
           // 🆕 提取名片路徑供顯示使用
@@ -147,7 +147,7 @@ export default function AdminGarageSettings() {
           }
 
           return (
-            <div key={w.id} className="bg-gray-800 p-6 rounded-xl">
+            <div key={w.id} className="bg-surface-800 p-6 rounded-xl">
               {editingId === w.id ? (
                 /* 編輯模式 */
                 <div className="space-y-4">
@@ -170,70 +170,70 @@ export default function AdminGarageSettings() {
 
                   <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-sm text-gray-400 mb-1">公司名稱</label>
-                      <input value={form.company_name} onChange={e => setForm({ ...form, company_name: e.target.value })} className="w-full p-2 rounded bg-gray-700 text-white" />
+                      <label className="block text-sm text-surface-400 mb-1">公司名稱</label>
+                      <input value={form.company_name} onChange={e => setForm({ ...form, company_name: e.target.value })} className="w-full p-2 rounded bg-surface-700 text-white" />
                     </div>
                     <div>
-                      <label className="block text-sm text-gray-400 mb-1">聯絡人</label>
-                      <input value={form.contact_person} onChange={e => setForm({ ...form, contact_person: e.target.value })} className="w-full p-2 rounded bg-gray-700 text-white" />
+                      <label className="block text-sm text-surface-400 mb-1">聯絡人</label>
+                      <input value={form.contact_person} onChange={e => setForm({ ...form, contact_person: e.target.value })} className="w-full p-2 rounded bg-surface-700 text-white" />
                     </div>
                     <div>
-                      <label className="block text-sm text-gray-400 mb-1">登入手機</label>
-                      <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} className="w-full p-2 rounded bg-gray-700 text-white" />
+                      <label className="block text-sm text-surface-400 mb-1">登入手機</label>
+                      <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} className="w-full p-2 rounded bg-surface-700 text-white" />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">新密碼（留空不修改）</label>
-                    <input value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} type="password" className="w-full p-2 rounded bg-gray-700 text-white" />
+                    <label className="block text-sm text-surface-400 mb-1">新密碼（留空不修改）</label>
+                    <input value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} type="password" className="w-full p-2 rounded bg-surface-700 text-white" />
                   </div>
 
                   {/* 🆕 名片預覽 */}
                   {form.business_card && (
                     <div>
-                      <label className="block text-sm text-gray-400 mb-1">名片</label>
+                      <label className="block text-sm text-surface-400 mb-1">名片</label>
                       <img
                         src={form.business_card}
                         alt="名片"
-                        className="max-w-xs max-h-48 rounded border border-gray-600 object-contain bg-black"
+                        className="max-w-xs max-h-48 rounded border border-surface-600 object-contain bg-black"
                       />
                     </div>
                   )}
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm text-gray-400 mb-1">公開名稱</label>
-                      <input value={form.garage_name} onChange={e => setForm({ ...form, garage_name: e.target.value })} className="w-full p-2 rounded bg-gray-700 text-white" />
+                      <label className="block text-sm text-surface-400 mb-1">公開名稱</label>
+                      <input value={form.garage_name} onChange={e => setForm({ ...form, garage_name: e.target.value })} className="w-full p-2 rounded bg-surface-700 text-white" />
                     </div>
                     <div>
-                      <label className="block text-sm text-gray-400 mb-1">公開電話</label>
-                      <input value={form.garage_phone} onChange={e => setForm({ ...form, garage_phone: e.target.value })} className="w-full p-2 rounded bg-gray-700 text-white" />
+                      <label className="block text-sm text-surface-400 mb-1">公開電話</label>
+                      <input value={form.garage_phone} onChange={e => setForm({ ...form, garage_phone: e.target.value })} className="w-full p-2 rounded bg-surface-700 text-white" />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">地址</label>
-                    <input value={form.garage_address} onChange={e => setForm({ ...form, garage_address: e.target.value })} className="w-full p-2 rounded bg-gray-700 text-white" />
+                    <label className="block text-sm text-surface-400 mb-1">地址</label>
+                    <input value={form.garage_address} onChange={e => setForm({ ...form, garage_address: e.target.value })} className="w-full p-2 rounded bg-surface-700 text-white" />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm text-gray-400 mb-1">緯度</label>
-                      <input value={form.lat} onChange={e => setForm({ ...form, lat: e.target.value })} className="w-full p-2 rounded bg-gray-700 text-white" />
+                      <label className="block text-sm text-surface-400 mb-1">緯度</label>
+                      <input value={form.lat} onChange={e => setForm({ ...form, lat: e.target.value })} className="w-full p-2 rounded bg-surface-700 text-white" />
                     </div>
                     <div>
-                      <label className="block text-sm text-gray-400 mb-1">經度</label>
-                      <input value={form.lng} onChange={e => setForm({ ...form, lng: e.target.value })} className="w-full p-2 rounded bg-gray-700 text-white" />
+                      <label className="block text-sm text-surface-400 mb-1">經度</label>
+                      <input value={form.lng} onChange={e => setForm({ ...form, lng: e.target.value })} className="w-full p-2 rounded bg-surface-700 text-white" />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm text-gray-400 mb-1">工位設定 (JSON)</label>
-                    <textarea value={form.garage_slots} onChange={e => setForm({ ...form, garage_slots: e.target.value })} className="w-full p-2 rounded bg-gray-700 text-white font-mono text-sm" rows={2} />
+                    <label className="block text-sm text-surface-400 mb-1">工位設定 (JSON)</label>
+                    <textarea value={form.garage_slots} onChange={e => setForm({ ...form, garage_slots: e.target.value })} className="w-full p-2 rounded bg-surface-700 text-white font-mono text-sm" rows={2} />
                   </div>
 
                   <div className="flex gap-4">
                     <button onClick={saveGarage} className="bg-green-600 px-6 py-2 rounded hover:bg-green-700 text-white">儲存</button>
-                    <button onClick={cancelEdit} className="bg-gray-600 px-6 py-2 rounded hover:bg-gray-500 text-white">取消</button>
+                    <button onClick={cancelEdit} className="bg-surface-600 px-6 py-2 rounded hover:bg-surface-500 text-white">取消</button>
                   </div>
                 </div>
               ) : (
@@ -245,9 +245,9 @@ export default function AdminGarageSettings() {
                       {w.is_garage && <span className="ml-2 text-xs bg-green-600 px-2 py-1 rounded">合作車廠</span>}
                       {!w.is_approved && <span className="ml-2 text-xs bg-yellow-600 px-2 py-1 rounded">待審核</span>}
                     </h3>
-                    <p className="text-gray-400 text-sm">手機：{w.phone} | 聯絡人：{w.contact_person}</p>
+                    <p className="text-surface-400 text-sm">手機：{w.phone} | 聯絡人：{w.contact_person}</p>
                     {w.is_garage && (
-                      <div className="text-gray-400 text-sm mt-1">
+                      <div className="text-surface-400 text-sm mt-1">
                         <p>{w.garage_name && `名稱：${w.garage_name}`}</p>
                         <p>{w.garage_phone && `電話：${w.garage_phone}`}</p>
                         <p>{w.garage_address && `地址：${w.garage_address}`}</p>
@@ -259,7 +259,7 @@ export default function AdminGarageSettings() {
                         <img
                           src={cardPath}
                           alt="名片"
-                          className="max-w-[200px] max-h-[100px] rounded border border-gray-600 object-contain bg-black cursor-pointer hover:opacity-80"
+                          className="max-w-[200px] max-h-[100px] rounded border border-surface-600 object-contain bg-black cursor-pointer hover:opacity-80"
                           onClick={() => window.open(cardPath, '_blank')}
                           title="點擊放大"
                         />

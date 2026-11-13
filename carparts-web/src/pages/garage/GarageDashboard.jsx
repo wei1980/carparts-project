@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { garageClient as api } from '../../api/client';
 import toast from 'react-hot-toast';
 import { confirmDialog } from '../../components/ConfirmDialog';
+import GarageNav from '../../components/GarageNav';
 
 export default function GarageDashboard() {
   const navigate = useNavigate();
@@ -231,12 +232,6 @@ export default function GarageDashboard() {
   const currentCategory = categories.find(c => c.name === selectedCategory);
   const subcategories = currentCategory?.subcategories || [];
 
-  // 登出功能
-  const handleLogout = () => {
-    localStorage.removeItem('garageToken');
-    navigate('/garage/login');
-  };
-
   // 🟢 車廠的精準零件搜尋功能 (加入分類篩選)
   const handleGarageSearch = async () => {
     if (!selectedVariant && !search && !selectedCategory) {
@@ -261,62 +256,62 @@ export default function GarageDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="min-h-screen bg-[#0b0f14] text-white">
       
-      {/* ========== 頂部導航列 ========== */}
-      <nav className="h-16 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-6 sticky top-0 z-40">
-        <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/garage/dashboard')}>
-          <span className="text-xl font-bold tracking-wider">🏎️ 車大師車廠</span>
-        </div>
-        <div className="flex items-center gap-3">
-          {/* 🆕 採購車 */}
-          <button onClick={() => setShowCart(true)} className="relative bg-blue-600 hover:bg-blue-500 px-5 py-2 rounded-lg font-medium text-sm">
-            🛒 採購車
-            {cart.length > 0 && (
-              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[11px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                {cart.reduce((s, c) => s + c.qty, 0)}
-              </span>
-            )}
-          </button>
-          {/* 🆕 我的採購單 */}
-          <button onClick={() => { setShowOrders(true); loadPoOrders(1); }} className="bg-gray-600 hover:bg-gray-500 px-5 py-2 rounded-lg font-medium text-sm">
-            📄 採購單
-          </button>
-          <button onClick={() => navigate('/garage/work-orders')} className="bg-green-600 hover:bg-green-500 px-5 py-2 rounded-lg font-medium text-sm">
-            📋 維修工單
-          </button>
-          <button onClick={() => navigate('/garage/calendar')} className="bg-indigo-600 hover:bg-indigo-500 px-5 py-2 rounded-lg font-medium text-sm">
-            📅 行事曆
-          </button>
-          <button onClick={() => navigate('/garage/settings')} className="bg-blue-600 hover:bg-blue-500 px-5 py-2 rounded-lg font-medium text-sm">
-            ⚙️ 門店設定
-          </button>
-          <button onClick={() => navigate('/garage/reports')} className="bg-purple-600 hover:bg-purple-500 px-5 py-2 rounded-lg font-medium text-sm">
-            📊 月報表
-          </button>
-          <button onClick={handleLogout} className="bg-red-600 hover:bg-red-500 px-5 py-2 rounded-lg font-medium text-sm">
-            登出
-          </button>
-        </div>
-      </nav>
+      {/* ========== 共用頂部導覽（手機版收進漢堡選單） ========== */}
+      <GarageNav
+        active="dashboard"
+        right={
+          <>
+            <button
+              type="button"
+              onClick={() => { setShowOrders(true); loadPoOrders(1); }}
+              aria-label="我的採購單"
+              title="我的採購單"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-slate-300 transition-colors hover:bg-white/10"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.7} stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h4.5M9 8h6M7.5 3.75h9A2.25 2.25 0 0118.75 6v12A2.25 2.25 0 0116.5 20.25h-9A2.25 2.25 0 015.25 18V6A2.25 2.25 0 017.5 3.75z" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowCart(true)}
+              aria-label="採購車"
+              title="採購車"
+              className="relative inline-flex h-10 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-sm font-bold text-white transition-colors hover:bg-blue-500"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
+              </svg>
+              <span className="hidden sm:inline">採購車</span>
+              {cart.length > 0 && (
+                <span className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[11px] font-bold text-white">
+                  {cart.reduce((s, c) => s + c.qty, 0)}
+                </span>
+              )}
+            </button>
+          </>
+        }
+      />
 
       {/* ========== 主體內容 ========== */}
       <main className="p-4 sm:p-8 max-w-7xl mx-auto">
         
         {/* 預約儀表板 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className="bg-blue-600 p-6 rounded-xl shadow-lg">
-            <p className="text-blue-100">待處理預約</p>
-            <p className="text-3xl font-bold mt-2">{pendingCount}</p>
+        <div className="mb-8 grid grid-cols-2 gap-3 sm:gap-6">
+          <div className="rounded-xl bg-blue-600 p-4 shadow-lg sm:p-6">
+            <p className="text-xs text-blue-100 sm:text-base">待處理預約</p>
+            <p className="mt-1 text-2xl font-bold sm:mt-2 sm:text-3xl">{pendingCount}</p>
           </div>
-          <div className="bg-green-600 p-6 rounded-xl shadow-lg">
-            <p className="text-green-100">今日預約</p>
-            <p className="text-3xl font-bold mt-2">{todayCount}</p>
+          <div className="rounded-xl bg-green-600 p-4 shadow-lg sm:p-6">
+            <p className="text-xs text-green-100 sm:text-base">今日預約</p>
+            <p className="mt-1 text-2xl font-bold sm:mt-2 sm:text-3xl">{todayCount}</p>
           </div>
         </div>
 
         {/* B2B 零件採購區 */}
-        <div className="bg-gray-800 p-6 rounded-2xl border border-gray-700/50 shadow-lg mb-8">
+        <div className="bg-surface-800 p-6 rounded-2xl border border-surface-700/50 shadow-lg mb-8">
         <h3 className="text-lg font-bold flex items-center gap-2 mb-4">
           🔧 B2B 零件採購
         </h3>
@@ -324,14 +319,14 @@ export default function GarageDashboard() {
         {/* 🔁 最近採購快捷列 */}
         {recentParts.length > 0 && (
           <div className="mb-6">
-            <p className="text-sm text-gray-400 mb-2">🔁 最近常採購（點圖直接加入採購車）</p>
+            <p className="text-sm text-surface-400 mb-2">🔁 最近常採購（點圖直接加入採購車）</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               {recentParts.map(p => (
                 <button
                   key={p.part_id}
                   onClick={() => addToPurchaseCart({ id: p.part_id, name: p.name, brand: p.brand, wholesale_price: p.price, image_url: p.image_url, stock_qty: p.stock_qty })}
                   disabled={!p.is_active}
-                  className={`bg-gray-700/60 p-2 rounded-xl border text-left transition ${p.is_active ? 'border-gray-600 hover:border-blue-500/60' : 'border-gray-800 opacity-40 cursor-not-allowed'}`}
+                  className={`bg-surface-700/60 p-2 rounded-xl border text-left transition ${p.is_active ? 'border-surface-600 hover:border-blue-500/60' : 'border-surface-800 opacity-40 cursor-not-allowed'}`}
                   title={p.is_active ? `累計 ${p.total_qty} 件` : '此商品已下架'}
                 >
                   <div className="product-image-container w-full rounded-lg overflow-hidden mb-1.5">
@@ -350,19 +345,19 @@ export default function GarageDashboard() {
 
           {/* 🟢 第一排：車型 4 選單 */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
-            <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="h-11 px-4 bg-gray-700 border border-gray-600 rounded-xl text-white focus:ring-2 focus:ring-blue-500 transition">
+            <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="h-11 px-4 bg-surface-700 border border-surface-600 rounded-xl text-white focus:ring-2 focus:ring-blue-500 transition">
               <option value="">📅 選擇年份</option>
               {years.map(year => <option key={year} value={year}>{year}</option>)}
             </select>
-            <select value={selectedMake} onChange={(e) => setSelectedMake(e.target.value)} disabled={!selectedYear} className="h-11 px-4 bg-gray-700 border border-gray-600 rounded-xl text-white disabled:opacity-50 transition">
+            <select value={selectedMake} onChange={(e) => setSelectedMake(e.target.value)} disabled={!selectedYear} className="h-11 px-4 bg-surface-700 border border-surface-600 rounded-xl text-white disabled:opacity-50 transition">
               <option value="">🏭 選擇廠牌</option>
               {makes.map(make => <option key={make} value={make}>{make}</option>)}
             </select>
-            <select value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)} disabled={!selectedMake} className="h-11 px-4 bg-gray-700 border border-gray-600 rounded-xl text-white disabled:opacity-50 transition">
+            <select value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)} disabled={!selectedMake} className="h-11 px-4 bg-surface-700 border border-surface-600 rounded-xl text-white disabled:opacity-50 transition">
               <option value="">🚗 選擇車型</option>
               {models.map(model => <option key={model} value={model}>{model}</option>)}
             </select>
-            <select value={selectedVariant} onChange={(e) => setSelectedVariant(e.target.value)} disabled={!selectedModel} className="h-11 px-4 bg-gray-700 border border-gray-600 rounded-xl text-white disabled:opacity-50 transition">
+            <select value={selectedVariant} onChange={(e) => setSelectedVariant(e.target.value)} disabled={!selectedModel} className="h-11 px-4 bg-surface-700 border border-surface-600 rounded-xl text-white disabled:opacity-50 transition">
               <option value="">⚙️ 選擇引擎/世代</option>
               {variants.map(v => (
                 <option key={v.id} value={v.id}>
@@ -378,7 +373,7 @@ export default function GarageDashboard() {
             <select
               value={selectedCategory}
               onChange={e => handleCategoryChange(e.target.value)}
-              className="h-11 px-4 bg-gray-700 border border-gray-600 rounded-xl text-white focus:ring-2 focus:ring-blue-500 transition"
+              className="h-11 px-4 bg-surface-700 border border-surface-600 rounded-xl text-white focus:ring-2 focus:ring-blue-500 transition"
             >
               <option value="">📂 主分類</option>
               {categories.map(cat => (
@@ -391,7 +386,7 @@ export default function GarageDashboard() {
               value={selectedSubcategory}
               onChange={e => setSelectedSubcategory(e.target.value)}
               disabled={!selectedCategory}
-              className="h-11 px-4 bg-gray-700 border border-gray-600 rounded-xl text-white focus:ring-2 focus:ring-blue-500 disabled:opacity-50 transition"
+              className="h-11 px-4 bg-surface-700 border border-surface-600 rounded-xl text-white focus:ring-2 focus:ring-blue-500 disabled:opacity-50 transition"
             >
               <option value="">📂 子分類</option>
               {subcategories.map(sub => (
@@ -405,7 +400,7 @@ export default function GarageDashboard() {
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="🔍 輸入零件名稱、SKU 或品牌..."
-                className="flex-1 h-11 min-w-0 px-4 bg-gray-700 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 transition"
+                className="flex-1 h-11 min-w-0 px-4 bg-surface-700 border border-surface-600 rounded-xl text-white placeholder-surface-400 focus:ring-2 focus:ring-blue-500 transition"
                 onKeyDown={e => e.key === 'Enter' && handleGarageSearch()}
               />
               <button
@@ -423,36 +418,36 @@ export default function GarageDashboard() {
             {parts.map(part => (
               <div
                 key={part.id}
-                className="bg-gray-700/60 p-4 rounded-xl border border-gray-600 hover:border-blue-500/40 transition flex flex-col gap-3"
+                className="bg-surface-700/60 p-4 rounded-xl border border-surface-600 hover:border-blue-500/40 transition flex flex-col gap-3"
               >
                 {/* 點擊觸發彈窗 */}
                 <div
                   onClick={() => setSelectedPart(part)}
                   className="flex items-start gap-3 cursor-pointer group"
                 >
-                  <div className="product-image-container w-16 h-16 rounded-lg flex-shrink-0 border border-gray-600">
+                  <div className="product-image-container w-16 h-16 rounded-lg flex-shrink-0 border border-surface-600">
                     {part.image_url ? (
                       <img src={part.image_url} alt={part.name} loading="lazy" className="w-full h-full" />
                     ) : (
-                      <span className="text-2xl text-gray-500">📦</span>
+                      <span className="text-2xl text-surface-500">📦</span>
                     )}
                   </div>
                   <div className="flex-1">
                     <h4 className="font-bold text-md group-hover:text-blue-400 transition-colors line-clamp-2">{part.name}</h4>
-                    <div className="text-xs text-gray-400 mt-1">品牌: {part.brand} | 料號: #{part.id}</div>
+                    <div className="text-xs text-surface-400 mt-1">品牌: {part.brand} | 料號: #{part.id}</div>
                   </div>
                 </div>
 
-                <div className="flex justify-between p-3 bg-gray-800/80 rounded-lg mt-1">
+                <div className="flex justify-between p-3 bg-surface-800/80 rounded-lg mt-1">
                   <div className="flex flex-col">
                     <span className="text-[10px] text-green-400">車廠批發價</span>
                     <span className="text-green-400 font-bold text-lg">
                       NT$ {Number(part.wholesale_price || 0).toLocaleString()}
                     </span>
                   </div>
-                  <div className="text-right flex flex-col border-l border-gray-600 pl-3">
-                    <span className="text-[10px] text-gray-400">市場建議售價</span>
-                    <span className="text-gray-300 font-medium text-lg line-through opacity-70">
+                  <div className="text-right flex flex-col border-l border-surface-600 pl-3">
+                    <span className="text-[10px] text-surface-400">市場建議售價</span>
+                    <span className="text-surface-300 font-medium text-lg line-through opacity-70">
                       NT$ {Number(part.msrp_price || 0).toLocaleString()}
                     </span>
                   </div>
@@ -465,7 +460,7 @@ export default function GarageDashboard() {
             ))}
             
             {parts.length === 0 && !loading && (selectedYear || search || selectedCategory) && (
-              <div className="col-span-full text-center py-10 text-gray-400 bg-gray-800/30 rounded-xl border border-dashed border-gray-600">
+              <div className="col-span-full text-center py-10 text-surface-400 bg-surface-800/30 rounded-xl border border-dashed border-surface-600">
                 <span className="text-4xl block mb-2">📦</span>
                 <p>查無此零件，請嘗試切換不同的車型、目錄或關鍵字</p>
               </div>
@@ -477,41 +472,41 @@ export default function GarageDashboard() {
         <div className="mt-4">
           <h4 className="text-lg font-bold flex items-center gap-2 mb-4">📋 預約列表</h4>
           {appointments.length === 0 ? (
-            <div className="bg-gray-800/50 rounded-xl p-10 text-center border border-gray-700/50 border-dashed">
-              <p className="text-gray-400">目前沒有預約</p>
+            <div className="bg-surface-800/50 rounded-xl p-10 text-center border border-surface-700/50 border-dashed">
+              <p className="text-surface-400">目前沒有預約</p>
             </div>
           ) : (
             <div className="space-y-3">
               {appointments.map(a => (
-                <div key={a.id} className="bg-gray-800/70 p-5 rounded-xl border border-gray-700/50">
+                <div key={a.id} className="bg-surface-800/70 p-5 rounded-xl border border-surface-700/50">
                   <div className="flex justify-between items-start gap-3 flex-wrap">
                   <div>
                     <p className="font-bold">#{a.id}　{a.vehicle?.make} {a.vehicle?.model}
-                      {a.vehicle?.licensePlate && <span className="ml-2 text-sm text-gray-400">({a.vehicle.licensePlate})</span>}
+                      {a.vehicle?.licensePlate && <span className="ml-2 text-sm text-surface-400">({a.vehicle.licensePlate})</span>}
                     </p>
-                    <p className="text-gray-400 text-sm mt-1">
+                    <p className="text-surface-400 text-sm mt-1">
                       車主：{a.user?.name || a.user?.phone || '—'}　
                       預約時間：{new Date(a.scheduled_at).toLocaleString()}　
                       項目：{a.service_type || '—'}
                     </p>
                     {/* 🆕 客戶勾選的安裝項目 */}
                     {Array.isArray(a.install_items) && a.install_items.length > 0 && (
-                      <div className="mt-2 bg-gray-700/40 rounded-lg px-3 py-2">
-                        <p className="text-xs text-gray-400 mb-1">🔧 要安裝的訂單零件：</p>
+                      <div className="mt-2 bg-surface-700/40 rounded-lg px-3 py-2">
+                        <p className="text-xs text-surface-400 mb-1">🔧 要安裝的訂單零件：</p>
                         {a.install_items.map((it, i) => (
-                          <p key={i} className="text-sm text-gray-300">· {it.name}{it.sku ? ` (${it.sku})` : ''} ×{it.qty}</p>
+                          <p key={i} className="text-sm text-surface-300">· {it.name}{it.sku ? ` (${it.sku})` : ''} ×{it.qty}</p>
                         ))}
                         <p className="text-[11px] text-amber-400 mt-1">如需特別報價工資，請點下方「報價 / 改時間」。</p>
                       </div>
                     )}
-                    {a.note && !a.note.startsWith('{') && <p className="text-gray-500 text-sm mt-1">備註：{a.note}</p>}
+                    {a.note && !a.note.startsWith('{') && <p className="text-surface-500 text-sm mt-1">備註：{a.note}</p>}
                   </div>
                   <div className="text-right flex items-center gap-3">
                     <span className={
                       a.status === 'COMPLETED' ? 'text-green-400' :
                       a.status === 'IN_PROGRESS' ? 'text-blue-400' :
                       a.status === 'CONFIRMED' ? 'text-yellow-400' :
-                      a.status === 'CANCELLED' ? 'text-red-400' : 'text-gray-400'
+                      a.status === 'CANCELLED' ? 'text-red-400' : 'text-surface-400'
                     }>
                       {{ PENDING: '待確認', CONFIRMED: '已確認', ARRIVED: '已到店', IN_PROGRESS: '施工中', COMPLETED: '已完成', CANCELLED: '已取消' }[a.status] || a.status}
                     </span>
@@ -528,7 +523,7 @@ export default function GarageDashboard() {
                         <button
                           onClick={() => updateApptStatus(a.id, 'CANCELLED')}
                           disabled={updatingId === a.id}
-                          className="bg-gray-600 hover:bg-red-600 disabled:opacity-50 px-4 py-2 rounded-lg text-sm font-medium"
+                          className="bg-surface-600 hover:bg-red-600 disabled:opacity-50 px-4 py-2 rounded-lg text-sm font-medium"
                         >
                           ✕ 拒絕
                         </button>
@@ -572,7 +567,7 @@ export default function GarageDashboard() {
                   </div>
                   {/* 🆕 報價 / 提議時間操作（PENDING/CONFIRMED 皆可） */}
                   {['PENDING', 'CONFIRMED'].includes(a.status) && (
-                    <div className="mt-3 pt-3 border-t border-gray-700/50">
+                    <div className="mt-3 pt-3 border-t border-surface-700/50">
                       <button
                         onClick={() => openQuoteForm(a)}
                         className="text-sm text-blue-400 hover:text-blue-300 transition"
@@ -594,18 +589,18 @@ export default function GarageDashboard() {
       {/* ==================================================== */}
       {selectedPart && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="relative bg-gray-800 rounded-2xl max-w-4xl w-full shadow-2xl border border-gray-700/50 overflow-hidden">
+          <div className="relative bg-surface-800 rounded-2xl max-w-4xl w-full shadow-2xl border border-surface-700/50 overflow-hidden">
             
             <button
               onClick={() => setSelectedPart(null)}
-              className="absolute top-4 right-4 z-10 w-10 h-10 bg-gray-700/80 hover:bg-gray-600 rounded-full flex items-center justify-center text-gray-300 hover:text-white transition"
+              className="absolute top-4 right-4 z-10 w-10 h-10 bg-surface-700/80 hover:bg-surface-600 rounded-full flex items-center justify-center text-surface-300 hover:text-white transition"
             >
               ✕
             </button>
 
             <div className="p-6 md:p-10 grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="flex flex-col items-center">
-                <div className="w-full aspect-square bg-white rounded-xl overflow-hidden flex items-center justify-center shadow-lg border border-gray-700/30 relative">
+                <div className="w-full aspect-square bg-white rounded-xl overflow-hidden flex items-center justify-center shadow-lg border border-surface-700/30 relative">
                   {selectedPart.image_url ? (
                     <img
                       src={selectedPart.image_url}
@@ -640,29 +635,29 @@ export default function GarageDashboard() {
                     {selectedPart.name}
                   </h1>
 
-                  <div className="w-full h-px bg-gray-700/60 mb-6"></div>
+                  <div className="w-full h-px bg-surface-700/60 mb-6"></div>
 
                   <div className="mb-4">
-                    <p className="text-sm text-gray-400 mb-1">車廠批發價</p>
+                    <p className="text-sm text-surface-400 mb-1">車廠批發價</p>
                     <div className="flex items-baseline gap-3">
                       <span className="text-3xl font-bold text-green-400">
                         NT$ {Number(selectedPart.wholesale_price || 0).toLocaleString()}
                       </span>
-                      <span className="text-sm text-gray-500 line-through">
+                      <span className="text-sm text-surface-500 line-through">
                         建議售價 NT$ {Number(selectedPart.msrp_price || 0).toLocaleString()}
                       </span>
                     </div>
                   </div>
 
                   <div className="mb-8">
-                    <h3 className="text-sm font-bold text-gray-300 mb-2">商品描述</h3>
-                    <p className="text-gray-400 leading-relaxed text-sm">
+                    <h3 className="text-sm font-bold text-surface-300 mb-2">商品描述</h3>
+                    <p className="text-surface-400 leading-relaxed text-sm">
                       {selectedPart.description || "此商品適用於您選擇的車輛，採用高品質材料製成。"}
                     </p>
                   </div>
                 </div>
 
-                <div className="bg-gray-900/50 p-4 rounded-xl border border-gray-700/50 mt-4">
+                <div className="bg-surface-900/50 p-4 rounded-xl border border-surface-700/50 mt-4">
                   <button
                     onClick={() => addToPurchaseCart(selectedPart)}
                     className="w-full bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white py-3 rounded-xl font-bold text-md transition-all flex justify-center items-center gap-3 shadow-lg shadow-blue-500/20"
@@ -682,32 +677,32 @@ export default function GarageDashboard() {
       {showCart && (
         <div className="fixed inset-0 z-50 flex justify-end">
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowCart(false)} />
-          <div className="relative w-full max-w-md h-full bg-gray-800 shadow-2xl border-l border-gray-700 flex flex-col">
-            <div className="flex items-center justify-between p-5 border-b border-gray-700">
+          <div className="relative w-full max-w-md h-full bg-surface-800 shadow-2xl border-l border-surface-700 flex flex-col">
+            <div className="flex items-center justify-between p-5 border-b border-surface-700">
               <h3 className="text-lg font-bold">🛒 採購車（{cart.length} 項）</h3>
-              <button onClick={() => setShowCart(false)} className="w-9 h-9 bg-gray-700 hover:bg-gray-600 rounded-full">✕</button>
+              <button onClick={() => setShowCart(false)} className="w-9 h-9 bg-surface-700 hover:bg-surface-600 rounded-full">✕</button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-5 space-y-3">
               {cart.length === 0 ? (
-                <p className="text-center text-gray-500 py-10">採購車是空的</p>
+                <p className="text-center text-surface-500 py-10">採購車是空的</p>
               ) : cart.map(c => (
-                <div key={c.part_id} className="bg-gray-900/50 p-3 rounded-xl border border-gray-700/50 flex gap-3 items-center">
+                <div key={c.part_id} className="bg-surface-900/50 p-3 rounded-xl border border-surface-700/50 flex gap-3 items-center">
                   <div className="product-image-container w-14 h-14 rounded-lg flex-shrink-0">
                     {c.image_url ? <img src={c.image_url} alt={c.name} loading="lazy" className="w-full h-full" /> : <span>📦</span>}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{c.name}</p>
-                    <p className="text-xs text-gray-500">{c.brand} | {c.sku}</p>
+                    <p className="text-xs text-surface-500">{c.brand} | {c.sku}</p>
                     <p className="text-sm text-green-400 font-bold mt-0.5">
                       NT$ {c.price.toLocaleString()}
                       {(c.stock_qty + (c.distributor_stock_qty || 0)) < c.qty && <span className="ml-2 text-[10px] text-purple-300">🚢 代購</span>}
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <button onClick={() => updateCartQty(c.part_id, c.qty - 1)} className="w-7 h-7 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold">−</button>
+                    <button onClick={() => updateCartQty(c.part_id, c.qty - 1)} className="w-7 h-7 bg-surface-700 hover:bg-surface-600 rounded-lg font-bold">−</button>
                     <span className="w-8 text-center font-bold">{c.qty}</span>
-                    <button onClick={() => updateCartQty(c.part_id, c.qty + 1)} className="w-7 h-7 bg-gray-700 hover:bg-gray-600 rounded-lg font-bold">＋</button>
+                    <button onClick={() => updateCartQty(c.part_id, c.qty + 1)} className="w-7 h-7 bg-surface-700 hover:bg-surface-600 rounded-lg font-bold">＋</button>
                     <button onClick={() => updateCartQty(c.part_id, 0)} className="w-7 h-7 bg-red-900/40 hover:bg-red-800/60 text-red-300 rounded-lg ml-1">🗑</button>
                   </div>
                 </div>
@@ -715,9 +710,9 @@ export default function GarageDashboard() {
             </div>
 
             {cart.length > 0 && (
-              <div className="p-5 border-t border-gray-700">
+              <div className="p-5 border-t border-surface-700">
                 <div className="flex justify-between items-baseline mb-4">
-                  <span className="text-gray-400">合計（批發價）</span>
+                  <span className="text-surface-400">合計（批發價）</span>
                   <span className="text-2xl font-bold text-green-400">NT$ {cartTotal.toLocaleString()}</span>
                 </div>
                 <button
@@ -727,7 +722,7 @@ export default function GarageDashboard() {
                 >
                   {submitting ? '送出中…' : '📤 送出採購單'}
                 </button>
-                <p className="text-xs text-gray-500 mt-2 text-center">送出後由平台確認，缺貨項目自動轉代購</p>
+                <p className="text-xs text-surface-500 mt-2 text-center">送出後由平台確認，缺貨項目自動轉代購</p>
               </div>
             )}
           </div>
@@ -740,37 +735,37 @@ export default function GarageDashboard() {
       {showOrders && (
         <div className="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto">
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowOrders(false)} />
-          <div className="relative bg-gray-800 rounded-2xl max-w-3xl w-full my-10 shadow-2xl border border-gray-700 p-6">
+          <div className="relative bg-surface-800 rounded-2xl max-w-3xl w-full my-10 shadow-2xl border border-surface-700 p-6">
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-lg font-bold">📄 我的採購單</h3>
-              <button onClick={() => setShowOrders(false)} className="w-9 h-9 bg-gray-700 hover:bg-gray-600 rounded-full">✕</button>
+              <button onClick={() => setShowOrders(false)} className="w-9 h-9 bg-surface-700 hover:bg-surface-600 rounded-full">✕</button>
             </div>
 
             {poOrders.length === 0 ? (
-              <p className="text-center text-gray-500 py-10">尚無採購記錄</p>
+              <p className="text-center text-surface-500 py-10">尚無採購記錄</p>
             ) : (
               <div className="space-y-4">
                 {poOrders.map(o => {
                   const st = PO_STATUS_MAP[o.status] || { label: o.status, cls: '' };
                   return (
-                    <div key={o.id} className="bg-gray-900/50 p-4 rounded-xl border border-gray-700/50">
+                    <div key={o.id} className="bg-surface-900/50 p-4 rounded-xl border border-surface-700/50">
                       <div className="flex flex-wrap items-center gap-2 mb-2">
                         <span className="font-bold text-blue-400">#{o.po_number}</span>
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${st.cls}`}>{st.label}</span>
                         <span className="ml-auto font-bold text-green-400">NT$ {Number(o.total_amount).toLocaleString()}</span>
                       </div>
-                      <p className="text-xs text-gray-500">{new Date(o.created_at).toLocaleString('zh-TW')}</p>
+                      <p className="text-xs text-surface-500">{new Date(o.created_at).toLocaleString('zh-TW')}</p>
 
                       <table className="w-full text-sm mt-2">
                         <tbody>
                           {o.items?.map(it => (
-                            <tr key={it.id} className="border-t border-gray-700/30">
-                              <td className="py-1.5 text-gray-200">
+                            <tr key={it.id} className="border-t border-surface-700/30">
+                              <td className="py-1.5 text-surface-200">
                                 {it.name_snapshot}
                                 {it.is_preorder && <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] bg-purple-900/40 text-purple-300">代購</span>}
                               </td>
-                              <td className="py-1.5 text-center text-gray-400 w-12">×{it.qty}</td>
-                              <td className="py-1.5 text-right text-gray-300 w-28">NT$ {(Number(it.price_snapshot) * it.qty).toLocaleString()}</td>
+                              <td className="py-1.5 text-center text-surface-400 w-12">×{it.qty}</td>
+                              <td className="py-1.5 text-right text-surface-300 w-28">NT$ {(Number(it.price_snapshot) * it.qty).toLocaleString()}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -799,10 +794,10 @@ export default function GarageDashboard() {
             {poPagination && poPagination.totalPages > 1 && (
               <div className="flex items-center justify-center gap-3 mt-5">
                 <button onClick={() => { setPoPage(poPage - 1); loadPoOrders(poPage - 1); }} disabled={poPage <= 1}
-                  className="px-4 py-2 rounded-lg bg-gray-700 border border-gray-600 text-sm disabled:opacity-40">← 上一頁</button>
-                <span className="text-sm text-gray-400">第 {poPagination.page} / {poPagination.totalPages} 頁</span>
+                  className="px-4 py-2 rounded-lg bg-surface-700 border border-surface-600 text-sm disabled:opacity-40">← 上一頁</button>
+                <span className="text-sm text-surface-400">第 {poPagination.page} / {poPagination.totalPages} 頁</span>
                 <button onClick={() => { setPoPage(poPage + 1); loadPoOrders(poPage + 1); }} disabled={poPage >= poPagination.totalPages}
-                  className="px-4 py-2 rounded-lg bg-gray-700 border border-gray-600 text-sm disabled:opacity-40">下一頁 →</button>
+                  className="px-4 py-2 rounded-lg bg-surface-700 border border-surface-600 text-sm disabled:opacity-40">下一頁 →</button>
               </div>
             )}
           </div>
@@ -850,27 +845,27 @@ function QuoteModal({ appointment: a, onClose, onSaved }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
-      <div className="bg-gray-800 rounded-2xl w-full max-w-md p-6 border border-gray-600 text-white" onClick={e => e.stopPropagation()}>
+      <div className="bg-surface-800 rounded-2xl w-full max-w-md p-6 border border-surface-600 text-white" onClick={e => e.stopPropagation()}>
         <h3 className="text-lg font-bold mb-1">💰 回覆報價 / 提議時間</h3>
-        <p className="text-sm text-gray-400 mb-4">
+        <p className="text-sm text-surface-400 mb-4">
           #{a.id}　{a.vehicle?.make} {a.vehicle?.model}　客戶：{a.user?.name || a.user?.phone || '—'}
         </p>
 
-        <label className="block text-xs text-gray-400 mb-1">安裝工資報價（NT$，留空 = 不另外報價）</label>
+        <label className="block text-xs text-surface-400 mb-1">安裝工資報價（NT$，留空 = 不另外報價）</label>
         <input type="number" min="0" value={quoteAmount}
           onChange={e => { setQuoteAmount(e.target.value); setError(''); }}
           placeholder="例如：800"
-          className="w-full px-3 py-2.5 bg-gray-700 border border-gray-600 rounded-xl text-white focus:ring-2 focus:ring-blue-500 outline-none mb-3" />
+          className="w-full px-3 py-2.5 bg-surface-700 border border-surface-600 rounded-xl text-white focus:ring-2 focus:ring-blue-500 outline-none mb-3" />
 
         {/* 🆕 從標準工資表快速帶入 */}
         {Array.isArray(a.labor_fees) && a.labor_fees.length > 0 && (
           <div className="mb-3">
-            <span className="text-xs text-gray-400 block mb-1.5">⚡ 標準工資表（點擊直接帶入）：</span>
+            <span className="text-xs text-surface-400 block mb-1.5">⚡ 標準工資表（點擊直接帶入）：</span>
             <div className="flex flex-wrap gap-1.5">
               {a.labor_fees.map(f => (
                 <button key={f.id} type="button"
                   onClick={() => setQuoteAmount(String(f.price))}
-                  className="px-2.5 py-1 rounded-lg bg-gray-700 hover:bg-blue-600 border border-gray-600 text-xs transition">
+                  className="px-2.5 py-1 rounded-lg bg-surface-700 hover:bg-blue-600 border border-surface-600 text-xs transition">
                   {f.name} ${Number(f.price).toLocaleString()}
                 </button>
               ))}
@@ -878,27 +873,27 @@ function QuoteModal({ appointment: a, onClose, onSaved }) {
           </div>
         )}
 
-        <label className="block text-xs text-gray-400 mb-1">報價說明（選填）</label>
+        <label className="block text-xs text-surface-400 mb-1">報價說明（選填）</label>
         <input value={quoteNote} onChange={e => setQuoteNote(e.target.value)}
           placeholder="例：含拆裝工資與定位校正"
-          className="w-full px-3 py-2.5 bg-gray-700 border border-gray-600 rounded-xl text-white focus:ring-2 focus:ring-blue-500 outline-none mb-3" />
+          className="w-full px-3 py-2.5 bg-surface-700 border border-surface-600 rounded-xl text-white focus:ring-2 focus:ring-blue-500 outline-none mb-3" />
 
-        <label className="block text-xs text-gray-400 mb-1">建議時間（可另行安排，留空 = 維持原時間）</label>
+        <label className="block text-xs text-surface-400 mb-1">建議時間（可另行安排，留空 = 維持原時間）</label>
         <input type="datetime-local" value={proposedAt}
           onChange={e => { setProposedAt(e.target.value); setError(''); }}
-          className="w-full px-3 py-2.5 bg-gray-700 border border-gray-600 rounded-xl text-white focus:ring-2 focus:ring-blue-500 outline-none mb-3" />
-        <p className="text-xs text-gray-500 mb-4">原指定時間：{new Date(a.scheduled_at).toLocaleString()}</p>
+          className="w-full px-3 py-2.5 bg-surface-700 border border-surface-600 rounded-xl text-white focus:ring-2 focus:ring-blue-500 outline-none mb-3" />
+        <p className="text-xs text-surface-500 mb-4">原指定時間：{new Date(a.scheduled_at).toLocaleString()}</p>
 
         {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
 
         <div className="flex gap-3">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-gray-700 hover:bg-gray-600 text-sm font-medium transition">取消</button>
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-surface-700 hover:bg-surface-600 text-sm font-medium transition">取消</button>
           <button onClick={submit} disabled={saving}
             className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-sm font-bold transition">
             {saving ? '送出中…' : '送出回覆'}
           </button>
         </div>
-        <p className="text-[11px] text-gray-500 mt-3 text-center">送出後會以 LINE 通知客戶確認。</p>
+        <p className="text-[11px] text-surface-500 mt-3 text-center">送出後會以 LINE 通知客戶確認。</p>
       </div>
     </div>
   );

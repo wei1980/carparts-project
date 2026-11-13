@@ -2,10 +2,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { consumerClient, garageClient } from '../api/client';
-import { partsAPI } from '../api';
+import { partsAPI, wishlistAPI } from '../api';
 import { useCart } from '../context/CartContext';
 import { useCurrentVehicle } from '../context/CurrentVehicleContext';
 import Navbar from '../components/Navbar';
+import PartImage from '../components/PartImage';
 import { TERMS, formatPrice } from '../constants/terms';
 
 
@@ -31,6 +32,7 @@ export default function PartDetail() {
   const compatibility = !switching && !vehicleLoading && compatibilityResult?.key === compatibilityKey ? compatibilityResult.data : null;
   const [quantityError, setQuantityError] = useState('');
     const [added, setAdded] = useState(false);
+    const [wishAdded, setWishAdded] = useState(false);
 
     // 數量驗證
     const validateQuantity = (value) => {
@@ -134,7 +136,7 @@ export default function PartDetail() {
             <svg className="w-8 h-8 text-slate-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
           </div>
           <h2 className="text-2xl font-bold text-slate-200">{TERMS.MESSAGES.PART_NOT_FOUND}</h2>
-          {errorMsg && <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/30 px-4 py-2 rounded-lg">{errorMsg}</p>}
+          <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/30 px-4 py-2 rounded-lg">{errorMsg || TERMS.MESSAGES.PART_NOT_FOUND}</p>
           <button onClick={() => navigate('/shop')} className="btn-primary mt-4 px-8 py-3 font-bold">
             {TERMS.ACTIONS.BACK_TO_SHOP}
           </button>
@@ -161,6 +163,24 @@ export default function PartDetail() {
     setTimeout(() => setAdded(false), 2000);
   };
 
+  // 🆕 Sprint 3：買＋裝 bundle — 加入購物車後直接進預約安裝流程
+  const handleBundle = () => {
+    if (!validateQuantity(quantity)) return;
+    for (let i = 0; i < Number(quantity); i++) addToCart(part);
+    navigate('/booking');
+  };
+
+  // 🆕 願望清單一鍵加入（與 Shop PartCard 同一 API 流程）
+  const handleWish = async () => {
+    try {
+      await wishlistAPI.add({ partId: String(part?.id) });
+      setWishAdded(true);
+      setTimeout(() => setWishAdded(false), 1500);
+    } catch (err) {
+      console.warn('願望加入失敗:', err?.message || err);
+    }
+  };
+
   // 🔒 客戶端不顯示料號（避免比價）；品牌/庫存資訊只呈現在徽章列，不另存 specs 陣列
 
   return (
@@ -182,24 +202,12 @@ export default function PartDetail() {
           {/* 左：商品圖 */}
                     <div>
                       <div className="product-image-container w-full rounded-xl overflow-hidden shadow-lg relative">
-                        {part.image_url ? (
-                          <img src={part.image_url} alt={part.name}
-                            className="w-full h-auto object-contain p-4 md:p-6 transition-transform duration-300 hover:scale-105"
-                            onError={(e) => {
-                              if (!e.target.dataset.fallback) {
-                                e.target.dataset.fallback = 'true';
-                                const newSrc = e.target.src.replace(/\.(jpg|jpeg)$/i, '.png');
-                                if (e.target.src !== newSrc) e.target.src = newSrc;
-                              }
-                            }}
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <svg className="w-24 h-24 text-slate-300" fill="none" viewBox="0 0 24 24" strokeWidth={0.8} stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504 1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
-                            </svg>
-                          </div>
-                        )}
+                        <PartImage
+                          src={part.image_url}
+                          alt={part.name}
+                          eager
+                          imgClassName="p-4 md:p-6 transition-transform duration-300 hover:scale-105"
+                        />
                       </div>
                     </div>
 
@@ -268,7 +276,7 @@ export default function PartDetail() {
                             </span>
                           </div>
 
-              <button onClick={handleAdd} disabled={!!quantityError}
+              <button onClick={handleAdd} disabled={!!quantityError || !inStock}
                               className={`w-full py-4 rounded-xl font-bold text-base transition-all flex justify-center items-center gap-2.5 active:scale-[0.98] ${
                                 added ? 'bg-emerald-600 text-white' : 'btn-primary shadow-lg shadow-blue-500/20'
                               }`}
@@ -278,8 +286,27 @@ export default function PartDetail() {
                                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
                                   {TERMS.ACTIONS.ADDED_TO_CART}
                                 </>
-                              ) : TERMS.ACTIONS.ADD_TO_CART}
+                              ) : inStock ? TERMS.ACTIONS.ADD_TO_CART : (isOfficialPart ? TERMS.OFFICIAL_LABEL : TERMS.PREORDER_LABEL)}
                             </button>
+
+                            {/* 🆕 Sprint 3：買＋裝 bundle（購買 + 預約安裝） */}
+                            <button onClick={handleBundle} disabled={!!quantityError || !inStock}
+                              className="w-full py-3 rounded-xl font-bold text-sm border border-[#2c3947] bg-[#1a232e] text-slate-200 hover:border-blue-500/50 hover:text-white transition disabled:opacity-60 disabled:cursor-not-allowed">
+                              🛠 買＋裝：購買並預約安裝
+                            </button>
+
+                            {/* 🆕 Sprint 1：PDP 願望清單加入 + 安裝預約 CTA */}
+                            <div className="mt-3 flex items-center gap-2">
+                              <button onClick={handleWish} aria-pressed={wishAdded} aria-label={wishAdded ? '已加入願望清單' : '加入願望清單'}
+                                className={`w-12 shrink-0 py-3 flex items-center justify-center rounded-xl border transition-all ${wishAdded ? 'border-red-500/60 bg-red-500/15 text-red-400' : 'border-[#2c3947] bg-[#1a232e] text-slate-400 hover:border-red-500/50 hover:text-red-400'}`}>
+                                <svg className={`w-5 h-5 ${wishAdded ? 'fill-red-500' : ''}`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0 1.38-.878 2.379-2 3v9c0 1.121-.758 2.022-1.8 2.682v0a9.65 9.65 0 0 1-6.08 0c-.9-.36-1.8-.659-1.8-2.682v-9c-1.24-1.21-2.11-2.208-2-3.38 0-1.38.88-2.379 2-3.378 1.21-.949 2.93-1.568 4.75-1.568s3.53.619 4.75 1.568Z" />
+                                </svg>
+                              </button>
+                              <button onClick={() => navigate('/booking')} className="flex-1 py-3 rounded-xl font-bold text-sm border border-[#2c3947] bg-[#1a232e] text-slate-200 hover:border-blue-500/50 hover:text-white transition">
+                                預約安裝
+                              </button>
+                            </div>
             </div>
           </div>
         </div>

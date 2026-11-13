@@ -368,7 +368,7 @@ export function ModificationEditor({ vehicleId, vehicleInfo, onSaved }) {
   return (
     <section className="bg-[#131a22] rounded-2xl p-5 border border-[#26313d]">
       <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-        🔧 目前改裝品 <span className="text-xs text-slate-500">（記錄實際裝車品牌、型號與規格）</span>
+        🔧 改裝項目 <span className="text-xs text-slate-500">（記錄實際裝車品牌、型號與規格）</span>
       </h3>
 
       {modificationCategories.map(cat => {

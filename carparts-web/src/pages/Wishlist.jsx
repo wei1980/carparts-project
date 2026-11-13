@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { wishlistAPI } from '../api';
 import Navbar from '../components/Navbar';
+import PartImage from '../components/PartImage';
+import EmptyState from '../components/ui/EmptyState';
 import toast from 'react-hot-toast';
 import { confirmDialog } from '../components/ConfirmDialog';
 
@@ -77,13 +79,12 @@ export default function Wishlist() {
         )}
 
         {!loading && !error && items.length === 0 && (
-          <div className="text-center py-20">
-            <span className="text-6xl block mb-4">💔</span>
-            <p className="text-slate-400 text-lg mb-4">願望清單是空的</p>
-            <button onClick={() => navigate('/shop')} className="btn-primary px-6 py-3 font-bold">
-              去逛逛零件商城
-            </button>
-          </div>
+          <EmptyState
+            icon={<span className="text-6xl">💔</span>}
+            title="願望清單是空的"
+            description="標記你心儀的零件，降價時會透過 LINE 通知你"
+            primaryAction={{ label: '去逛逛零件商城', onClick: () => navigate('/shop') }}
+          />
         )}
 
         {!loading && !error && items.length > 0 && (
@@ -94,13 +95,11 @@ export default function Wishlist() {
                 <li key={w.id} className={`bg-[#131a22] rounded-xl border p-4 flex flex-col sm:flex-row items-center gap-4 transition ${reached ? 'border-emerald-500/50' : 'border-[#26313d]'}`}>
                   {/* 商品圖 */}
                   <div className="product-image-container w-24 h-24 rounded-lg shrink-0 cursor-pointer hover:opacity-90 transition">
-                    {w.part?.image_url ? (
-                      <img src={w.part.image_url} alt={w.part.name} loading="lazy"
-                        onClick={() => w.part && navigate(`/part/${w.part.id}`)}
-                        className="w-full h-full" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-3xl">📦</div>
-                    )}
+                    <PartImage
+                      src={w.part?.image_url}
+                      alt={w.part?.name || '商品'}
+                      onClick={() => w.part && navigate(`/part/${w.part.id}`)}
+                    />
                   </div>
 
                   {/* 資訊 */}

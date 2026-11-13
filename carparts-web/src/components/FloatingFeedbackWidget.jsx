@@ -129,12 +129,26 @@ export default function FloatingFeedbackWidget() {
     }
   };
 
-  // 管理後台（/admin）不顯示即時客服
-  if (location.pathname.startsWith('/admin')) return null;
+  // 管理後台、車廠後台與登入頁不顯示車主即時客服
+  const GARAGE_PORTAL_PATHS = [
+    '/garage/login', '/garage/dashboard', '/garage/calendar', '/garage/customers',
+    '/garage/work-orders', '/garage/settings', '/garage/reports', '/garage/appointments',
+  ];
+  if (
+    location.pathname.startsWith('/admin') ||
+    location.pathname === '/login' ||
+    GARAGE_PORTAL_PATHS.some((p) => location.pathname.startsWith(p))
+  ) return null;
+
+  // 車廠詳情頁有固定的預約 CTA，客服球往上移避免重疊
+  const hasStickyBookingCta = /^\/garages\/[^/]+\/?$/.test(location.pathname);
 
   return (
     <>
-      <div ref={panelRef} className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+      <div
+        ref={panelRef}
+        className={`fixed ${hasStickyBookingCta ? 'bottom-44' : 'bottom-24'} right-4 z-40 flex flex-col items-end xl:bottom-6 xl:right-6`}
+      >
         {/* 對話視窗 */}
         {chatOpen && (
           <div className="bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl w-80 max-w-[calc(100vw-3rem)] mb-3 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-3">
@@ -228,8 +242,12 @@ export default function FloatingFeedbackWidget() {
           type="button"
           onClick={openChat}
           aria-label="即時客服"
-          className="bg-blue-600 hover:bg-blue-500 text-white shadow-xl shadow-blue-600/30 rounded-full px-4 py-3 flex items-center gap-2 cursor-pointer transition-all hover:scale-105">
-          💬 即時客服
+          className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white shadow-xl shadow-blue-600/30 transition-all hover:scale-105 hover:bg-blue-500 sm:h-auto sm:w-auto sm:gap-2 sm:px-4 sm:py-3"
+        >
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm3.75 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm3.75 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM21 12c0 4.556-4.03 8.25-9 8.25a9.76 9.76 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
+          </svg>
+          <span className="hidden sm:inline">即時客服</span>
         </button>
       </div>
 

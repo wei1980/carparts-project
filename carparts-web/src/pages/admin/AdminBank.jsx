@@ -135,8 +135,8 @@ export default function AdminBank() {
 
       {/* Excel 來源資訊 */}
       {data && (
-        <div className="bg-gray-800/60 border border-gray-700 rounded-xl p-4 mb-6 text-sm text-gray-400">
-          📄 Excel 來源：<span className="font-mono text-gray-300">{data.excel_path}</span>
+        <div className="bg-surface-800/60 border border-surface-700 rounded-xl p-4 mb-6 text-sm text-surface-400">
+          📄 Excel 來源：<span className="font-mono text-surface-300">{data.excel_path}</span>
           ｜共 <span className="text-white font-bold">{data.transactions.length}</span> 筆存款交易
           ｜等待收款訂單：<span className="text-white font-bold">{data.pending_orders.length}</span> 筆
         </div>
@@ -149,11 +149,11 @@ export default function AdminBank() {
             {[
               ['比對成功', reconcileResult.summary.matched, 'text-green-400'],
               ['待人工審核', reconcileResult.summary.manual_review, 'text-yellow-400'],
-              ['未匹配交易', reconcileResult.summary.unmatched_transactions, 'text-gray-400'],
+              ['未匹配交易', reconcileResult.summary.unmatched_transactions, 'text-surface-400'],
               ['Excel 總交易', reconcileResult.summary.total_transactions, 'text-blue-400'],
             ].map(([label, val, color]) => (
-              <div key={label} className="bg-gray-800 rounded-xl p-4 border border-gray-700">
-                <p className="text-xs text-gray-500">{label}</p>
+              <div key={label} className="bg-surface-800 rounded-xl p-4 border border-surface-700">
+                <p className="text-xs text-surface-500">{label}</p>
                 <p className={`text-2xl font-bold ${color}`}>{val}</p>
               </div>
             ))}
@@ -161,14 +161,14 @@ export default function AdminBank() {
 
           {/* 比對成功清單 */}
           {reconcileResult.matched.length > 0 && (
-            <div className="bg-gray-800 rounded-xl border border-green-700/40 p-5 mb-4">
+            <div className="bg-surface-800 rounded-xl border border-green-700/40 p-5 mb-4">
               <h3 className="font-bold text-green-400 mb-3">✅ 系統自動比對成功</h3>
               <div className="space-y-2">
                 {reconcileResult.matched.map(m => (
-                  <div key={m.order_id} className="bg-gray-900/60 rounded-lg p-3 text-sm flex flex-wrap justify-between gap-2">
+                  <div key={m.order_id} className="bg-surface-900/60 rounded-lg p-3 text-sm flex flex-wrap justify-between gap-2">
                     <div>
                       <span className="text-blue-400 font-bold">#{m.order_number}</span>
-                      <span className="text-gray-400 ml-2">{m.user}</span>
+                      <span className="text-surface-400 ml-2">{m.user}</span>
                       <span className="ml-2 px-2 py-0.5 rounded bg-green-900/40 text-green-300 text-xs">
                         已比對到匯款人：{m.remitter || '（Excel 未提供）'}
                       </span>
@@ -176,7 +176,7 @@ export default function AdminBank() {
                     <div className="text-right">
                       <span className="text-white font-bold">NT$ {m.expected_amount.toLocaleString()}</span>
                       {m.excel_rows && (
-                        <span className="text-gray-500 text-xs ml-2">
+                        <span className="text-surface-500 text-xs ml-2">
                           Excel 第 {m.excel_rows.map(r => r.row).join('+')} 列
                           {m.excel_rows.length > 1 && `（分次匯款 ${m.excel_rows.length} 筆合計）`}
                         </span>
@@ -191,7 +191,7 @@ export default function AdminBank() {
 
           {/* 待人工審核清單 */}
           {reconcileResult.manual_review.length > 0 && (
-            <div className="bg-gray-800 rounded-xl border border-yellow-700/40 p-5">
+            <div className="bg-surface-800 rounded-xl border border-yellow-700/40 p-5">
               <h3 className="font-bold text-yellow-400 mb-3">⚠️ 待人工審核（比對失敗）</h3>
               <div className="space-y-2">
                 {reconcileResult.manual_review.map(o => {
@@ -207,20 +207,20 @@ export default function AdminBank() {
                   const hasSelection = selectedFPs.length > 0;
 
                   return (
-                    <div key={o.order_id} className="bg-gray-900/60 rounded-lg p-3 text-sm flex flex-wrap items-center justify-between gap-2">
+                    <div key={o.order_id} className="bg-surface-900/60 rounded-lg p-3 text-sm flex flex-wrap items-center justify-between gap-2">
                       <div>
                         <span className="text-blue-400 font-bold">#{o.order_number}</span>
-                        <span className="text-gray-400 ml-2">{o.user}</span>
-                        <div className="text-xs text-gray-500 mt-0.5">{o.reason}</div>
+                        <span className="text-surface-400 ml-2">{o.user}</span>
+                        <div className="text-xs text-surface-500 mt-0.5">{o.reason}</div>
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-white font-bold">NT$ {o.expected_amount.toLocaleString()}</span>
-                        <span className="text-xs text-gray-500">末五碼 {o.expected_last5}</span>
+                        <span className="text-xs text-surface-500">末五碼 {o.expected_last5}</span>
                         <select
                           aria-label="銀行交易（可多選，分次匯款）"
                           multiple
                           size={Math.min(4, (data?.transactions || []).filter(t => t.fingerprint && !t.claimed && !t.ambiguous).length || 1)}
-                          className="bg-gray-900 text-white min-w-40"
+                          className="bg-surface-900 text-white min-w-40"
                           value={selectedFPs}
                           onChange={e => {
                             const vals = Array.from(e.target.selectedOptions).map(op => op.value);
@@ -257,7 +257,7 @@ export default function AdminBank() {
                             checked={!!reviewed[o.order_id]}
                             onChange={e => setReviewed(prev => ({ ...prev, [o.order_id]: e.target.checked }))}
                           />
-                          <span className="text-xs text-gray-300">已核對銀行原始紀錄及歷史收款，確認未重複認列</span>
+                          <span className="text-xs text-surface-300">已核對銀行原始紀錄及歷史收款，確認未重複認列</span>
                         </label>
                         <button
                           disabled={confirming || !hasSelection || !reviewed[o.order_id] || !isAmountMatch}
@@ -278,32 +278,32 @@ export default function AdminBank() {
 
       {/* ===== 區塊二：Excel 原始交易 + 等款訂單 ===== */}
       {loading ? (
-        <p className="text-gray-400">載入中…</p>
+        <p className="text-surface-400">載入中…</p>
       ) : data && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Excel 交易 */}
-          <div className="bg-gray-800 rounded-xl border border-gray-700 p-5">
+          <div className="bg-surface-800 rounded-xl border border-surface-700 p-5">
             <h3 className="font-bold text-white mb-3">📄 Excel 存款交易</h3>
             <div className="max-h-80 overflow-y-auto space-y-1.5">
-              {data.transactions.length === 0 && <p className="text-gray-500 text-sm">無交易資料</p>}
+              {data.transactions.length === 0 && <p className="text-surface-500 text-sm">無交易資料</p>}
               {data.transactions
                 .slice()
                 .sort((a, b) => new Date(b.date) - new Date(a.date))
                 .map(t => (
-                <div key={t.row} className="bg-gray-900/60 rounded-lg px-3 py-2 text-sm grid grid-cols-[6rem_minmax(9rem,1fr)] sm:grid-cols-[6rem_9rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1">
-                  <span className="text-gray-400 whitespace-nowrap">{t.date}</span>
+                <div key={t.row} className="bg-surface-900/60 rounded-lg px-3 py-2 text-sm grid grid-cols-[6rem_minmax(9rem,1fr)] sm:grid-cols-[6rem_9rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1">
+                  <span className="text-surface-400 whitespace-nowrap">{t.date}</span>
                   <span className="text-green-400 font-mono tabular-nums text-right whitespace-nowrap">NT$ {t.amount.toLocaleString()}</span>
-                  <span className="text-gray-500 truncate min-w-0 col-span-2 sm:col-span-1">{t.memo || t.remitter}</span>
+                  <span className="text-surface-500 truncate min-w-0 col-span-2 sm:col-span-1">{t.memo || t.remitter}</span>
                 </div>
               ))}
             </div>
           </div>
 
           {/* 等待收款訂單 */}
-          <div className="bg-gray-800 rounded-xl border border-gray-700 p-5">
+          <div className="bg-surface-800 rounded-xl border border-surface-700 p-5">
             <h3 className="font-bold text-white mb-3">⏳ 等待收款訂單</h3>
             <div className="max-h-80 overflow-y-auto space-y-1.5">
-              {data.pending_orders.length === 0 && <p className="text-gray-500 text-sm">無待收款訂單</p>}
+              {data.pending_orders.length === 0 && <p className="text-surface-500 text-sm">無待收款訂單</p>}
               {data.pending_orders.map(o => {
                 const remitted = Number(o.bankDepositActualAmount || 0);
                 const claimedSum = (o.remittance_claims || []).reduce((s, c) => s + Number(c.amount), 0);
@@ -311,7 +311,7 @@ export default function AdminBank() {
                 const codPending = isCOD ? Math.max(0, Number(o.balanceAmount || 0) - claimedSum) : 0;
                 const pendingRemit = Math.max(0, remitted - claimedSum);
                 return (
-                <div key={o.id} className="bg-gray-900/60 rounded-lg px-3 py-2 text-sm">
+                <div key={o.id} className="bg-surface-900/60 rounded-lg px-3 py-2 text-sm">
                   <div className="flex justify-between flex-wrap gap-1">
                     <span className="text-blue-400 font-bold">
                       #{o.order_number}
@@ -324,7 +324,7 @@ export default function AdminBank() {
                       </span>
                     )}
                   </div>
-                  <div className="text-xs text-gray-400 mt-0.5">
+                  <div className="text-xs text-surface-400 mt-0.5">
                     訂購人：{o.receiver_name || o.user?.name || '—'}｜{o.receiver_phone || o.user?.phone || '—'}｜{o.shipping_address || '—'}
                   </div>
                   {(o.remittance_claims?.length > 0 || pendingRemit > 0 || codPending > 0) && (

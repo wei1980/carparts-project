@@ -10,7 +10,10 @@ export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + '/');
+  const isActive = (path) => {
+    if (path === '/shop') return location.pathname === '/' || location.pathname === '/shop';
+    return location.pathname === path || location.pathname.startsWith(path + '/');
+  };
 
   // 🆕 登出：清除 token 後強制跳轉到登入頁（replace 避免使用者按上一頁返回）
   const handleLogout = () => {
@@ -19,6 +22,7 @@ export default function Navbar() {
   };
 
   const items = [
+    { label: '商城', icon: MIconShop, path: '/shop' },
     { label: '愛車', icon: MIconCar, path: '/my-car' },
     { label: '會員', icon: MIconUser, path: '/profile' },
     { label: '訂單', icon: MIconOrder, path: '/orders' },
@@ -28,33 +32,35 @@ export default function Navbar() {
     { label: '購物車', icon: MIconCart, path: '/cart', badge: itemCount > 0 ? itemCount : null, highlight: true },
   ];
 
+  // 手機底部 6 個主入口（商城是第一入口；訂單與愛車各自可達）
   const mobileItems = [
-    items[0], // 愛車
-    items[2], // 訂單
-    items[4], // 預約
-    items[5], // 車廠
-    items[6], // 購物車
+    items[0], // 商城
+    items[1], // 愛車
+    items[3], // 訂單
+    items[5], // 預約
+    items[6], // 車廠
+    items[7], // 購物車
   ];
 
   return (
     <>
-      {/* ===== 桌面版頂部導航（md 以上顯示，嚴格單行 flex-nowrap）===== */}
-      <nav className="hidden md:block bg-[#0b0f14]/95 border-b border-[#1e2833] sticky top-0 z-50 backdrop-blur-md shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between flex-nowrap gap-x-2 lg:gap-x-4">
+      {/* ===== 桌面版頂部導航（xl 以上顯示；768–1279 走手機版，避免水平溢出）===== */}
+      <nav className="hidden xl:block bg-surface-900/95 border-b border-surface-700 sticky top-0 z-50 backdrop-blur-md shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between flex-nowrap gap-x-2">
 
           {/* 左側：LOGO */}
           <div onClick={() => navigate('/')} className="flex items-center cursor-pointer group flex-shrink-0">
             <div className="h-10 lg:h-11 flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
-              <img src="/logo.png" alt="車大師" className="h-full w-auto object-contain" />
+              <img src="/logo.png" alt="車大師" width="320" height="133" loading="eager" fetchPriority="high" decoding="async" className="h-full w-auto object-contain" />
             </div>
           </div>
 
-          {/* 中間：對稱放大選單（橫向滑動/不換行） */}
-          <div className="flex items-center justify-center gap-1 xl:gap-1.5 flex-shrink-0">
+          {/* 中間：對稱選單（xl 才展開，避免 768–1279 擠壓） */}
+          <div className="flex items-center justify-center gap-0.5 2xl:gap-1 flex-shrink-0">
             {items.map(({ label, icon: Icon, path, badge, highlight }) => (
               <NavTab key={path} active={isActive(path)} onClick={() => navigate(path)} badge={badge} highlight={highlight}>
                 <Icon active={isActive(path)} highlight={highlight} />
-                <span className={`text-sm lg:text-[16px] font-bold tracking-wide transition-colors whitespace-nowrap ${
+                <span className={`text-sm 2xl:text-[15px] font-bold tracking-wide transition-colors whitespace-nowrap ${
                   highlight 
                     ? 'text-blue-300 group-hover:text-white' 
                     : isActive(path) 
@@ -82,63 +88,76 @@ export default function Navbar() {
                 登入 / 註冊
               </button>
             )}
-            <div className="w-px h-5 bg-[#2a3644] flex-shrink-0" />
-            <button
-              onClick={handleLogout}
-              title="登出"
-              aria-label="登出"
-              className="p-2 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-7.5A2.25 2.25 0 003.75 5.25v13.5A2.25 2.25 0 006 21h7.5a2.25 2.25 0 002.25-2.25V15M12 9l3 3m0 0l-3 3m3-3H9" />
-              </svg>
-            </button>
+            {user ? (
+              <>
+                <div className="w-px h-5 bg-surface-500 flex-shrink-0" />
+                <button
+                  onClick={handleLogout}
+                  title="登出"
+                  aria-label="登出"
+                  className="p-2 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-7.5A2.25 2.25 0 003.75 5.25v13.5A2.25 2.25 0 006 21h7.5a2.25 2.25 0 002.25-2.25V15M12 9l3 3m0 0l-3 3m3-3H9" />
+                  </svg>
+                </button>
+              </>
+            ) : null}
           </div>
         </div>
       </nav>
 
-      {/* ===== 手機版頂部導航 ===== */}
-      <nav className="md:hidden bg-[#0b0f14]/95 border-b border-[#1e2833] sticky top-0 z-50 backdrop-blur-md">
+      {/* ===== 手機／平板版頂部導航（<1280）＝==== */}
+      <nav className="xl:hidden bg-surface-900/95 border-b border-surface-700 sticky top-0 z-50 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div onClick={() => navigate('/')} className="flex items-center cursor-pointer">
             <div className="h-11 flex items-center">
-              <img src="/logo.png" alt="車大師" className="h-full w-auto object-contain" />
+              <img src="/logo.png" alt="車大師" width="320" height="133" loading="eager" fetchPriority="high" decoding="async" className="h-full w-auto object-contain" />
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <button onClick={() => navigate('/profile')} aria-label="會員中心"
-              className={`p-2 rounded-lg transition-colors ${isActive('/profile') ? 'text-blue-400 bg-blue-500/10' : 'text-slate-400 hover:text-white'}`}>
-              <MIconUser active={isActive('/profile')} />
-            </button>
-            <button onClick={() => navigate('/wishlist')} aria-label="願望清單"
-              className={`relative p-2 rounded-lg transition-colors ${isActive('/wishlist') ? 'text-blue-400 bg-blue-500/10' : 'text-slate-400 hover:text-white'}`}>
-              <MIconHeart active={isActive('/wishlist')} />
-            </button>
-            <button onClick={handleLogout} title="登出" aria-label="登出"
-              className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-7.5A2.25 2.25 0 003.75 5.25v13.5A2.25 2.25 0 006 21h7.5a2.25 2.25 0 002.25-2.25V15M12 9l3 3m0 0l-3 3m3-3H9" />
-              </svg>
-            </button>
+            {user ? (
+              <>
+                <button onClick={() => navigate('/profile')} aria-label="會員中心"
+                  className={`p-2 rounded-lg transition-colors ${isActive('/profile') ? 'text-blue-400 bg-blue-500/10' : 'text-slate-400 hover:text-white'}`}>
+                  <MIconUser active={isActive('/profile')} />
+                </button>
+                <button onClick={() => navigate('/wishlist')} aria-label="願望清單"
+                  className={`relative p-2 rounded-lg transition-colors ${isActive('/wishlist') ? 'text-blue-400 bg-blue-500/10' : 'text-slate-400 hover:text-white'}`}>
+                  <MIconHeart active={isActive('/wishlist')} />
+                </button>
+                <button onClick={handleLogout} title="登出" aria-label="登出"
+                  className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-7.5A2.25 2.25 0 003.75 5.25v13.5A2.25 2.25 0 006 21h7.5a2.25 2.25 0 002.25-2.25V15M12 9l3 3m0 0l-3 3m3-3H9" />
+                  </svg>
+                </button>
+              </>
+            ) : (
+              <button onClick={() => navigate('/login')}
+                className="text-sm font-bold text-blue-400 hover:text-blue-300 transition px-3 py-2">
+                登入 / 註冊
+              </button>
+            )}
           </div>
         </div>
       </nav>
 
-      {/* 🆕 未登入時，手機版不顯示車輛選擇器 */}
+      {/* 已登入時的車輛選擇器（<1280） */}
       {user && (
-        <div className="md:hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 bg-[#0b0f14]">
+        <div className="xl:hidden max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 bg-surface-900">
           <CurrentVehiclePicker mobile />
         </div>
       )}
 
-      {/* ===== 手機版底部 tab bar ===== */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-[#0b0f14]/97 border-t border-[#1e2833] backdrop-blur-md pb-[env(safe-area-inset-bottom)]">
+      {/* ===== 手機／平板底部 tab bar（<1280）===== */}
+      <nav className="xl:hidden fixed bottom-0 inset-x-0 z-50 bg-surface-900/97 border-t border-surface-700 backdrop-blur-md pb-[env(safe-area-inset-bottom)]" aria-label="主要導覽">
         <div className="flex items-stretch justify-around h-16">
           {mobileItems.map(({ label, icon: Icon, path, badge }) => {
             const active = isActive(path);
             return (
               <button key={path} onClick={() => navigate(path)} aria-label={label} aria-current={active ? 'page' : undefined}
-                className={`relative flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${active ? 'text-blue-400' : 'text-slate-400 active:text-white'}`}>
+                className={`relative flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 transition-colors ${active ? 'text-blue-400' : 'text-slate-400 active:text-white'}`}>
                 <span className="relative">
                   <Icon active={active} />
                   {badge != null && (
@@ -147,14 +166,13 @@ export default function Navbar() {
                     </span>
                   )}
                 </span>
-                <span className={`text-xs font-medium ${active ? 'font-bold' : ''}`}>{label}</span>
+                <span className={`text-[11px] leading-none whitespace-nowrap ${active ? 'font-bold' : 'font-medium'}`}>{label}</span>
                 {active && <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-blue-400 rounded-full" />}
               </button>
             );
           })}
         </div>
       </nav>
-      <div className="md:hidden h-16" aria-hidden="true" />
     </>
   );
 }
@@ -190,6 +208,14 @@ function NavTab({ active, onClick, badge, highlight, children }) {
 /* ========== 圖示組件 ========== */
 const iconCls = (active, highlight) =>
   `w-5 h-5 lg:w-5.5 lg:h-5.5 flex-shrink-0 ${active ? 'text-blue-400' : highlight ? 'text-blue-300' : 'text-slate-400 group-hover:text-white'} transition-colors duration-200`;
+
+function MIconShop({ active, highlight }) {
+  return (
+    <svg className={iconCls(active, highlight)} fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39-9.33l-1.06 5.33M3 3.75h18l-1.06 5.33M3 3.75L2.25 9m.75-5.25h18M3.75 9h16.5M3.75 9l1.06 5.33M9 21v-5.25a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21" />
+    </svg>
+  );
+}
 
 function MIconUser({ active, highlight }) {
   return (

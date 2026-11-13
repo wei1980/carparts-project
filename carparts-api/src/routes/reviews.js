@@ -1,35 +1,71 @@
 // src/routes/reviews.js — 車廠評價（車主寫評價 + 公開讀取）
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
 const auth = require('../middleware/authMiddleware');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 // ─── 公開：取得某車廠的評價列表 ───
 router.get('/garage/:garageId', async (req, res) => {
   try {
     const garageId = parseInt(req.params.garageId);
-    const reviews = await prisma.garageReview.findMany({
-      where: { garage_id: garageId },
-      include: {
-        user: { select: { name: true } },
-        appointment: {
-          select: {
-            service_type: true,
-            vehicle: { select: { make: true, model: true } },
-          },
-        },
-      },
-      orderBy: { created_at: 'desc' },
-      take: 50,
+    // GarageReview 沒有 user / appointment 關聯，改批次查詢後組裝
+    const [reviews, agg] = await Promise.all([
+      prisma.garageReview.findMany({
+        where: { garage_id: garageId },
+        orderBy: { created_at: 'desc' },
+        take: 50,
+      }),
+      prisma.garageReview.aggregate({
+        where: { garage_id: garageId },
+        _avg: { rating: true },
+        _count: { id: true },
+      }),
+    ]);
+
+    const userIds = [...new Set(reviews.map(r => r.user_id).filter(Boolean))];
+    const apptIds = [...new Set(reviews.map(r => r.appointment_id).filter(Boolean))];
+
+    const [users, appointments] = await Promise.all([
+      userIds.length
+        ? prisma.endUser.findMany({ where: { id: { in: userIds } }, select: { id: true, name: true } })
+        : [],
+      apptIds.length
+        ? prisma.appointment.findMany({
+            where: { id: { in: apptIds } },
+            select: { id: true, service_type: true, vehicle_id: true },
+          })
+        : [],
+    ]);
+
+    const vehicleIds = [...new Set(appointments.map(a => a.vehicle_id).filter(Boolean))];
+    const vehicles = vehicleIds.length
+      ? await prisma.vehicleProfile.findMany({
+          where: { id: { in: vehicleIds } },
+          select: { id: true, make: true, model: true },
+        })
+      : [];
+
+    const uMap = Object.fromEntries(users.map(u => [u.id, u]));
+    const aMap = Object.fromEntries(appointments.map(a => [a.id, a]));
+    const vMap = Object.fromEntries(vehicles.map(v => [v.id, v]));
+
+    const enriched = reviews.map(r => {
+      const appt = aMap[r.appointment_id];
+      return {
+        ...r,
+        user: uMap[r.user_id] ? { name: uMap[r.user_id].name } : null,
+        appointment: appt
+          ? { service_type: appt.service_type, vehicle: vMap[appt.vehicle_id] || null }
+          : null,
+      };
     });
 
-    // 聚合
-    const count = reviews.length;
-    const avg = count > 0 ? +(reviews.reduce((s, r) => s + r.rating, 0) / count).toFixed(1) : null;
-
-    res.json({ average: avg, count, reviews });
+    res.json({
+      average: agg._count.id > 0 ? +(agg._avg.rating || 0).toFixed(1) : null,
+      count: agg._count.id,
+      reviews: enriched,
+    });
   } catch (error) {
     console.error('評價查詢失敗:', error);
     res.status(500).json({ error: '伺服器內部錯誤，請稍後再試' });

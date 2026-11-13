@@ -7,8 +7,10 @@ import { useCart } from '../context/CartContext';
 import toast from 'react-hot-toast';
 import Navbar from '../components/Navbar';
 import ErrorState from '../components/ErrorState';
+import PartImage from '../components/PartImage';
 import { confirmDialog } from '../components/ConfirmDialog';
 import { TERMS, formatPrice } from '../constants/terms';
+import { wishlistAPI } from '../api';
 import { activeSpecificCategories, flattenInstalledModifications } from '../utils/recommendations';
 
 /* 信任列元件（目前未使用） */
@@ -40,6 +42,8 @@ export default function Shop() {
   // 🆕 車輛/分類載入失敗提示（compact 行內）
 
   const [categoriesError, setCategoriesError] = useState(false);
+  // 🆕 熱門清單載入失敗狀態（補上 ErrorState + 重試，取代靜默 catch {}）
+  const [hotListError, setHotListError] = useState(false);
 
   // AI 處理狀態
   const [aiImage, setAiImage] = useState(null);
@@ -126,6 +130,7 @@ export default function Shop() {
     try {
       if (!hasVariant) { setParts([]); setPagination(null); return; }
       setLoading(true);
+      setHotListError(false);
       // 🔎 篩選條件一律由「即將生效的值」帶入（overrides 優先），
       //    不可依賴 setState 後的 state —— 同一次事件內 state 尚未更新，
       //    舊寫法會讀到上一次的 closure，讓篩選慢一拍。
@@ -157,7 +162,12 @@ export default function Shop() {
           </div>
         ), { duration: 3000 });
       }
-    } catch {}
+    } catch (err) {
+      if (version === catalogueRequest.current) {
+        console.warn('熱門清單載入失敗:', err?.message || err);
+        setHotListError(true);
+      }
+    }
     if (version === catalogueRequest.current) setLoading(false);
   };
 
@@ -190,13 +200,14 @@ export default function Shop() {
     setLoading(true);
     setSearched(true);
     setPage(targetPage);
+    setHotListError(false);
 
     try {
       // 第一步：查詢資料庫（分頁式）
       const params = { page: targetPage, pageSize: 12, sort };
       if (selectedVehicle && !hasVariant) {
         setParts([]); setPagination(null); setLoading(false);
-        toast.error('這台車尚未連結已確認車型，請先至我的愛車補齊資料。');
+        toast.error('這台車尚未連結已確認車型，請先至我的愛車補齊資料。'); 
         return;
       }
       if (hasVariant) params.variantId = selectedVariantId;
@@ -443,13 +454,13 @@ export default function Shop() {
           <p className="text-sm text-slate-500">
             {searched
               ? `${TERMS.ACTIONS.MATCHING_PARTS} ${pagination?.total ?? parts.length} 件`
-              : `${TERMS.ACTIONS.HOT_PARTS || '熱門零件'} ${pagination?.total ?? parts.length} 件`}
+              : `${pagination?.total ?? parts.length} 件`}
           </p>
         </div>
 
         {/* 🆕 改裝匹配提示 */}
         {searched && modificationMatches && (
-          <div className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-center gap-3 animate-slide-in">
+          <div className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-center gap-3 animate-fade-in">
             <svg className="w-5 h-5 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
             <span className="text-sm text-emerald-300">{modificationMatches.message}</span>
           </div>
@@ -471,13 +482,28 @@ export default function Shop() {
           </div>
         )}
 
-        {!loading && parts.length === 0 && searched && (
+        {/* 🆕 熱門清單載入失敗：顯示 ErrorState + 重試（取代靜默 catch {} 造成的空白區塊） */}
+        {!loading && hotListError && (
+          <ErrorState message="熱門零件載入失敗" onRetry={() => loadHotParts(1)} />
+        )}
+
+        {!loading && !hotListError && parts.length === 0 && (
           <div className="text-center py-20">
             <div className="w-16 h-16 mx-auto rounded-2xl bg-[#1a232e] flex items-center justify-center mb-4">
               <svg className="w-8 h-8 text-slate-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
             </div>
-            <p className="text-lg font-medium text-slate-300">{TERMS.MESSAGES.NO_PARTS_FOUND}</p>
-            <p className="text-sm text-slate-500 mt-1">{TERMS.MESSAGES.AI_SEARCH_SUBMITTED}</p>
+            {searched ? (
+              <>
+                <p className="text-lg font-medium text-slate-300">{TERMS.MESSAGES.NO_PARTS_FOUND}</p>
+                <p className="text-sm text-slate-500 mt-1">{TERMS.MESSAGES.AI_SEARCH_SUBMITTED}</p>
+              </>
+            ) : (
+              <>
+                <p className="text-lg font-medium text-slate-300">選擇你的愛車，找到真正裝得上的零件</p>
+                <p className="text-sm text-slate-500 mt-1">30 秒完成愛車資訊，庫存與 AI 會直接列出適合的零件</p>
+                <button onClick={() => navigate('/my-car')} className="btn-primary mt-6 px-6 py-3 font-bold">選擇我的車</button>
+              </>
+            )}
           </div>
         )}
 
@@ -546,14 +572,27 @@ export default function Shop() {
             </div>
           );
         })()}
+
+        {/* 🆕 回到熱門清單快捷入口（搜尋結果 / 多頁熱門清單共用） */}
+        {!loading && (searched || pagination?.pages > 1) && (
+          <div className="flex justify-center mt-8">
+            <button
+              onClick={() => refetchWithFilters({ category: '', subcategory: '', brand: '', search: '' })}
+              className="px-4 py-2 rounded-xl bg-[#1a232e] border border-[#2c3947] text-sm text-slate-300 hover:border-slate-500 transition"
+            >
+              ← 回到熱門清單
+            </button>
+          </div>
+        )}
       </main>
     </div>
   );
 }
 
 /* ========== 商品卡元件（含加入購物車回饋 + 通用型徽章 + 里程徽章） ========== */
-const PartCard = memo(function PartCard({ part, onAdd, onOpen, mileageBadge }) {
+export const PartCard = memo(function PartCard({ part, onAdd, onOpen, mileageBadge }) {
   const [added, setAdded] = useState(false);
+  const [wishAdded, setWishAdded] = useState(false);
   const totalStock = part.stock_qty + (part.distributor_stock_qty || 0); // 現貨判定：自備＋總代理
   // 🆕 公司貨（MST/KN/Pipercross）缺貨顯示「公司貨」橘色標籤；條件 class 抽離成變數
   const stockBadgeClass = totalStock > 0
@@ -567,25 +606,25 @@ const PartCard = memo(function PartCard({ part, onAdd, onOpen, mileageBadge }) {
     setTimeout(() => setAdded(false), 1500);
   };
 
+  const handleWish = (e) => {
+    e.stopPropagation();
+    wishlistAPI.add({ partId: String(part.id) })
+      .then(() => {
+        setWishAdded(true);
+        setTimeout(() => setWishAdded(false), 1500);
+      })
+      .catch(err => console.warn('願望加入失敗:', err?.message || err));
+  };
+
   return (
     <div className="product-card group">
       <div onClick={() => onOpen(part.id)}
         className="product-image-container relative cursor-pointer overflow-hidden aspect-square">
-        {part.image_url ? (
-          <img src={part.image_url} alt={part.name} loading="lazy"
-            className="w-full h-full group-hover:scale-105 transition-transform duration-500"
-            onError={(e) => {
-              if (!e.target.dataset.fallback) {
-                e.target.dataset.fallback = 'true';
-                e.target.style.display = 'none';
-                if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
-              }
-            }}
-          />
-        ) : null}
-        <div className={`w-full h-full items-center justify-center ${part.image_url ? 'hidden' : 'flex'}`}>
-          <svg className="w-12 h-12 text-slate-300" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
-        </div>
+        <PartImage
+          src={part.image_url}
+          alt={part.name}
+          className="transition-transform duration-500 group-hover:scale-105"
+        />
         {/* 🆕 適合里程徽章（專用件，右上角）＋ 改裝匹配徽章 */}
         <div className="absolute top-3 right-3 flex flex-col items-end gap-1.5">
           {mileageBadge && (
@@ -618,10 +657,19 @@ const PartCard = memo(function PartCard({ part, onAdd, onOpen, mileageBadge }) {
             </span>
           </div>
           {/* 🆕 點擊回饋：按鈕變綠「✓ 已加入」1.5 秒 */}
-          <button onClick={handleAdd} aria-live="polite"
-            className={`w-full py-2.5 text-sm font-bold rounded-xl transition-all duration-200 ${added ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white'}`}>
-            {added ? TERMS.ACTIONS.ADDED_TO_CART : TERMS.ACTIONS.ADD_TO_CART}
-          </button>
+          <div className="flex gap-2">
+            <button onClick={handleAdd} aria-live="polite"
+              className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all duration-200 ${added ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white'}`}>
+              {added ? TERMS.ACTIONS.ADDED_TO_CART : TERMS.ACTIONS.ADD_TO_CART}
+            </button>
+            {/* 🆕 願望清單一鍵加入 */}
+            <button onClick={handleWish} aria-live="polite" title="加入願望清單"
+              className={`w-12 shrink-0 py-2 flex items-center justify-center rounded-xl border transition-all duration-200 ${wishAdded ? 'border-red-500/60 bg-red-500/15 text-red-400' : 'border-[#2c3947] bg-[#1a232e] text-slate-400 hover:border-red-500/50 hover:text-red-400'}`}>
+              <svg className={`w-5 h-5 ${wishAdded ? 'fill-red-500' : ''}`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0 1.38-.878 2.379-2 3v9c0 1.121-.758 2.022-1.8 2.682v0a9.65 9.65 0 0 1-6.08 0c-.9-.36-1.8-.659-1.8-2.682v-9c-1.24-1.21-2.11-2.208-2-3.38 0-1.38.88-2.379 2-3.378 1.21-.949 2.93-1.568 4.75-1.568s3.53.619 4.75 1.568Z" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
     </div>

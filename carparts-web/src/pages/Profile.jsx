@@ -4,28 +4,17 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import { consumerClient as api } from '../api/client';
+import ErrorState from '../components/ErrorState';
 import toast from 'react-hot-toast';
-import VipTierModal from '../components/membership/VipTierModal';
-import PointsModal from '../components/membership/PointsModal';
-import CouponsModal from '../components/membership/CouponsModal';
 import ChangePasswordModal from '../components/account/ChangePasswordModal';
-import { getTier } from '../types/membership';
-import {
-  mockMembership, mockAvailablePoints, mockPointHistory, mockCoupons,
-} from '../data/membershipMock';
 
 export default function Profile() {
   const { user, updateUser } = useAuth();
   const navigate = useNavigate();
   const [uploading, setUploading] = useState(false);
-  const [modal, setModal] = useState(null); // vip | points | coupons | password
+  const [modal, setModal] = useState(null); // password
+  const [profileError, setProfileError] = useState('');
   const fileInputRef = useRef(null);
-
-  const tierInfo = getTier(mockMembership.currentTier);
-  const nextTier = mockMembership._next;
-  const remaining = nextTier ? nextTier.minAnnualSpent - mockMembership.currentYearSpent : 0;
-  const availableCoupons = mockCoupons.filter(c => !c.isUsed && c.validUntil >= new Date().toISOString().slice(0, 10));
-  const freeShippingCoupons = availableCoupons.filter(c => c.type === 'FREE_SHIPPING').length;
 
   useEffect(() => { fetchUserProfile(); }, []);
 
@@ -33,7 +22,11 @@ export default function Profile() {
     try {
       const res = await api.get('/auth/profile');
       if (res.data?.id) updateUser(res.data);
-    } catch { console.warn('取得用戶最新資料失敗（忽略）'); }
+      setProfileError('');
+    } catch (err) {
+      console.error('取得用戶最新資料失敗:', err);
+      setProfileError(err?.response?.data?.error || err?.message || '取得會員資料失敗');
+    }
   };
 
   // 觸發檔案選擇
@@ -81,9 +74,12 @@ export default function Profile() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0b0f14] text-white">
+    <div className="min-h-screen bg-surface-900 text-white">
       <Navbar />
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      <main className="page-shell max-w-6xl">
+
+        {/* 🆕 會員資料載入失敗：顯示 ErrorState + 重試 */}
+        {profileError && <ErrorState message={profileError} onRetry={fetchUserProfile} />}
 
         {/* ===== 區塊 A：Top Hero（基本資料 + VIP 升級進度） ===== */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
@@ -137,9 +133,6 @@ export default function Profile() {
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-xl font-bold text-white">{user?.name || '未填寫'}</h1>
-                  <span className="bg-amber-400/10 text-amber-400 border border-amber-400/30 px-2.5 py-0.5 rounded-full text-xs font-bold">
-                    🏆 VIP {tierInfo.name}
-                  </span>
                 </div>
 
                 {/* 聯絡資訊標籤群 */}
@@ -163,87 +156,43 @@ export default function Profile() {
             </button>
           </section>
 
-          {/* 右卡片：VIP 升級進度卡（填補右側空間） */}
-          <section className="bg-gradient-to-br from-slate-800 to-slate-900 border border-amber-500/30 rounded-2xl p-6 relative overflow-hidden">
-            <div className="absolute -left-8 -bottom-8 text-8xl opacity-5 pointer-events-none">💎</div>
-
-            <h2 className="text-lg font-bold relative z-10">🏆 VIP {tierInfo.name}權益</h2>
-            <p className="text-xs text-amber-300/90 mt-1 relative z-10">
-              點數 {mockMembership.pointMultiplier}x 回饋 · 每季自動贈送免運券 {tierInfo.quarterlyFreeShipping} 張
+          {/* 右卡片：會員權益（尚未上線，不顯示任何模擬數字） */}
+          <section className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-2xl p-6">
+            <h2 className="text-lg font-bold">會員權益</h2>
+            <p className="mt-2 text-sm leading-relaxed text-slate-400">
+              紅利點數、會員等級與優惠券正在規劃中；上線後會在這裡顯示你的回饋與折抵。
             </p>
-
-            {/* 升級進度條 */}
-            <div className="mt-5 relative z-10">
-              <div className="flex items-baseline justify-between text-xs mb-2">
-                <span className="text-slate-400">本年度累積消費</span>
-                <span className="text-slate-200 font-bold">
-                  NT$ {mockMembership.currentYearSpent.toLocaleString()}
-                  {nextTier && <span className="text-slate-500 font-normal"> / NT$ {nextTier.minAnnualSpent.toLocaleString()}</span>}
-                </span>
-              </div>
-              <div className="w-full bg-slate-700 h-2.5 rounded-full overflow-hidden">
-                <div
-                  className="bg-amber-400 h-2.5 rounded-full shadow-sm shadow-amber-400/50 transition-all"
-                  style={{ width: `${mockMembership.progressPercentage}%` }}
-                />
-              </div>
-              {nextTier && (
-                <p className="text-xs text-slate-400 mt-3">
-                  再消費 <b className="text-amber-300">NT$ {remaining.toLocaleString()}</b> 即可升級【{nextTier.name}】
-                </p>
-              )}
-            </div>
-
+            <ul className="mt-5 space-y-2 text-sm text-slate-300">
+              <li>✓ 訂單與售後進度查詢</li>
+              <li>✓ 保養提醒與回廠建議</li>
+              <li>✓ 願望清單降價通知</li>
+            </ul>
             <button
-              onClick={() => setModal('vip')}
-              className="mt-5 w-full border border-amber-500/40 text-amber-300 hover:bg-amber-500/10 rounded-xl py-2.5 font-medium transition-all relative z-10"
+              onClick={() => navigate('/orders')}
+              className="mt-6 w-full rounded-xl border border-slate-600 py-2.5 font-medium text-slate-300 transition-all hover:border-blue-500/50 hover:text-blue-300"
             >
-              查看 VIP 完整權益 →
+              查看我的訂單 →
             </button>
           </section>
         </div>
 
-        {/* ===== 區塊 B：資產橫條 ===== */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-
-          {/* 紅利點數 */}
-          <button
-            type="button"
-            onClick={() => setModal('points')}
-            className="text-left bg-slate-800/60 border border-slate-700/80 rounded-xl p-5 hover:border-slate-600 transition-all cursor-pointer group"
-          >
-            <p className="text-xs text-slate-400 mb-1 group-hover:text-slate-300">🪙 紅利點數</p>
-            <p className="text-2xl font-bold text-emerald-400">
-              {mockAvailablePoints.toLocaleString()}<span className="text-sm font-normal text-slate-500"> 點</span>
-            </p>
-            <p className="text-[11px] text-slate-500 mt-1.5 group-hover:text-blue-400">
-              可折抵 NT$ {mockAvailablePoints.toLocaleString()} · 點擊看明細 ➔
-            </p>
-          </button>
-
-          {/* 優惠券 */}
-          <button
-            type="button"
-            onClick={() => setModal('coupons')}
-            className="text-left bg-slate-800/60 border border-slate-700/80 rounded-xl p-5 hover:border-slate-600 transition-all cursor-pointer group"
-          >
-            <p className="text-xs text-slate-400 mb-1 group-hover:text-slate-300">🎟️ 可用優惠券</p>
-            <p className="text-2xl font-bold text-blue-400">
-              {availableCoupons.length}<span className="text-sm font-normal text-slate-500"> 張</span>
-            </p>
-            <p className="text-[11px] text-slate-500 mt-1.5 group-hover:text-blue-400">
-              含 {freeShippingCoupons} 張免運券 · 兌換優惠碼 ➔
-            </p>
-          </button>
-
-          {/* 年度消費紀錄 */}
-          <div className="bg-slate-800/60 border border-slate-700/80 rounded-xl p-5">
-            <p className="text-xs text-slate-400 mb-1">💰 本年消費總額</p>
-            <p className="text-2xl font-bold text-slate-100">
-              NT$ {mockMembership.currentYearSpent.toLocaleString()}
-            </p>
-            <p className="text-[11px] text-slate-500 mt-1.5">計入 VIP 升級採計</p>
-          </div>
+        {/* ===== 區塊 B：常用入口（只連到真實頁面，不顯示模擬數字） ===== */}
+        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+          {[
+            { label: '我的訂單', desc: '查看付款、出貨與售後進度', path: '/orders' },
+            { label: '我的預約', desc: '確認時間、車廠報價與評價', path: '/appointments' },
+            { label: '願望清單', desc: '追蹤零件，降價時通知你', path: '/wishlist' },
+          ].map((item) => (
+            <button
+              key={item.path}
+              type="button"
+              onClick={() => navigate(item.path)}
+              className="group rounded-xl border border-slate-700/80 bg-slate-800/60 p-5 text-left transition-all hover:border-slate-600"
+            >
+              <p className="text-sm font-bold text-slate-200 group-hover:text-blue-300">{item.label}</p>
+              <p className="mt-1 text-[11px] text-slate-500 group-hover:text-slate-400">{item.desc} →</p>
+            </button>
+          ))}
         </div>
 
         {/* ===== 區塊 C：設定與安全網格 ===== */}
@@ -303,9 +252,6 @@ export default function Profile() {
                       💬 LINE: 未連動
                     </span>
                   )}
-                  <span className="text-[11px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-lg px-2.5 py-1">
-                    🌐 Google: 已綁定
-                  </span>
                 </div>
               </div>
             </div>
@@ -313,20 +259,7 @@ export default function Profile() {
         </div>
       </main>
 
-      {/* ===== 會員系統 Modal ===== */}
-      {modal === 'vip' && (
-        <VipTierModal
-          currentTier={mockMembership.currentTier}
-          currentYearSpent={mockMembership.currentYearSpent}
-          onClose={() => setModal(null)}
-        />
-      )}
-      {modal === 'points' && (
-        <PointsModal points={mockAvailablePoints} history={mockPointHistory} onClose={() => setModal(null)} />
-      )}
-      {modal === 'coupons' && (
-        <CouponsModal coupons={mockCoupons} onClose={() => setModal(null)} />
-      )}
+      {/* ===== 帳號 Modal ===== */}
       {modal === 'password' && (
         <ChangePasswordModal onClose={() => setModal(null)} />
       )}

@@ -3,12 +3,11 @@
 
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
 const { findCompatibleVehicles } = require('../services/airFilterMatching');
 const auth = require('../middleware/authMiddleware');
 const adminAuth = require('../middleware/adminAuth');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 // 所有路由需登入 + admin 權限
 router.use(auth);
@@ -87,7 +86,7 @@ router.post('/match', async (req, res) => {
     res.json({ count: results.length, vehicles: results });
   } catch (error) {
     console.error('[air-filter-match] error:', error);
-    res.status(500).json({ error: '查詢失敗', detail: error.message });
+    res.status(500).json({ error: '查詢失敗',  });
   }
 });
 
@@ -123,7 +122,7 @@ router.get('/match/part/:partId', async (req, res) => {
     res.json({ count: results.length, vehicles: results, part: { id: part.id, sku: part.sku, brand: part.brand } });
   } catch (error) {
     console.error('[air-filter-match] error:', error);
-    res.status(500).json({ error: '查詢失敗', detail: error.message });
+    res.status(500).json({ error: '查詢失敗',  });
   }
 });
 
@@ -171,7 +170,7 @@ router.get('/match/vehicle/:vehicleId', async (req, res) => {
     });
   } catch (error) {
     console.error('[air-filter-match-vehicle] error:', error);
-    res.status(500).json({ error: '查詢失敗', detail: error.message });
+    res.status(500).json({ error: '查詢失敗',  });
   }
 });
 

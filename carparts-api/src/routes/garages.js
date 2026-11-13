@@ -1,9 +1,9 @@
 // src/routes/garages.js
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
 const { garageListCacheMiddleware } = require('../middleware/cacheMiddleware');
-const prisma = new PrismaClient();
+const { getBookingCapacity } = require('../utils/bookingCapacity');
+const prisma = require('../lib/prisma');
 
 // 台灣縣市列表
 const CITIES = [
@@ -152,6 +152,50 @@ router.get('/', garageListCacheMiddleware(300), async (req, res) => {
   }
 });
 
+// GET /api/garages/:id/availability?date=YYYY-MM-DD — 該日已被預約的時段（只回時間，不含客戶資料）
+router.get('/:id/availability', async (req, res) => {
+  try {
+    const garageId = parseInt(req.params.id, 10);
+    const dateStr = String(req.query.date || '');
+    if (!Number.isInteger(garageId)) return res.status(400).json({ error: '車廠 ID 格式錯誤' });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return res.status(400).json({ error: '日期格式需為 YYYY-MM-DD' });
+
+    const garage = await prisma.workshop.findFirst({
+      where: { id: garageId, is_garage: true, is_active: true },
+      select: { id: true, garage_slots: true },
+    });
+    if (!garage) return res.status(404).json({ error: '車廠不存在' });
+
+    const start = new Date(`${dateStr}T00:00:00`);
+    if (isNaN(start.getTime())) return res.status(400).json({ error: '日期格式錯誤' });
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+
+    const rows = await prisma.appointment.findMany({
+      where: {
+        garage_id: garageId,
+        scheduled_at: { gte: start, lt: end },
+        status: { in: ['PENDING', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'] },
+      },
+      select: { scheduled_at: true },
+    });
+
+    const counts = {};
+    for (const r of rows) {
+      const d = new Date(r.scheduled_at);
+      const key = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      counts[key] = (counts[key] || 0) + 1;
+    }
+    const booked = Object.keys(counts).sort();
+    const capacity = getBookingCapacity(garage.garage_slots);
+
+    res.json({ date: dateStr, capacity, booked, counts });
+  } catch (error) {
+    console.error('取得可預約時段失敗:', error);
+    res.status(500).json({ error: '伺服器內部錯誤，請稍後再試' });
+  }
+});
+
 // GET /api/garages/:id — 車廠詳情
 router.get('/:id', async (req, res) => {
   try {
@@ -170,10 +214,15 @@ router.get('/:id', async (req, res) => {
         shop_type: true,
         garage_photos: true,   // 🆕 店面照
         opening_hours: true,   // 🆕 營業時間
-        laborFees: { where: { is_active: true }, orderBy: [{ sort_order: 'asc' }, { id: 'asc' }] }, // 🆕 工資表
       },
     });
     if (!garage) return res.status(404).json({ error: '車廠不存在' });
+
+    // 工資表：schema 沒有 Workshop.laborFees 關聯，改用獨立查詢避免 Prisma 500
+    const laborFees = await prisma.garageLaborFee.findMany({
+      where: { workshop_id: garage.id, is_active: true },
+      orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
+    });
 
     const parseJson = (v) => {
       if (v == null) return null;
@@ -190,9 +239,11 @@ router.get('/:id', async (req, res) => {
       business_card: slots.business_card || null,
       garage_photos: photos,
       opening_hours: parseJson(garage.opening_hours),
-      labor_fees: garage.laborFees || [],
+      labor_fees: laborFees || [],
+      booking_capacity: getBookingCapacity(slots),
     });
   } catch (error) {
+    console.error('取得車廠詳情失敗:', error);
     res.status(500).json({ error: '伺服器內部錯誤，請稍後再試' });
   }
 });

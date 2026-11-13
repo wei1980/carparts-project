@@ -49,9 +49,9 @@ export default function BankInfoModal({ order, onClose, onSuccess }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-gray-800 rounded-2xl border border-gray-600 max-w-md w-full p-6 text-white">
+      <div className="relative bg-surface-800 rounded-2xl border border-surface-600 max-w-md w-full p-6 text-white">
         <h3 className="text-lg font-bold mb-1">{isAdditional ? '➕ 新增匯款（分次匯款）' : order.bankDepositDate ? '✏️ 修改匯款資料' : '💳 補登匯款資料'}</h3>
-        <p className="text-sm text-gray-400 mb-4">訂單 #{order.order_number}</p>
+        <p className="text-sm text-surface-400 mb-4">訂單 #{order.order_number}</p>
 
         {/* 🆕 分次匯款進度 */}
         {isAdditional && (
@@ -72,31 +72,31 @@ export default function BankInfoModal({ order, onClose, onSuccess }) {
 
         <div className="space-y-3">
           <div>
-            <label className="block text-xs text-gray-400 mb-1">匯款日期 *</label>
+            <label className="block text-xs text-surface-400 mb-1">匯款日期 *</label>
             <input type="date" value={depositDate} onChange={e => setDepositDate(e.target.value)}
-              className="w-full px-3 py-2.5 bg-gray-700 border border-gray-600 rounded-xl text-sm" />
+              className="w-full px-3 py-2.5 bg-surface-700 border border-surface-600 rounded-xl text-sm" />
           </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-1">匯款帳號後五碼 *（銀行簿子上的）</label>
+            <label className="block text-xs text-surface-400 mb-1">匯款帳號後五碼 *（銀行簿子上的）</label>
             <input value={last5} onChange={e => setLast5(e.target.value.replace(/\D/g,'').slice(0,5))}
               inputMode="numeric" maxLength={5} placeholder="例：12345"
-              className="w-full px-3 py-2.5 bg-gray-700 border border-gray-600 rounded-xl text-sm font-mono tracking-widest" />
+              className="w-full px-3 py-2.5 bg-surface-700 border border-surface-600 rounded-xl text-sm font-mono tracking-widest" />
           </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-1">
+            <label className="block text-xs text-surface-400 mb-1">
               {isAdditional ? '本次匯款金額 *' : '匯款金額 *'}（應付 NT$ {expected.toLocaleString()}
               {isAdditional && <>｜已匯 {remitted.toLocaleString()}｜尚欠 <span className="text-yellow-300 font-bold">{remaining.toLocaleString()}</span></>}）
             </label>
             <input value={amount} onChange={e => setAmount(e.target.value.replace(/\D/g,''))}
               inputMode="numeric" placeholder={String(isAdditional ? (remaining || expected) : expected)}
-              className="w-full px-3 py-2.5 bg-gray-700 border border-gray-600 rounded-xl text-sm font-mono" />
+              className="w-full px-3 py-2.5 bg-surface-700 border border-surface-600 rounded-xl text-sm font-mono" />
           </div>
         </div>
 
         {error && <p className="text-red-400 text-sm mt-3">{error}</p>}
 
         <div className="flex gap-2 mt-5">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-gray-700 hover:bg-gray-600 text-sm font-medium">取消</button>
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-surface-700 hover:bg-surface-600 text-sm font-medium">取消</button>
           <button onClick={submit} disabled={submitting}
             className="flex-[2] py-2.5 rounded-xl bg-green-600 hover:bg-green-500 disabled:opacity-50 text-sm font-bold">
             {submitting ? '提交中…' : '確認送出'}

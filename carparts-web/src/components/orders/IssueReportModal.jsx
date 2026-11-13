@@ -45,17 +45,17 @@ export default function IssueReportModal({ order, onClose, onSuccess }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-gray-800 rounded-2xl border border-gray-600 max-w-md w-full p-6 text-white max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-surface-800 rounded-2xl border border-surface-600 max-w-md w-full p-6 text-white max-h-[90vh] overflow-y-auto">
         <h3 className="text-lg font-bold mb-1">🛠️ 售後服務與問題回報</h3>
-        <p className="text-sm text-gray-400 mb-4">訂單 #{order.order_number}</p>
+        <p className="text-sm text-surface-400 mb-4">訂單 #{order.order_number}</p>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-xs text-gray-400 mb-1">發生問題的商品 *</label>
+            <label className="block text-xs text-surface-400 mb-1">發生問題的商品 *</label>
             <select
               value={selectedItemId}
               onChange={e => setSelectedItemId(e.target.value)}
-              className="w-full px-3 py-2.5 bg-gray-700 border border-gray-600 rounded-xl text-sm text-white"
+              className="w-full px-3 py-2.5 bg-surface-700 border border-surface-600 rounded-xl text-sm text-white"
             >
               <option value="">請選擇商品...</option>
               {order.items?.map(it => (
@@ -65,7 +65,7 @@ export default function IssueReportModal({ order, onClose, onSuccess }) {
           </div>
 
           <div>
-            <label className="block text-xs text-gray-400 mb-1">問題類型 *</label>
+            <label className="block text-xs text-surface-400 mb-1">問題類型 *</label>
             <div className="flex gap-3">
               <label className="flex items-center gap-2 text-sm cursor-pointer">
                 <input type="radio" name="issueType" value="DEFECT" checked={issueType === 'DEFECT'} onChange={() => setIssueType('DEFECT')} className="text-blue-500" />
@@ -79,23 +79,23 @@ export default function IssueReportModal({ order, onClose, onSuccess }) {
           </div>
 
           <div>
-            <label className="block text-xs text-gray-400 mb-1">問題描述 *</label>
+            <label className="block text-xs text-surface-400 mb-1">問題描述 *</label>
             <textarea
               value={description}
               onChange={e => setDescription(e.target.value)}
               placeholder="請詳細描述商品損壞情況或規格不符的地方..."
-              className="w-full px-3 py-2.5 bg-gray-700 border border-gray-600 rounded-xl text-sm min-h-[100px]"
+              className="w-full px-3 py-2.5 bg-surface-700 border border-surface-600 rounded-xl text-sm min-h-[100px]"
             />
           </div>
 
           <div>
-            <label className="block text-xs text-gray-400 mb-1">上傳照片或影片 (可多選，每檔上限 20 MB)</label>
+            <label className="block text-xs text-surface-400 mb-1">上傳照片或影片 (可多選，每檔上限 20 MB)</label>
             <input
               type="file"
               multiple
               accept="image/*,video/*"
               onChange={handleFileChange}
-              className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-900 file:text-blue-300 hover:file:bg-blue-800"
+              className="w-full text-sm text-surface-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-900 file:text-blue-300 hover:file:bg-blue-800"
             />
             {files.length > 0 && (
               <p className="text-xs text-cyan-400 mt-2">已選擇 {files.length} 個檔案</p>
@@ -106,7 +106,7 @@ export default function IssueReportModal({ order, onClose, onSuccess }) {
         {error && <p className="text-red-400 text-sm mt-3">{error}</p>}
 
         <div className="flex gap-2 mt-6">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-gray-700 hover:bg-gray-600 text-sm font-medium">取消</button>
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-surface-700 hover:bg-surface-600 text-sm font-medium">取消</button>
           <button onClick={submit} disabled={submitting}
             className="flex-[2] py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-sm font-bold">
             {submitting ? '提交中…' : '送出回報'}

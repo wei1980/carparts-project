@@ -4,11 +4,10 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { PrismaClient } = require('@prisma/client');
 const auth = require('../middleware/authMiddleware');
 const axios = require('axios');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 const AI_BASE_URL = process.env.AI_BASE_URL || 'http://127.0.0.1:8080/v1';
 const AI_MODEL = process.env.AI_MODEL || 'Qwen3.6-35B-A3B-Uncensored';
@@ -85,7 +84,7 @@ router.post('/recognize-part', auth, upload.single('image'), async (req, res) =>
     res.json(result);
   } catch (error) {
     console.error('AI 辨識失敗:', error);
-    res.status(500).json({ error: '辨識失敗', detail: error.message });
+    res.status(500).json({ error: '辨識失敗',  });
   }
 });
 
@@ -129,7 +128,7 @@ router.post('/recognize-registration', upload.single('image'), async (req, res) 
     res.json(result);
   } catch (error) {
     console.error('行照辨識失敗:', error);
-    res.status(500).json({ error: '辨識失敗', detail: error.message });
+    res.status(500).json({ error: '辨識失敗',  });
   }
 });
 
@@ -239,7 +238,7 @@ router.post('/recognize-modification', auth, modPhotoUpload.single('image'), asy
     });
   } catch (error) {
     console.error('改裝品辨識失敗:', error);
-    res.status(500).json({ error: '辨識失敗', detail: error.message });
+    res.status(500).json({ error: '辨識失敗',  });
   }
 });
 

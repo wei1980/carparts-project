@@ -185,100 +185,100 @@ export default function Settings() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="min-h-screen bg-surface-900 text-white">
       <Navbar />
       
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <main className="page-shell max-w-3xl py-10">
         <div className="flex items-center gap-4 mb-8">
           <button 
             onClick={() => navigate('/profile')}
-            className="text-gray-400 hover:text-white transition"
+            className="text-surface-400 hover:text-white transition"
           >
             ← 返回
           </button>
           <h1 className="text-2xl font-bold">⚙️ 編輯個人與收件資料</h1>
         </div>
 
-        <div className="bg-gray-800/50 rounded-2xl p-8 border border-gray-700/50 shadow-xl">
+        <div className="bg-surface-800/50 rounded-2xl p-8 border border-surface-700/50 shadow-xl">
           <form onSubmit={handleSave} className="space-y-6">
             
             {/* 姓名 */}
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">姓名</label>
+              <label className="block text-sm font-medium text-surface-400 mb-1">姓名</label>
               <input
                 type="text"
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                className="w-full px-4 py-3 bg-surface-700 border border-surface-600 rounded-xl text-white placeholder-surface-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                 placeholder="請輸入姓名"
               />
             </div>
 
             {/* 信箱 */}
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">電子信箱</label>
+              <label className="block text-sm font-medium text-surface-400 mb-1">電子信箱</label>
               <input
                 type="email"
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                className="w-full px-4 py-3 bg-surface-700 border border-surface-600 rounded-xl text-white placeholder-surface-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                 placeholder="請輸入電子信箱"
               />
             </div>
 
             {/* 電話 */}
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">聯絡電話</label>
+              <label className="block text-sm font-medium text-surface-400 mb-1">聯絡電話</label>
               <input
                 type="text"
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
-                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                className="w-full px-4 py-3 bg-surface-700 border border-surface-600 rounded-xl text-white placeholder-surface-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                 placeholder="例如：0912-345-678"
               />
             </div>
 
             {/* LINE ID */}
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">LINE ID</label>
+              <label className="block text-sm font-medium text-surface-400 mb-1">LINE ID</label>
               <input
                 type="text"
                 name="lineId"
                 value={formData.lineId}
                 onChange={handleChange}
-                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                className="w-full px-4 py-3 bg-surface-700 border border-surface-600 rounded-xl text-white placeholder-surface-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                 placeholder="例如：@carsmaster"
               />
             </div>
 
             {/* ===== 收件地址 - 三級連動選單 ===== */}
-            <fieldset className="space-y-4 border-t border-gray-700 pt-6">
+            <fieldset className="space-y-4 border-t border-surface-700 pt-6">
               <legend className="text-lg font-bold text-white mb-4">📍 預設收件地址</legend>
               
               {/* 第一排：郵遞區號、縣市、鄉鎮市區 */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* 郵遞區號 - 唯讀 */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1">郵遞區號</label>
+                  <label className="block text-sm font-medium text-surface-400 mb-1">郵遞區號</label>
                   <input
                     type="text"
                     value={zipCode}
                     readOnly
-                    className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white cursor-not-allowed"
+                    className="w-full px-4 py-3 bg-surface-800 border border-surface-600 rounded-xl text-white cursor-not-allowed"
                     placeholder="3碼郵遞區號"
                   />
                 </div>
                 
                 {/* 縣市選單 */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1">縣市 <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-medium text-surface-400 mb-1">縣市 <span className="text-red-500">*</span></label>
                   <select
                     value={selectedCity}
                     onChange={handleCityChange}
-                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                    className="w-full px-4 py-3 bg-surface-700 border border-surface-600 rounded-xl text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                   >
                     <option value="">請選擇縣市</option>
                     {cities.map(city => (
@@ -289,12 +289,12 @@ export default function Settings() {
                 
                 {/* 鄉鎮市區選單 */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1">鄉鎮市區 <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-medium text-surface-400 mb-1">鄉鎮市區 <span className="text-red-500">*</span></label>
                   <select
                     value={selectedDistrict}
                     onChange={handleDistrictChange}
                     disabled={!selectedCity}
-                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full px-4 py-3 bg-surface-700 border border-surface-600 rounded-xl text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <option value="">請先選擇縣市</option>
                     {districts.map(district => (
@@ -306,20 +306,20 @@ export default function Settings() {
 
               {/* 第二排：詳細地址 */}
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">詳細地址 <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-surface-400 mb-1">詳細地址 <span className="text-red-500">*</span></label>
                 <input
                   type="text"
                   value={detailAddress}
                   onChange={(e) => setDetailAddress(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  className="w-full px-4 py-3 bg-surface-700 border border-surface-600 rounded-xl text-white placeholder-surface-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                   placeholder="請輸入路街名、巷號樓層（例如：信義路四段100號5樓之2）"
                 />
               </div>
 
               {/* 完整地址預覽 */}
               {(zipCode || selectedCity || selectedDistrict || detailAddress) && (
-                <div className="p-3 bg-gray-800 rounded-xl border border-gray-600">
-                  <span className="text-xs text-gray-500">完整地址預覽：</span>
+                <div className="p-3 bg-surface-800 rounded-xl border border-surface-600">
+                  <span className="text-xs text-surface-500">完整地址預覽：</span>
                   <p className="text-sm text-white mt-1 font-mono">
                     {zipCode + ' ' + selectedCity + selectedDistrict + detailAddress}
                   </p>
@@ -331,7 +331,7 @@ export default function Settings() {
               <button
                 type="button"
                 onClick={() => navigate('/profile')}
-                className="flex-1 py-3 bg-gray-700 hover:bg-gray-600 rounded-xl font-medium transition"
+                className="flex-1 py-3 bg-surface-700 hover:bg-surface-600 rounded-xl font-medium transition"
               >
                 取消
               </button>

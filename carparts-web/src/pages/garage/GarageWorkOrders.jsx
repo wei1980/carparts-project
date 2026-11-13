@@ -1,10 +1,10 @@
 // src/pages/garage/GarageWorkOrders.jsx — 車廠：工單管理（從預約開單 / 自開單）
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { garageClient as api } from '../../api/client';
 import { confirmDialog } from '../../components/ConfirmDialog';
 import toast from 'react-hot-toast';
 import { getUserFriendlyError } from '../../utils/userFriendlyErrors';
+import GarageNav from '../../components/GarageNav';
 
 const statusMap = {
   DRAFT: '建立中',
@@ -16,7 +16,6 @@ const statusMap = {
 const emptyItem = { kind: 'LABOR', name: '', quantity: 1, unit_price: 0, part_sku: '', part_brand: '' };
 
 export default function GarageWorkOrders() {
-  const navigate = useNavigate();
   const [records, setRecords] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -115,20 +114,9 @@ export default function GarageWorkOrders() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('garageToken');
-    navigate('/garage/login');
-  };
-
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <nav className="h-16 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-6 sticky top-0 z-40">
-        <div className="flex items-center gap-4">
-          <span className="text-xl font-bold tracking-wider cursor-pointer" onClick={() => navigate('/garage/dashboard')}>🏎️ 車大師車廠</span>
-          <button onClick={() => navigate('/garage/dashboard')} className="text-sm text-gray-400 hover:text-white">← 回工作台</button>
-        </div>
-        <button onClick={handleLogout} className="bg-red-600 hover:bg-red-500 px-5 py-2 rounded-lg font-medium text-sm">登出</button>
-      </nav>
+    <div className="min-h-screen bg-[#0b0f14] text-white">
+      <GarageNav active="work-orders" />
 
       <main className="p-4 sm:p-8 max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-6">
@@ -143,12 +131,12 @@ export default function GarageWorkOrders() {
 
         {/* ===== 開單表單 ===== */}
         {showForm && (
-          <div className="bg-gray-800 p-6 rounded-2xl border border-gray-700 mb-8">
+          <div className="bg-surface-800 p-6 rounded-2xl border border-surface-700 mb-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div>
-                <label className="text-sm text-gray-400 block mb-1">選擇預約單</label>
+                <label className="text-sm text-surface-400 block mb-1">選擇預約單</label>
                 <select value={apptId} onChange={e => setApptId(e.target.value)}
-                  className="w-full h-11 px-4 bg-gray-700 border border-gray-600 rounded-xl">
+                  className="w-full h-11 px-4 bg-surface-700 border border-surface-600 rounded-xl">
                   <option value="">— 請選擇 —</option>
                   {appointments.filter(a => ['CONFIRMED', 'ARRIVED'].includes(a.status)).map(a => (
                     <option key={a.id} value={a.id}>
@@ -158,14 +146,14 @@ export default function GarageWorkOrders() {
                 </select>
               </div>
               <div>
-                <label className="text-sm text-gray-400 block mb-1">進廠里程 (km)</label>
+                <label className="text-sm text-surface-400 block mb-1">進廠里程 (km)</label>
                 <input value={mileage} onChange={e => setMileage(e.target.value)} type="number"
-                  className="w-full h-11 px-4 bg-gray-700 border border-gray-600 rounded-xl" placeholder="例：85,000" />
+                  className="w-full h-11 px-4 bg-surface-700 border border-surface-600 rounded-xl" placeholder="例：85,000" />
               </div>
               <div>
-                <label className="text-sm text-gray-400 block mb-1">維修摘要</label>
+                <label className="text-sm text-surface-400 block mb-1">維修摘要</label>
                 <input value={summary} onChange={e => setSummary(e.target.value)}
-                  className="w-full h-11 px-4 bg-gray-700 border border-gray-600 rounded-xl" placeholder="例：10萬公里大保養" />
+                  className="w-full h-11 px-4 bg-surface-700 border border-surface-600 rounded-xl" placeholder="例：10萬公里大保養" />
               </div>
             </div>
 
@@ -174,23 +162,23 @@ export default function GarageWorkOrders() {
               {items.map((it, i) => (
                 <div key={i} className="grid grid-cols-12 gap-2 items-center">
                   <select value={it.kind} onChange={e => updateItem(i, 'kind', e.target.value)}
-                    className="col-span-2 h-11 px-2 bg-gray-700 border border-gray-600 rounded-xl text-sm">
+                    className="col-span-2 h-11 px-2 bg-surface-700 border border-surface-600 rounded-xl text-sm">
                     <option value="LABOR">👷 工資</option>
                     <option value="PART">🔧 零件</option>
                   </select>
                   {it.kind === 'PART' ? (
                     <input value={it.name} onChange={e => updateItem(i, 'name', e.target.value)}
                       placeholder="零件名稱"
-                      className="col-span-3 h-11 px-3 bg-gray-700 border border-gray-600 rounded-xl text-sm" />
+                      className="col-span-3 h-11 px-3 bg-surface-700 border border-surface-600 rounded-xl text-sm" />
                   ) : (
                     <div className="col-span-3 flex gap-1">
                       <input value={it.name} onChange={e => updateItem(i, 'name', e.target.value)}
                         placeholder="工項名稱，例：機油更換" list="labor-fee-options"
-                        className="flex-1 min-w-0 h-11 px-3 bg-gray-700 border border-gray-600 rounded-xl text-sm" />
+                        className="flex-1 min-w-0 h-11 px-3 bg-surface-700 border border-surface-600 rounded-xl text-sm" />
                     </div>
                   )}
                   <input value={it.quantity} onChange={e => updateItem(i, 'quantity', e.target.value)} type="number" min="1"
-                    className="col-span-2 h-11 px-3 bg-gray-700 border border-gray-600 rounded-xl text-sm" placeholder="數量" />
+                    className="col-span-2 h-11 px-3 bg-surface-700 border border-surface-600 rounded-xl text-sm" placeholder="數量" />
                   {it.kind === 'LABOR' && laborFees.length > 0 ? (
                     <select
                       value=""
@@ -198,7 +186,7 @@ export default function GarageWorkOrders() {
                         const fee = laborFees.find(f => String(f.id) === e.target.value);
                         if (fee) setItems(prev => prev.map((x, idx) => idx === i ? { ...x, name: fee.name, unit_price: fee.price } : x));
                       }}
-                      className="col-span-2 h-11 px-2 bg-gray-700 border border-gray-600 rounded-xl text-sm text-emerald-300">
+                      className="col-span-2 h-11 px-2 bg-surface-700 border border-surface-600 rounded-xl text-sm text-emerald-300">
                       <option value="">⚡ 帶入工資…</option>
                       {laborFees.map(f => (
                         <option key={f.id} value={f.id}>{f.name} ${Number(f.price).toLocaleString()}</option>
@@ -206,11 +194,11 @@ export default function GarageWorkOrders() {
                     </select>
                   ) : (
                     <input value={it.unit_price} onChange={e => updateItem(i, 'unit_price', e.target.value)} type="number" min="0"
-                      className="col-span-2 h-11 px-3 bg-gray-700 border border-gray-600 rounded-xl text-sm" placeholder="單價" />
+                      className="col-span-2 h-11 px-3 bg-surface-700 border border-surface-600 rounded-xl text-sm" placeholder="單價" />
                   )}
                   {it.kind === 'PART' ? (
                     <input value={it.part_sku} onChange={e => updateItem(i, 'part_sku', e.target.value)}
-                      className="col-span-2 h-11 px-3 bg-gray-700 border border-gray-600 rounded-xl text-sm" placeholder="SKU" />
+                      className="col-span-2 h-11 px-3 bg-surface-700 border border-surface-600 rounded-xl text-sm" placeholder="SKU" />
                   ) : <span className="col-span-2" />}
                   <button onClick={() => setItems(prev => prev.filter((_, idx) => idx !== i))}
                     className="col-span-1 h-11 text-red-400 hover:text-red-300 text-lg">✕</button>
@@ -231,20 +219,20 @@ export default function GarageWorkOrders() {
 
         {/* ===== 工單列表 ===== */}
         {records.length === 0 ? (
-          <div className="bg-gray-800/50 rounded-xl p-10 text-center border border-gray-700/50 border-dashed">
-            <p className="text-gray-400">目前沒有工單</p>
+          <div className="bg-surface-800/50 rounded-xl p-10 text-center border border-surface-700/50 border-dashed">
+            <p className="text-surface-400">目前沒有工單</p>
           </div>
         ) : (
           <div className="space-y-4">
             {records.map(r => (
-              <div key={r.id} className="bg-gray-800 p-6 rounded-xl border border-gray-700/50">
+              <div key={r.id} className="bg-surface-800 p-6 rounded-xl border border-surface-700/50">
                 <div className="flex justify-between items-center cursor-pointer"
                   onClick={() => setExpandedId(expandedId === r.id ? null : r.id)}>
                   <div>
                     <h3 className="font-bold">工單 #{r.id}　{r.vehicle?.make} {r.vehicle?.model}
-                      {r.vehicle?.licensePlate && <span className="ml-2 text-sm text-gray-400">({r.vehicle.licensePlate})</span>}
+                      {r.vehicle?.licensePlate && <span className="ml-2 text-sm text-surface-400">({r.vehicle.licensePlate})</span>}
                     </h3>
-                    <p className="text-gray-400 text-sm mt-1">
+                    <p className="text-surface-400 text-sm mt-1">
                       車主：{r.user?.name || r.user?.phone || '—'}　
                       {new Date(r.created_at).toLocaleString()}
                       {r.mileage_km != null && <>　里程：{Number(r.mileage_km).toLocaleString()} km</>}
@@ -252,7 +240,7 @@ export default function GarageWorkOrders() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <span className={r.status === 'COMPLETED' ? 'text-green-400' : r.status === 'IN_PROGRESS' ? 'text-blue-400' : 'text-gray-400'}>
+                    <span className={r.status === 'COMPLETED' ? 'text-green-400' : r.status === 'IN_PROGRESS' ? 'text-blue-400' : 'text-surface-400'}>
                       {statusMap[r.status] || r.status}
                     </span>
                     <p className="text-lg font-bold mt-1">NT$ {Number(r.total_amount).toLocaleString()}</p>
@@ -260,11 +248,11 @@ export default function GarageWorkOrders() {
                 </div>
 
                 {expandedId === r.id && (
-                  <div className="mt-4 border-t border-gray-700 pt-4">
-                    {r.summary && <p className="text-gray-300 text-sm mb-3">{r.summary}</p>}
+                  <div className="mt-4 border-t border-surface-700 pt-4">
+                    {r.summary && <p className="text-surface-300 text-sm mb-3">{r.summary}</p>}
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="text-gray-500 text-left">
+                        <tr className="text-surface-500 text-left">
                           <th className="pb-2">項目 / 零件</th>
                           <th className="pb-2">數量</th>
                           <th className="pb-2 text-right">單價</th>
@@ -273,9 +261,9 @@ export default function GarageWorkOrders() {
                       </thead>
                       <tbody>
                         {r.items.map(it => (
-                          <tr key={it.id} className="border-t border-gray-700/50">
+                          <tr key={it.id} className="border-t border-surface-700/50">
                             <td className="py-2">{it.kind === 'PART' ? '🔧 ' : '👷 '}{it.name}
-                              {it.part_sku && <span className="text-gray-600 ml-1 text-xs">{it.part_sku}</span>}
+                              {it.part_sku && <span className="text-surface-600 ml-1 text-xs">{it.part_sku}</span>}
                             </td>
                             <td className="py-2">×{it.quantity}</td>
                             <td className="py-2 text-right">{Number(it.unit_price).toLocaleString()}</td>

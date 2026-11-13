@@ -19,7 +19,7 @@ export default function PointsModal({ points = 0, history = [], onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-gray-800 rounded-2xl border border-gray-600 max-w-md w-full p-4 text-white max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-surface-800 rounded-2xl border border-surface-600 max-w-md w-full p-4 text-white max-h-[90vh] overflow-y-auto">
         {/* 標題列 */}
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-lg font-bold">💎 紅利點數</h3>
@@ -49,7 +49,7 @@ export default function PointsModal({ points = 0, history = [], onClose }) {
               className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition ${
                 tab === t.key
                   ? 'bg-blue-600 text-white'
-                  : 'bg-gray-700/60 text-slate-400 hover:text-white'
+                  : 'bg-surface-700/60 text-slate-400 hover:text-white'
               }`}
             >
               {t.label}
@@ -69,7 +69,7 @@ export default function PointsModal({ points = 0, history = [], onClose }) {
               return (
                 <div
                   key={r.id}
-                  className="flex items-center gap-3 bg-gray-900/40 border border-gray-700/40 rounded-lg px-3 py-2"
+                  className="flex items-center gap-3 bg-surface-900/40 border border-surface-700/40 rounded-lg px-3 py-2"
                 >
                   <div className="flex-1 min-w-0">
                     <p className="text-sm truncate">{r.title}</p>

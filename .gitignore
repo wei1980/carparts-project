@@ -40,7 +40,7 @@ check*.js
 restore_*.js
 backup_*.js
 export_*.js
-import_*.js
+/import_*.js
 *_check.js
 
 # IDE & editor
@@ -171,3 +171,27 @@ carparts-web/src/data/find_brackets.py
 # KW 適配匹配中間產物（可由 apkw_match_v7.js 重新產生）
 carparts-api/scratch_v7_*.json
 carparts-api/scratch_ebc_*.json
+
+# 一次性匯入/除錯輸出（由根目錄腳本產生，不進版控）
+carparts-api/*_out.txt
+carparts-api/*_out2.txt
+carparts-api/err.txt
+carparts-api/diag_out.txt
+carparts-api/dbg_*.js
+carparts-api/chk_*.js
+carparts-api/scratch_*.html
+carparts-api/scratch_*.json
+carparts-web/scratch_*.cjs
+carparts-web/tmp_*.txt
+carparts-web/fix_checkout.py
+
+# 正式匯入管線（import_ebc / pf_import 等）不屬於「一次性腳本」，明確納入版控
+!carparts-api/import_ebc.js
+!carparts-api/pf_import.js
+
+# 內嵌 Redis 執行檔（59MB 二進位，不進版控；由 C:/carparts/redis 本機提供）
+/redis/
+
+# Prisma 資料備份（.bak / .bak_YYYYMMDD_*）
+carparts-api/prisma/*.bak
+carparts-api/prisma/*.bak_*

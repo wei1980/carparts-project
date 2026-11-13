@@ -1,7 +1,7 @@
 // Regression: AdminParts must call /parts (not '' or '/admin/parts') via adminClient,
 // composing to /api/admin/parts exactly once. Mock helper test; full-page coverage
 // lives in tests/admin-parts-list.ui.cjs.
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import AdminParts from './AdminParts';
 import { adminClient } from '../../api/client';
 
@@ -35,4 +35,11 @@ it('renders zero rows as a genuine empty result, not a failure', async () => {
   });
   render(<AdminParts />);
   expect(await screen.findByText('沒有符合的商品')).toBeInTheDocument();
+});
+
+it('toggles into the missing-data list and calls /parts/missing', async () => {
+  render(<AdminParts />);
+  const toggle = await screen.findByText(/缺資料商品/);
+  fireEvent.click(toggle);
+  await waitFor(() => expect(adminClient.get).toHaveBeenCalledWith('/parts/missing', expect.anything()));
 });

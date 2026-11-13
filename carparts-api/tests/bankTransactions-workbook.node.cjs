@@ -27,6 +27,7 @@ function loadHandler() {
   const context = {
     module: { exports: {} }, console: { error: () => {}, debug: () => {}, info: () => {} },
     require(name) {
+      if (name === '../lib/prisma' || name === './lib/prisma' || name.endsWith('/lib/prisma')) return prisma;
       if (name === '@prisma/client') return { PrismaClient: class { constructor() { return prisma; } } };
       if (name === '../middleware/adminAuth') return (req, res, next) => next();
       if (name === '../services/lineService') return { notifyOrderUpdate: async () => {} };

@@ -1,10 +1,9 @@
 // src/routes/adminInventory.js
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
 const adminAuth = require('../middleware/adminAuth');
 const { recordAudit } = require('../services/auditLog');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 router.use(adminAuth);
 
@@ -208,7 +207,7 @@ router.post('/new-stock', async (req, res) => {
 
     res.status(201).json(part);
   } catch (error) {
-    res.status(500).json({ error: '伺服器內部錯誤，請稍後再試', detail: error.message });
+    res.status(500).json({ error: '伺服器內部錯誤，請稍後再試',  });
   }
 });
 

@@ -4,7 +4,6 @@ const express = require('express');
 const router = express.Router();
 const path = require('path');
 const fs = require('fs');
-const { PrismaClient } = require('@prisma/client');
 const adminAuth = require('../middleware/adminAuth');
 // 🔒 Excel 讀取統一走 bankExcelService（exceljs，已移除有 CVE 的 xlsx 套件）
 const { readBankExcel, EXCEL_PATH } = require('../services/bankExcelService');
@@ -13,7 +12,7 @@ const { recordAudit } = require('../services/auditLog');
 const WORKBOOK_PATH = process.env.BANK_EXCEL_PATH || 'C:/carparts/訂單管理.xlsm';
 
 const { fingerprintTransaction, claimBankPayment } = require('../services/bankClaim');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 const { notifyOrderUpdate } = require('../services/lineService');
 router.use(adminAuth);
 
@@ -95,7 +94,7 @@ router.post(['/bank/import-excel', '/import-excel'], async (req, res) => {
     res.json({ message: `已匯入 ${enriched.length} 筆銀行交易到資料庫`, count: enriched.length });
   } catch (error) {
     console.error('Bank import error:', error);
-    res.status(500).json({ error: error.message || '伺服器內部錯誤，請稍後再試' });
+    res.status(500).json({ error: '伺服器內部錯誤，請稍後再試' });
   }
 });
 
@@ -148,7 +147,7 @@ router.get(['/bank/transactions', '/transactions'], async (req, res) => {
     for (const t of enriched) counts.set(t.fingerprint, (counts.get(t.fingerprint) || 0) + 1);
     res.json({ excel_path: WORKBOOK_PATH, transactions: enriched.map(t => ({ ...t, claimed: claimed.has(t.fingerprint), ambiguous: counts.get(t.fingerprint) > 1 })), pending_orders: pendingOrdersWithClaims });
   } catch (error) {
-    res.status(500).json({ error: error.message || '伺服器內部錯誤，請稍後再試' });
+    res.status(500).json({ error: '伺服器內部錯誤，請稍後再試' });
   }
 });
 
@@ -379,7 +378,7 @@ router.post(['/bank/reconcile', '/reconcile'], async (req, res) => {
   try {
     res.json(await runReconcile());
   } catch (error) {
-    res.status(500).json({ error: error.message || '伺服器內部錯誤，請稍後再試' });
+    res.status(500).json({ error: '伺服器內部錯誤，請稍後再試' });
   }
 });
 

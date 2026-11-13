@@ -32,6 +32,8 @@ export default function AdminParts() {
   const [batchApplyVariants, setBatchApplyVariants] = useState([]);
   const [batchApplySelectedDriveTypes, setBatchApplySelectedDriveTypes] = useState([]);
   const [batchApplyPreview, setBatchApplyPreview] = useState({});
+  const [missingOnly, setMissingOnly] = useState(false);
+  const [missingSummary, setMissingSummary] = useState(null);
 
   // 載入分類
     const loadCategories = useCallback(async () => {
@@ -81,20 +83,28 @@ export default function AdminParts() {
   const loadParts = useCallback(async (page = 1, limit = 20, searchTerm = '') => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({
+      if (missingOnly) {
+        const res = await adminClient.get('/parts/missing', { params: { page: page.toString(), limit: limit.toString() } });
+        setParts(res.data.data || []);
+        setMissingSummary(res.data.summary || null);
+        setPagination({ page, limit, total: res.data.pagination?.total ?? 0, pages: res.data.pagination?.pages ?? 0 });
+      } else {
+        const params = new URLSearchParams({
               page: page.toString(),
               limit: limit.toString(),
               search: searchTerm,
             });
             const res = await adminClient.get('/parts', { params });
-      setParts(res.data.data || []);
-      setPagination(res.data.pagination || { page, limit, total: 0, pages: 0 });
+        setParts(res.data.data || []);
+        setMissingSummary(null);
+        setPagination(res.data.pagination || { page, limit, total: 0, pages: 0 });
+      }
     } catch (err) {
       console.error('載入商品失敗:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [missingOnly]);
 
   useEffect(() => {
     loadCategories();
@@ -112,6 +122,10 @@ export default function AdminParts() {
   const goToPage = (newPage) => {
     if (newPage < 1 || newPage > pagination.pages) return;
     loadParts(newPage, pagination.limit, search);
+  };
+
+  const toggleMissingOnly = () => {
+    setMissingOnly(prev => !prev);
   };
 
   // 編輯商品
@@ -375,16 +389,28 @@ export default function AdminParts() {
     <div style={{ padding: '24px', minHeight: '100vh', backgroundColor: '#111827', color: '#ffffff' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#ffffff' }}>📦 商品管理</h1>
-        <button
-          onClick={startCreate}
-          style={{
-            backgroundColor: '#16a34a', color: '#ffffff',
-            padding: '12px 24px', borderRadius: '8px',
-            fontWeight: 'bold', border: 'none', cursor: 'pointer'
-          }}
-        >
-          ＋ 新增商品
-        </button>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <button
+            onClick={toggleMissingOnly}
+            style={{
+              backgroundColor: missingOnly ? '#1f2937' : '#374151', color: '#ffffff',
+              padding: '12px 24px', borderRadius: '8px',
+              fontWeight: 'bold', border: 'none', cursor: 'pointer'
+            }}
+          >
+            {missingOnly ? '✓ 缺資料商品' : '🔍 缺資料商品'}
+          </button>
+          <button
+            onClick={startCreate}
+            style={{
+              backgroundColor: '#16a34a', color: '#ffffff',
+              padding: '12px 24px', borderRadius: '8px',
+              fontWeight: 'bold', border: 'none', cursor: 'pointer'
+            }}
+          >
+            ＋ 新增商品
+          </button>
+        </div>
       </div>
 
       <form onSubmit={handleSearch} style={{ marginBottom: '24px' }}>
@@ -407,6 +433,14 @@ export default function AdminParts() {
         <p style={{ color: '#9ca3af' }}>沒有符合的商品</p>
       ) : (
         <>
+          {missingOnly && missingSummary && (
+            <div style={{ marginBottom: '16px', padding: '12px 16px', backgroundColor: '#1f2937', borderRadius: '8px', border: '1px solid #374151', display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+              <span style={{ color: '#9ca3af', fontSize: '14px' }}>缺資料商品總數：{missingSummary.total ?? 0} 筆</span>
+              <span style={{ color: '#f87171', fontSize: '14px' }}>缺圖片：{missingSummary.missing_image ?? 0} 筆</span>
+              <span style={{ color: '#f87171', fontSize: '14px' }}>缺說明：{missingSummary.missing_description ?? 0} 筆</span>
+              <span style={{ color: '#fbbf24', fontSize: '14px' }}>缺圖+缺說明：{missingSummary.missing_both ?? 0} 筆</span>
+            </div>
+          )}
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
               <thead style={{ backgroundColor: '#374151', color: '#d1d5db' }}>
@@ -418,6 +452,12 @@ export default function AdminParts() {
                   <th style={{ padding: '12px 16px', textAlign: 'left' }}>庫存</th>
                   <th style={{ padding: '12px 16px', textAlign: 'left' }}>分類</th>
                   <th style={{ padding: '12px 16px', textAlign: 'left' }}>狀態</th>
+                  {missingOnly && (
+                    <>
+                      <th style={{ padding: '12px 16px', textAlign: 'left' }}>缺圖片</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'left' }}>缺說明</th>
+                    </>
+                  )}
                   <th style={{ padding: '12px 16px', textAlign: 'left' }}>操作</th>
                 </tr>
               </thead>
@@ -443,6 +483,12 @@ export default function AdminParts() {
                         {p.is_active ? '啟用' : '停用'}
                       </span>
                     </td>
+                    {missingOnly && (
+                      <>
+                        <td style={{ padding: '12px 16px', color: '#f87171' }}>{p.missing_image ? '缺圖片' : '有圖片'}</td>
+                        <td style={{ padding: '12px 16px', color: '#f87171' }}>{p.missing_description ? '缺說明' : '有說明'}</td>
+                      </>
+                    )}
                     <td style={{ padding: '12px 16px' }}>
                       <button onClick={() => startEdit(p)} style={{ color: '#60a5fa', marginRight: '8px', background: 'none', border: 'none', cursor: 'pointer' }}>編輯</button>
                       <button onClick={() => deletePart(p.id)} style={{ color: '#f87171', background: 'none', border: 'none', cursor: 'pointer' }}>刪除</button>

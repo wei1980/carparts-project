@@ -1,6 +1,6 @@
 // src/pages/Login.jsx
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { consumerClient as api } from '../api/client';
 import { aiApi } from '../api/aiApi';
 import { useAuth } from '../context/AuthContext';
@@ -48,6 +48,7 @@ export default function Login() {
   const [makes, setMakes] = useState([]);
   const [models, setModels] = useState([]);
   const [variants, setVariants] = useState([]);
+  const [vehicleError, setVehicleError] = useState('');
   const [pick, setPick] = useState({ year: '', make: '', model: '', variantId: '' });
 
   const regFileRef = useRef(null);
@@ -55,33 +56,42 @@ export default function Login() {
 
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  // 登入後回到原本被攔截的頁面（例如 /checkout、/my-car）
+  const redirectTo = location.state?.from?.pathname
+    && location.state.from.pathname !== '/login'
+    ? `${location.state.from.pathname}${location.state.from.search || ''}`
+    : '/';
 
   // 載入年份
   useEffect(() => {
-    api.get('/vehicles/years', { params: { _t: Date.now() } }).then(res => setYears(res.data || [])).catch(err => console.warn('載入失敗:', err?.message || err));
+    api.get('/vehicles/years', { params: { _t: Date.now() } }).then(res => setYears(res.data || [])).catch(err => setVehicleError(err?.response?.data?.error || err?.message || '車型資料載入失敗'));
   }, []);
 
   // 年份 → 品牌
   useEffect(() => {
     setMakes([]); setModels([]); setVariants([]);
+    setVehicleError('');
     if (!pick.year) return;
-    api.get('/vehicles/makes', { params: { year: pick.year, _t: Date.now() } }).then(res => setMakes(res.data)).catch(err => console.warn('載入失敗:', err?.message || err));
+    api.get('/vehicles/makes', { params: { year: pick.year, _t: Date.now() } }).then(res => setMakes(res.data)).catch(err => setVehicleError(err?.response?.data?.error || err?.message || '車型資料載入失敗'));
   }, [pick.year]);
 
   // 品牌 → 車系
   useEffect(() => {
     setModels([]); setVariants([]);
+    setVehicleError('');
     if (!pick.year || !pick.make) return;
     api.get('/vehicles/models', { params: { year: pick.year, make: pick.make, _t: Date.now() } })
-      .then(res => setModels(res.data)).catch(err => console.warn('載入失敗:', err?.message || err));
+      .then(res => setModels(res.data)).catch(err => setVehicleError(err?.response?.data?.error || err?.message || '車型資料載入失敗'));
   }, [pick.make, pick.year]);
 
   // 車系 → 世代
   useEffect(() => {
     setVariants([]);
+    setVehicleError('');
     if (!pick.year || !pick.make || !pick.model) return;
     api.get('/vehicles/variants', { params: { year: pick.year, make: pick.make, model: pick.model, _t: Date.now() } })
-      .then(res => setVariants(res.data)).catch(err => console.warn('載入失敗:', err?.message || err));
+      .then(res => setVariants(res.data)).catch(err => setVehicleError(err?.response?.data?.error || err?.message || '車型資料載入失敗'));
   }, [pick.model, pick.make, pick.year]);
 
   // 🆕 自動選取世代 (唯一世代 或 年份範圍內唯一匹配)
@@ -233,11 +243,13 @@ export default function Login() {
             vin,
           },
         });
+        // 後端對未審核帳號不再發 token，這裡也不要嘗試自動登入
         toast.success('註冊成功，請等待管理員審核通過後再登入');
         setIsRegister(false);
+        setPassword('');
       } else {
         await login(phone, password);
-        navigate('/');
+        navigate(redirectTo, { replace: true });
       }
     } catch (err) {
       toast.error(err.response?.data?.error || '操作失敗');
@@ -247,15 +259,15 @@ export default function Login() {
   // 🆕 忘記密碼模式：獨立表單
   if (isReset) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900 p-4">
-        <div className="bg-gray-800 p-8 rounded-xl w-full max-w-md">
+      <div className="min-h-screen flex items-center justify-center bg-surface-900 p-4">
+        <div className="bg-surface-800 p-8 rounded-xl w-full max-w-md">
           <h1 className="text-2xl font-bold text-white mb-2">🔑 忘記密碼</h1>
-          <p className="text-sm text-gray-400 mb-6">驗證碼將傳送到您註冊時綁定的 LINE 帳號</p>
+          <p className="text-sm text-surface-400 mb-6">驗證碼將傳送到您註冊時綁定的 LINE 帳號</p>
 
-          <label className="block text-sm text-gray-400 mb-1">註冊手機號碼</label>
+          <label className="block text-sm text-surface-400 mb-1">註冊手機號碼</label>
           <input value={resetPhone} onChange={e => setResetPhone(e.target.value)}
             placeholder="09xxxxxxxx" disabled={resetStep === 2}
-            className="w-full p-3 mb-4 rounded bg-gray-700 text-white disabled:opacity-60" />
+            className="w-full p-3 mb-4 rounded bg-surface-700 text-white disabled:opacity-60" />
 
           {resetStep === 1 ? (
             <button type="button" onClick={handleForgotPassword}
@@ -264,22 +276,22 @@ export default function Login() {
             </button>
           ) : (
             <>
-              <label className="block text-sm text-gray-400 mb-1">LINE 驗證碼（6 位數字）</label>
+              <label className="block text-sm text-surface-400 mb-1">LINE 驗證碼（6 位數字）</label>
               <input value={resetCode} onChange={e => setResetCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 inputMode="numeric" placeholder="例：123456"
-                className="w-full p-3 mb-4 rounded bg-gray-700 text-white font-mono tracking-widest text-center text-lg" />
+                className="w-full p-3 mb-4 rounded bg-surface-700 text-white font-mono tracking-widest text-center text-lg" />
 
-              <label className="block text-sm text-gray-400 mb-1">新密碼（至少 8 碼）</label>
+              <label className="block text-sm text-surface-400 mb-1">新密碼（至少 8 碼）</label>
               <input value={newPassword} onChange={e => setNewPassword(e.target.value)} type="password"
                 placeholder="設定新密碼"
-                className="w-full p-3 mb-4 rounded bg-gray-700 text-white" />
+                className="w-full p-3 mb-4 rounded bg-surface-700 text-white" />
 
               <button type="button" onClick={handleResetPassword}
                 className="w-full bg-green-600 p-3 rounded font-bold text-white hover:bg-green-700 mb-4">
                 ✅ 重設密碼
               </button>
               <button type="button" onClick={() => setResetStep(1)}
-                className="w-full text-gray-400 text-sm hover:text-gray-300 mb-2">
+                className="w-full text-surface-400 text-sm hover:text-surface-300 mb-2">
                 ← 重新發送驗證碼
               </button>
             </>
@@ -295,28 +307,28 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900 p-4">
-      <form onSubmit={handleSubmit} className="bg-gray-800 p-8 rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+    <div className="min-h-screen flex items-center justify-center bg-surface-900 p-4">
+      <form onSubmit={handleSubmit} className="bg-surface-800 p-8 rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         <h1 className="text-2xl font-bold text-white mb-6">
           {isRegister ? '註冊' : '登入'} 車大師
         </h1>
 
-        <label className="block text-sm text-gray-400 mb-1">手機號碼</label>
-        <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="09xxxxxxxx" className="w-full p-3 mb-4 rounded bg-gray-700 text-white" />
+        <label className="block text-sm text-surface-400 mb-1">手機號碼</label>
+        <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="09xxxxxxxx" className="w-full p-3 mb-4 rounded bg-surface-700 text-white" />
 
-        <label className="block text-sm text-gray-400 mb-1">密碼</label>
-        <input value={password} onChange={e => setPassword(e.target.value)} type="password" minLength={isRegister ? 8 : undefined} placeholder={isRegister ? '設定密碼（至少 8 碼）' : '輸入密碼'} className="w-full p-3 mb-4 rounded bg-gray-700 text-white" />
+        <label className="block text-sm text-surface-400 mb-1">密碼</label>
+        <input value={password} onChange={e => setPassword(e.target.value)} type="password" minLength={isRegister ? 8 : undefined} placeholder={isRegister ? '設定密碼（至少 8 碼）' : '輸入密碼'} className="w-full p-3 mb-4 rounded bg-surface-700 text-white" />
 
         {isRegister && (
           <>
-            <label className="block text-sm text-gray-400 mb-1">姓名</label>
-            <input value={name} onChange={e => setName(e.target.value)} placeholder="您的姓名" className="w-full p-3 mb-4 rounded bg-gray-700 text-white" />
+            <label className="block text-sm text-surface-400 mb-1">姓名</label>
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="您的姓名" className="w-full p-3 mb-4 rounded bg-surface-700 text-white" />
 
-            <label className="block text-sm text-gray-400 mb-1">LINE ID *（必填，用於接收通知）</label>
-            <input value={lineId} onChange={e => setLineId(e.target.value)} placeholder="例如：@yourline" className="w-full p-3 mb-4 rounded bg-gray-700 text-white" />
+            <label className="block text-sm text-surface-400 mb-1">LINE ID *（必填，用於接收通知）</label>
+            <input value={lineId} onChange={e => setLineId(e.target.value)} placeholder="例如：@yourline" className="w-full p-3 mb-4 rounded bg-surface-700 text-white" />
 
-            <div className="border-t border-gray-700 pt-4 mt-2">
-              <p className="text-sm text-gray-400 mb-3">🚗 選擇您的車型（必填）</p>
+            <div className="border-t border-surface-700 pt-4 mt-2">
+              <p className="text-sm text-surface-400 mb-3">🚗 選擇您的車型（必填）</p>
 
               <div className="mb-4">
                 <input type="file" accept="image/*" capture="environment" ref={regFileRef} onChange={handleRegUpload} className="hidden" />
@@ -326,12 +338,12 @@ export default function Login() {
                 </button>
               </div>
 
-              <select value={pick.year} onChange={e => setPick(s => ({ ...s, year: e.target.value }))} className="w-full p-3 mb-3 rounded bg-gray-700 text-white">
+              <select value={pick.year} onChange={e => setPick(s => ({ ...s, year: e.target.value }))} className="w-full p-3 mb-3 rounded bg-surface-700 text-white">
                 <option value="">年份</option>
                 {years.map(y => <option key={y} value={y}>{y}</option>)}
               </select>
 
-              <select value={pick.make} onChange={e => setPick(s => ({ ...s, make: e.target.value }))} disabled={!pick.year} className="w-full p-3 mb-3 rounded bg-gray-700 text-white disabled:opacity-50">
+              <select value={pick.make} onChange={e => setPick(s => ({ ...s, make: e.target.value }))} disabled={!pick.year} className="w-full p-3 mb-3 rounded bg-surface-700 text-white disabled:opacity-50">
                 <option value="">品牌</option>
                 {makes.map(m => <option key={m} value={m}>{m}</option>)}
                 {pick.make && !makes.some(m => m.toLowerCase() === pick.make.toLowerCase()) && (
@@ -339,7 +351,7 @@ export default function Login() {
                 )}
               </select>
 
-              <select value={pick.model} onChange={e => setPick(s => ({ ...s, model: e.target.value }))} disabled={!pick.make} className="w-full p-3 mb-3 rounded bg-gray-700 text-white disabled:opacity-50">
+              <select value={pick.model} onChange={e => setPick(s => ({ ...s, model: e.target.value }))} disabled={!pick.make} className="w-full p-3 mb-3 rounded bg-surface-700 text-white disabled:opacity-50">
                 <option value="">車系</option>
                 {models.map(m => <option key={m} value={m}>{m}</option>)}
                 {pick.model && !models.some(m => m.toLowerCase() === pick.model.toLowerCase()) && (
@@ -347,7 +359,7 @@ export default function Login() {
                 )}
               </select>
 
-              <select value={pick.variantId} onChange={e => setPick(s => ({ ...s, variantId: e.target.value }))} disabled={!pick.model} className="w-full p-3 mb-3 rounded bg-gray-700 text-white disabled:opacity-50">
+              <select value={pick.variantId} onChange={e => setPick(s => ({ ...s, variantId: e.target.value }))} disabled={!pick.model} className="w-full p-3 mb-3 rounded bg-surface-700 text-white disabled:opacity-50">
                 <option value="">世代/引擎</option>
                 {variants.map(v => {
                   const yearRange = v.year_start !== v.year_end ? ` (${v.year_start}~${v.year_end})` : '';
@@ -359,8 +371,10 @@ export default function Login() {
                 })}
               </select>
 
-              <label className="block text-sm text-gray-400 mb-1 mt-3">車身號碼 (VIN) *</label>
-              <input value={vin} onChange={e => setVin(e.target.value)} placeholder="WBA3A5C5XDF123456" className="w-full p-3 mb-3 rounded bg-gray-700 text-white" />
+              {vehicleError && <p className="text-sm text-red-400 mb-3">{vehicleError}</p>}
+
+              <label className="block text-sm text-surface-400 mb-1 mt-3">車身號碼 (VIN) *</label>
+              <input value={vin} onChange={e => setVin(e.target.value)} placeholder="WBA3A5C5XDF123456" className="w-full p-3 mb-3 rounded bg-surface-700 text-white" />
             </div>
           </>
         )}
@@ -372,7 +386,7 @@ export default function Login() {
         {/* 🆕 忘記密碼連結（僅登入模式顯示） */}
         {!isRegister && (
           <button type="button" onClick={() => setIsReset(true)}
-            className="w-full text-gray-400 text-sm hover:text-gray-300 mb-2">
+            className="w-full text-surface-400 text-sm hover:text-surface-300 mb-2">
             忘記密碼？
           </button>
         )}

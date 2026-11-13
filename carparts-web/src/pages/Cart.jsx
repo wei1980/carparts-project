@@ -2,6 +2,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import Navbar from '../components/Navbar';
+import PartImage from '../components/PartImage';
 import { useCurrentVehicle, vehicleLabel } from '../context/CurrentVehicleContext';
 
 export default function Cart() {
@@ -14,7 +15,7 @@ export default function Cart() {
   const safeItemCount = typeof itemCount === 'number' ? itemCount : 0;
 
   return (
-    <div className="min-h-screen bg-[#0b0f14] text-white">
+    <div className="min-h-screen bg-surface-900 text-white">
       <Navbar />
       <main className="page-shell max-w-3xl">
 
@@ -34,7 +35,7 @@ export default function Cart() {
               )}
         {/* 如果購物車是空的 */}
         {!cart || cart.length === 0 ? (
-          <div className="bg-[#131a22] p-12 text-center rounded-2xl border border-[#26313d]">
+          <div className="bg-surface-800 p-12 text-center rounded-2xl border border-[#26313d]">
             <span className="text-6xl block mb-4">🛒</span>
             <p className="text-slate-400 text-lg mb-4">購物車是空的</p>
             <button
@@ -58,27 +59,11 @@ export default function Cart() {
                 return (
                   <div
                     key={item.partId}
-                    className="bg-[#131a22] p-4 rounded-xl border border-[#26313d] flex flex-col sm:flex-row items-center gap-4 hover:border-[#33445a] transition"
+                    className="bg-surface-800 p-4 rounded-xl border border-[#26313d] flex flex-col sm:flex-row items-center gap-4 hover:border-[#33445a] transition"
                   >
                     {/* 商品圖 */}
                                         <div className="product-image-container w-20 h-20 rounded-lg flex-shrink-0">
-                                          {part.image_url ? (
-                                            <img
-                                              src={part.image_url}
-                                              alt={part.name || '商品'}
-                                              loading="lazy"
-                                              className="w-full h-full"
-                                              onError={(e) => {
-                                                if (!e.target.dataset.fallback) {
-                                                  e.target.dataset.fallback = 'true';
-                                                  const newSrc = e.target.src.replace(/\.(jpg|jpeg)$/i, '.png');
-                                                  if (e.target.src !== newSrc) e.target.src = newSrc;
-                                                }
-                                              }}
-                                            />
-                                          ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-2xl">📦</div>
-                                          )}
+                                          <PartImage src={part.image_url} alt={part.name || '商品'} />
                                         </div>
 
                     {/* 商品資訊 */}
@@ -93,13 +78,13 @@ export default function Cart() {
                       <button
                         aria-label="減少數量"
                         onClick={() => updateQty(item.partId, qty - 1)}
-                        className="bg-[#1a232e] w-8 h-8 rounded-lg hover:bg-[#243040] flex items-center justify-center transition border border-[#2c3947]"
+                        className="bg-surface-700 w-8 h-8 rounded-lg hover:bg-surface-600 flex items-center justify-center transition border border-surface-500"
                       >−</button>
                       <span className="font-bold w-6 text-center">{qty}</span>
                       <button
                         aria-label="增加數量"
                         onClick={() => updateQty(item.partId, qty + 1)}
-                        className="bg-[#1a232e] w-8 h-8 rounded-lg hover:bg-[#243040] flex items-center justify-center transition border border-[#2c3947]"
+                        className="bg-surface-700 w-8 h-8 rounded-lg hover:bg-surface-600 flex items-center justify-center transition border border-surface-500"
                       >+</button>
                     </div>
 
@@ -120,9 +105,9 @@ export default function Cart() {
             </div>
 
             {/* 總計與結帳區塊 */}
-            <div className="bg-[#131a22] p-6 rounded-xl border border-[#26313d]">
+            <div className="bg-surface-800 p-6 rounded-xl border border-[#26313d]">
               <div className="flex justify-between text-xl font-bold mb-6">
-                <span>總計</span>
+                <span>商品總額</span>
                 <span className="text-emerald-400">NT$ {safeTotalAmount.toLocaleString()}</span>
               </div>
               <div className="flex flex-col sm:flex-row gap-4">

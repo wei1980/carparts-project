@@ -3,19 +3,20 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import PartDetail from './PartDetail';
 import { CurrentVehicleProvider } from '../context/CurrentVehicleContext';
 jest.mock('../context/AuthContext', () => ({useAuth:()=>({user:{id:'test-owner'}})}));
-import { partsAPI } from '../api';
+import { partsAPI, wishlistAPI } from '../api';
 import { useCart } from '../context/CartContext';
 import { TERMS } from '../constants/terms';
 jest.mock('../api/client', () => ({ consumerClient: { get: jest.fn() }, garageClient: { get: jest.fn() } }));
-jest.mock('../api', () => ({ partsAPI: { getCompatibility: jest.fn() }, vehicleAPI: {getAll:jest.fn(async()=>({data:[{id:'a',variantId:1}]}))}, myCarAPI:{dashboard:jest.fn(async()=>({data:{vehicle:{id:'a'}}}))} }));
+jest.mock('../api', () => ({ partsAPI: { getCompatibility: jest.fn() }, vehicleAPI: {getAll:jest.fn(async()=>({data:[{id:'a',variantId:1}]}))}, myCarAPI:{dashboard:jest.fn(async()=>({data:{vehicle:{id:'a'}}}))}, wishlistAPI: { add: jest.fn() } }));
 jest.mock('../context/CartContext', () => ({ useCart: jest.fn() }));
 jest.mock('../components/Navbar', () => () => null);
+const add = jest.fn();
+const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => {
  const location = {state: {part: {id:1, name:'測試零件', brand:'TEST', msrp_price:100, stock_qty:100, description:''}}};
- return { useParams: () => ({id:'1'}), useNavigate: () => jest.fn(), useLocation: () => location };
+ return { useParams: () => ({id:'1'}), useNavigate: () => mockNavigate, useLocation: () => location, useSearchParams: () => [new URLSearchParams()] };
 });
-const add = jest.fn();
-beforeEach(() => { localStorage.clear(); add.mockClear(); useCart.mockReturnValue({addToCart:add}); partsAPI.getCompatibility.mockResolvedValue({data:{status:'NEEDS_REVIEW'}}); });
+beforeEach(() => { localStorage.clear(); add.mockClear(); useCart.mockReturnValue({addToCart:add}); partsAPI.getCompatibility.mockResolvedValue({data:{status:'NEEDS_REVIEW'}}); wishlistAPI.add.mockResolvedValue({ data: {} }); });
 it.each(['NEEDS_VEHICLE','NEEDS_REVIEW','CONFIRMED'])('empty description makes no unsupported claims: %s', async status => {
  partsAPI.getCompatibility.mockResolvedValue({data:{status}});
  render(<CurrentVehicleProvider><PartDetail /></CurrentVehicleProvider>);
@@ -36,4 +37,15 @@ it('adds exactly the requested valid quantity', async () => {
  fireEvent.change(await screen.findByRole('spinbutton'), {target:{value:'2'}});
  fireEvent.click(screen.getByRole('button', {name:TERMS.ACTIONS.ADD_TO_CART}));
  expect(add).toHaveBeenCalledTimes(2);
+});
+it('PDP wishlist add calls wishlist API', async () => {
+ render(<CurrentVehicleProvider><PartDetail /></CurrentVehicleProvider>);
+ const wishBtn = await screen.findByRole('button', { name: '加入願望清單' });
+ fireEvent.click(wishBtn);
+ await waitFor(() => expect(wishlistAPI.add).toHaveBeenCalledWith({ partId: '1' }));
+});
+it('PDP install CTA navigates to booking', async () => {
+ render(<CurrentVehicleProvider><PartDetail /></CurrentVehicleProvider>);
+ fireEvent.click(screen.getByRole('button', { name: '預約安裝' }));
+ expect(mockNavigate).toHaveBeenCalledWith('/booking');
 });

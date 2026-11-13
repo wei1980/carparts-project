@@ -321,6 +321,7 @@ router.get('/', async (req, res) => {
             price_snapshot: true,
             sku_snapshot: true,
             name_snapshot: true,
+            // 注意：schema 欄位就是 snake_case（無 @map），不可寫 isPreorder/promisedWeeks
             is_preorder: true,
             promised_weeks: true,
             promised_weeks_min: true,
@@ -335,7 +336,6 @@ router.get('/', async (req, res) => {
             },
           },
         },
-        // 🆕 加入售後問題回報，讓客戶端也能看到自己提交過的紀錄		
 		issues: {
           orderBy: { createdAt: 'desc' },
           select: { id: true, issueType: true, description: true, mediaUrls: true, createdAt: true, orderItemId: true, adminNotes: true, status: true }
@@ -484,8 +484,13 @@ router.get('/refund-account', async (req, res) => {
 });
 
 // GET /api/consumer/orders/:id — 單一訂單詳情
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req, res, next) => {
   try {
+    // /bank-info 定義在下方，先放行避免被當成訂單 id（parseInt → NaN → Prisma 500）
+    if (req.params.id === 'bank-info') return next();
+    if (!/^\d+$/.test(req.params.id)) {
+      return res.status(404).json({ error: '訂單不存在' });
+    }
     const order = await prisma.consumerOrder.findFirst({
       where: {
         id: parseInt(req.params.id),
@@ -500,6 +505,7 @@ router.get('/:id', async (req, res) => {
             price_snapshot: true,
             sku_snapshot: true,
             name_snapshot: true,
+            // 注意：schema 欄位就是 snake_case（無 @map），不可寫 isPreorder/promisedWeeks
             is_preorder: true,
             promised_weeks: true,
             promised_weeks_min: true,

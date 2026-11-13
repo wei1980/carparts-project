@@ -1,7 +1,6 @@
 // src/routes/consumerParts.js
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
 const auth = require('../middleware/authMiddleware');
 const modificationService = require('../services/modificationService');
 const { consumerPartRecommendationCacheMiddleware } = require('../middleware/cacheMiddleware');
@@ -9,14 +8,31 @@ const { consumerPartRecommendationCacheMiddleware } = require('../middleware/cac
 const prisma = require('../lib/prisma');
 router.use(auth);
 
-// 🔒 消費者端零件欄位白名單：Part 同一列有 msrp_price 與 wholesale_price，
-//    未投影的查詢會把成本價回給消費者。新增欄位前必須先登記在這裡（不得加 wholesale_price）。
+// 🔒 消費者端零件欄位白名單。
+//    Part 同一列同時有 msrp_price（售價）與 wholesale_price（車廠批發成本）。
+//    任何未投影的查詢（findMany 不帶 select / include: { part: true }）都會把成本價
+//    回給消費者。新增欄位到消費者回應前，必須先在這裡登記。
+//    ⚠️ 不要加入 wholesale_price。
 const CONSUMER_PART_SELECT = {
-  id: true, name: true, brand: true, sku: true, msrp_price: true,
-  stock_qty: true, distributor_stock_qty: true, preorder_lead_time_days: true,
-  image_url: true, description: true, category: true, subcategory_id: true,
-  is_universal: true, is_official: true, is_active: true,
-  sales_count: true, view_count: true, created_at: true, updated_at: true,
+  id: true,
+  name: true,
+  brand: true,
+  sku: true,
+  msrp_price: true,
+  stock_qty: true,
+  distributor_stock_qty: true,
+  preorder_lead_time_days: true,
+  image_url: true,
+  description: true,
+  category: true,
+  subcategory_id: true,
+  is_universal: true,
+  is_official: true,
+  is_active: true,
+  sales_count: true,
+  view_count: true,
+  created_at: true,
+  updated_at: true,
 };
 
 router.get('/recommended', consumerPartRecommendationCacheMiddleware(300), async (req, res) => {
@@ -152,7 +168,9 @@ router.get('/recommended', consumerPartRecommendationCacheMiddleware(300), async
     };
     const orderBy = orderByMap[sort] || orderByMap.newest;
 
-    // 🆕 取得改裝聯動推薦零件
+    // 🔒 取得改裝聯動推薦零件
+    //    一律使用顯式 select 白名單：Part 同一列有 msrp_price 與 wholesale_price，
+    //    未投影的 findMany 會把成本價一起回給消費者（先前實測回傳 wholesale_price: 7000）。
     let modificationParts = [];
     if (vehicle) {
       const vehicleProfile = await prisma.vehicleProfile.findUnique({
@@ -220,7 +238,7 @@ router.get('/recommended', consumerPartRecommendationCacheMiddleware(300), async
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: '查詢失敗', detail: error.message });
+    res.status(500).json({ error: '查詢失敗',  });
   }
 });
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import {render,screen,fireEvent,waitFor,within} from '@testing-library/react';
+import {render,screen,fireEvent,waitFor} from '@testing-library/react';
 import MyCar from './MyCar';
 import { myCarAPI, vehicleAPI } from '../api';
 const mockVehicle = { id: 'v1', make: 'BMW', model: '320i', year: 2020, vin: 'original', licensePlate: 'ABC', variantId: 1 };
@@ -19,26 +19,31 @@ beforeEach(() => {
  vehicleAPI.update.mockResolvedValue({ data: mockVehicle });
  vehicleAPI.create.mockResolvedValue({ data: mockVehicle });
 });
-it('愛車首頁摘要與三分頁，編輯表單按需展開、刪除收進管理選單', async () => {
- render(<MyCar />);
- await screen.findByRole('tab', { name: '車輛資料', selected: true });
- expect(screen.queryByRole('heading', { name: '新增車輛' })).not.toBeInTheDocument();
- // 刪除為直接操作按鈕（已從管理 dropdown 改為直達）
- expect(screen.getByRole('button', { name: /刪除/ })).toBeVisible();
+it('愛車首頁預設車輛資料，後續分頁順序為 改裝項目 → 保養', async () => {
+  render(<MyCar />);
+  await screen.findByRole('tab', { name: '車輛資料', selected: true });
+  expect(screen.getByText('我的車輛列表')).toBeInTheDocument();
+  expect(screen.queryByText('🛡 保養總覽')).not.toBeInTheDocument();
 
- fireEvent.click(within(screen.getByRole('heading', { name: '我的車輛列表' }).closest('div')).getByRole('button', { name: '編輯' }));
- expect(screen.getByLabelText('VIN')).toHaveValue('original');
- fireEvent.change(screen.getByLabelText('VIN'), { target: { value: 'updated' } });
- fireEvent.click(screen.getByRole('button', { name: '更新車輛' }));
- await waitFor(() => expect(vehicleAPI.update).toHaveBeenCalledWith('v1', expect.objectContaining({ vin: 'updated' })));
- await waitFor(() => expect(mockRefresh).toHaveBeenCalled());
- fireEvent.click(screen.getByRole('tab', { name: '目前改裝品' }));
- expect(screen.getByText('改裝編輯器')).toBeInTheDocument();
- expect(screen.queryByLabelText('VIN')).not.toBeInTheDocument();
- expect(screen.queryByText('🔔 保養提醒')).not.toBeInTheDocument();
- fireEvent.click(screen.getByRole('tab', { name: '保養紀錄' }));
- expect(screen.getByText('🔔 保養提醒')).toBeInTheDocument();
- expect(screen.queryByText('改裝編輯器')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: '編輯' }));
+  expect(screen.getByLabelText('VIN')).toHaveValue('original');
+  fireEvent.change(screen.getByLabelText('VIN'), { target: { value: 'updated' } });
+  fireEvent.click(screen.getByRole('button', { name: '更新車輛' }));
+  await waitFor(() => expect(vehicleAPI.update).toHaveBeenCalledWith('v1', expect.objectContaining({ vin: 'updated' })));
+  await waitFor(() => expect(mockRefresh).toHaveBeenCalled());
+
+  fireEvent.click(screen.getByRole('tab', { name: '改裝項目' }));
+  expect(screen.getByText('改裝編輯器')).toBeInTheDocument();
+  expect(screen.queryByLabelText('VIN')).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('tab', { name: '保養' }));
+  // 保養總覽與保養紀錄已合併為單一保養分頁
+  expect(screen.getByText('🛡 保養總覽')).toBeInTheDocument();
+  expect(screen.getByText(/目前沒有啟用的保養提醒/)).toBeInTheDocument();
+  expect(screen.getByText('📋 保養歷史')).toBeInTheDocument();
+  expect(screen.getByText(/還沒有保養紀錄/)).toBeInTheDocument();
+
+  expect(screen.queryByRole('tab', { name: '保養紀錄' })).not.toBeInTheDocument();
 });
 it('沒有車輛也能在愛車頁新增，不跳往其他編輯頁', async () => {
  myCarAPI.dashboard.mockResolvedValue({ data: { vehicle: null, history: [], reminders: [], suggestions: [] } });

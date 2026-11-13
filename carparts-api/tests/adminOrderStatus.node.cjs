@@ -24,6 +24,8 @@ function loadRouter({ order, updateManyCount = 1, cancelImpl } = {}) {
     module: { exports: {} },
     console: { error: () => {}, warn: () => {}, debug: () => {}, info: () => {} },
     require(name) {
+      if (name === '../lib/prisma' || name === './lib/prisma' || name.endsWith('/lib/prisma')) return prisma;
+      if (name.endsWith('/lib/prisma')) return prisma;
       if (name === '@prisma/client') return { PrismaClient: class { constructor() { return prisma; } } };
       if (name === '../middleware/adminAuth') return (req, res, next) => next();
       if (name === '../services/lineService') return { notifyOrderUpdate: async () => {} };
@@ -93,6 +95,7 @@ test('取消服務的 ORDER_NOT_CANCELLABLE 對應 409', async () => {
   const context = {
     module: { exports: {} }, console: { error: () => {}, warn: () => {}, debug: () => {}, info: () => {} },
     require(name) {
+      if (name.endsWith('/lib/prisma')) return prisma;
       if (name === '@prisma/client') return { PrismaClient: class { constructor() { return prisma; } } };
       if (name === '../middleware/adminAuth') return (req, res, next) => next();
       if (name === '../services/lineService') return { notifyOrderUpdate: async () => {} };

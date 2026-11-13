@@ -90,41 +90,41 @@ export default function GarageLogin() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900">
-      <form onSubmit={isRegister ? handleRegister : handleLogin} className="bg-gray-800 p-8 rounded-xl w-96 max-h-[90vh] overflow-y-auto">
+    <div className="min-h-screen flex items-center justify-center bg-surface-900">
+      <form onSubmit={isRegister ? handleRegister : handleLogin} className="bg-surface-800 p-8 rounded-xl w-96 max-h-[90vh] overflow-y-auto">
         <h1 className="text-2xl font-bold text-white mb-6">
           🏪 車廠{isRegister ? '註冊' : '登入'}
         </h1>
 
-        <label className="block text-sm text-gray-400 mb-1">手機號碼</label>
-        <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="09xxxxxxxx" className="w-full p-3 mb-4 rounded bg-gray-700 text-white" />
+        <label className="block text-sm text-surface-400 mb-1">手機號碼</label>
+        <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="09xxxxxxxx" className="w-full p-3 mb-4 rounded bg-surface-700 text-white" />
 
-        <label className="block text-sm text-gray-400 mb-1">密碼</label>
-        <input value={password} onChange={e => setPassword(e.target.value)} type="password" placeholder={isRegister ? '設定密碼' : '輸入密碼'} className="w-full p-3 mb-4 rounded bg-gray-700 text-white" />
+        <label className="block text-sm text-surface-400 mb-1">密碼</label>
+        <input value={password} onChange={e => setPassword(e.target.value)} type="password" placeholder={isRegister ? '設定密碼' : '輸入密碼'} className="w-full p-3 mb-4 rounded bg-surface-700 text-white" />
 
         {isRegister && (
           <>
-            <label className="block text-sm text-gray-400 mb-1">確認密碼</label>
-            <input value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} type="password" placeholder="再次輸入密碼" className="w-full p-3 mb-4 rounded bg-gray-700 text-white" />
+            <label className="block text-sm text-surface-400 mb-1">確認密碼</label>
+            <input value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} type="password" placeholder="再次輸入密碼" className="w-full p-3 mb-4 rounded bg-surface-700 text-white" />
 
-            <label className="block text-sm text-gray-400 mb-1">公司名稱 *</label>
-            <input value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder="例如：大台北汽車保養廠" className="w-full p-3 mb-4 rounded bg-gray-700 text-white" />
+            <label className="block text-sm text-surface-400 mb-1">公司名稱 *</label>
+            <input value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder="例如：大台北汽車保養廠" className="w-full p-3 mb-4 rounded bg-surface-700 text-white" />
 
-            <label className="block text-sm text-gray-400 mb-1">LINE 帳號 *</label>
-            <input value={lineId} onChange={e => setLineId(e.target.value)} placeholder="例如：@garage001 或 lineID" className="w-full p-3 mb-4 rounded bg-gray-700 text-white" />
+            <label className="block text-sm text-surface-400 mb-1">LINE 帳號 *</label>
+            <input value={lineId} onChange={e => setLineId(e.target.value)} placeholder="例如：@garage001 或 lineID" className="w-full p-3 mb-4 rounded bg-surface-700 text-white" />
 
-            <label className="block text-sm text-gray-400 mb-1">聯絡人</label>
-            <input value={contactPerson} onChange={e => setContactPerson(e.target.value)} placeholder="例如：王廠長" className="w-full p-3 mb-4 rounded bg-gray-700 text-white" />
+            <label className="block text-sm text-surface-400 mb-1">聯絡人</label>
+            <input value={contactPerson} onChange={e => setContactPerson(e.target.value)} placeholder="例如：王廠長" className="w-full p-3 mb-4 rounded bg-surface-700 text-white" />
 
-            <label className="block text-sm text-gray-400 mb-1">車廠地址</label>
-            <input value={address} onChange={e => setAddress(e.target.value)} placeholder="例如：台北市中山區..." className="w-full p-3 mb-4 rounded bg-gray-700 text-white" />
+            <label className="block text-sm text-surface-400 mb-1">車廠地址</label>
+            <input value={address} onChange={e => setAddress(e.target.value)} placeholder="例如：台北市中山區..." className="w-full p-3 mb-4 rounded bg-surface-700 text-white" />
 
-            <label className="block text-sm text-gray-400 mb-1">店家名稱（車主看到的公開名稱）*</label>
-            <input value={garageName} onChange={e => setGarageName(e.target.value)} placeholder="例如：大台北汽車保養廠" className="w-full p-3 mb-4 rounded bg-gray-700 text-white" />
+            <label className="block text-sm text-surface-400 mb-1">店家名稱（車主看到的公開名稱）*</label>
+            <input value={garageName} onChange={e => setGarageName(e.target.value)} placeholder="例如：大台北汽車保養廠" className="w-full p-3 mb-4 rounded bg-surface-700 text-white" />
 
             {/* 🆕 名片上傳 */}
-            <label className="block text-sm text-gray-400 mb-1">上傳名片 *</label>
-            <input type="file" accept="image/*" capture="environment" ref={fileRef} onChange={handleCardChange} className="w-full p-3 rounded bg-gray-700 text-white mb-4 file:mr-4 file:py-2 file:px-4 file:rounded file:bg-blue-600 file:text-white file:border-0" />
+            <label className="block text-sm text-surface-400 mb-1">上傳名片 *</label>
+            <input type="file" accept="image/*" capture="environment" ref={fileRef} onChange={handleCardChange} className="w-full p-3 rounded bg-surface-700 text-white mb-4 file:mr-4 file:py-2 file:px-4 file:rounded file:bg-blue-600 file:text-white file:border-0" />
             {cardPreview && <img src={cardPreview} alt="名片預覽" className="w-full rounded mb-4 max-h-32 object-contain bg-black" />}
           </>
         )}

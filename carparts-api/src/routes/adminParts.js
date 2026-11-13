@@ -1,11 +1,10 @@
 // src/routes/adminParts.js
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
 const adminAuth = require('../middleware/adminAuth');
 const { invalidateCache } = require('../middleware/cacheMiddleware');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 router.use(adminAuth);
 
@@ -152,7 +151,57 @@ router.post('/', async (req, res) => {
   }
 });
 
-// ========== GET /:id （詳情） ==========
+// ========== GET /missing （缺資料商品清單） ==========
+// 🆕 P0 收尾：供後端商品管理顯示「缺少圖片／說明」的商品
+router.get('/missing', async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(Math.max(1, parseInt(req.query.limit) || 20), 100);
+    const skip = (page - 1) * limit;
+
+    const whereImageMissing = { OR: [{ image_url: null }, { image_url: '' }] };
+    const whereDescMissing = { OR: [{ description: null }, { description: '' }] };
+    const whereMissing = {
+      OR: [{ image_url: null }, { image_url: '' }, { description: null }, { description: '' }],
+    };
+
+    const [total, missingImageCount, missingDescCount, missingBothCount, missingParts] = await Promise.all([
+      prisma.part.count({ where: whereMissing }),
+      prisma.part.count({ where: whereImageMissing }),
+      prisma.part.count({ where: whereDescMissing }),
+      prisma.part.count({ where: { AND: [whereImageMissing, whereDescMissing] } }),
+      prisma.part.findMany({
+        where: whereMissing,
+        skip,
+        take: limit,
+        include: { subcategory: { include: { category: true } } },
+        orderBy: { updated_at: 'desc' },
+      }),
+    ]);
+
+    const data = missingParts.map((part) => ({
+      ...part,
+      missing_image: !part.image_url,
+      missing_description: !part.description,
+    }));
+
+    res.json({
+      data,
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+      summary: {
+        total,
+        missing_image: missingImageCount,
+        missing_description: missingDescCount,
+        missing_both: missingBothCount,
+      },
+    });
+  } catch (error) {
+    console.error('取得缺資料商品失敗:', error);
+    res.status(500).json({ error: '伺服器內部錯誤，請稍後再試' });
+  }
+});
+
+// ========== GET /:id （更新） ==========
 router.get('/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);

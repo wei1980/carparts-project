@@ -193,7 +193,7 @@ export default function AdminAiDrafts() {
             key={opt.key}
             onClick={() => setStatusFilter(opt.key)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-              statusFilter === opt.key ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              statusFilter === opt.key ? 'bg-blue-600 text-white' : 'bg-surface-700 text-surface-300 hover:bg-surface-600'
             }`}
           >
             {opt.label}
@@ -208,7 +208,7 @@ export default function AdminAiDrafts() {
       )}
 
       {loading ? (
-        <div className="text-gray-400 flex items-center gap-2">
+        <div className="text-surface-400 flex items-center gap-2">
           <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
@@ -216,21 +216,21 @@ export default function AdminAiDrafts() {
           載入中...
         </div>
       ) : drafts.length === 0 ? (
-        <p className="text-gray-400">
+        <p className="text-surface-400">
           沒有{statusOptions.find(o => o.key === statusFilter)?.label || ''}的草稿
         </p>
       ) : (
         <div className="space-y-4">
           {drafts.map(d => (
-            <div key={d.id} className="bg-gray-800 p-6 rounded-xl border border-gray-700">
+            <div key={d.id} className="bg-surface-800 p-6 rounded-xl border border-surface-700">
               <div className="flex justify-between items-start">
                 <div>
                   <h3 className="font-bold text-white">{d.query}</h3>
-                  <p className="text-gray-400 text-sm mt-1">
+                  <p className="text-surface-400 text-sm mt-1">
                     來源：{d.source_type === 'image' ? '圖片' : d.source_type === 'url' ? '網址' : '文字'}
                     {d.customerVehicle ? ` | 客戶車輛：${d.customerVehicle.make} ${d.customerVehicle.model}` : ''}
                   </p>
-                  <p className="text-gray-500 text-xs">建立時間：{new Date(d.created_at).toLocaleString()}</p>
+                  <p className="text-surface-500 text-xs">建立時間：{new Date(d.created_at).toLocaleString()}</p>
                   {d.status === 'failed' && (
                     <p className="text-red-400 text-xs mt-1">❌ 處理失敗，請檢查日誌或重新處理</p>
                   )}
@@ -259,7 +259,7 @@ export default function AdminAiDrafts() {
                       disabled={processingId === d.id}
                       className={`px-3 py-1 rounded text-white transition ${
                         processingId === d.id
-                          ? 'bg-gray-500 cursor-not-allowed'
+                          ? 'bg-surface-500 cursor-not-allowed'
                           : 'bg-purple-600 hover:bg-purple-700'
                       }`}
                     >
@@ -283,7 +283,7 @@ export default function AdminAiDrafts() {
                     </div>
                   )}
                   {editForm.parts.map((part, idx) => (
-                    <div key={idx} className="bg-gray-700 p-4 rounded-lg space-y-3 relative">
+                    <div key={idx} className="bg-surface-700 p-4 rounded-lg space-y-3 relative">
                       <button
                         onClick={() => removePart(idx)}
                         className="absolute top-2 right-2 text-red-400 hover:text-red-300 text-sm"
@@ -292,73 +292,73 @@ export default function AdminAiDrafts() {
                       </button>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div className="flex flex-col gap-1">
-                          <label className="text-xs text-gray-400 font-medium">SKU</label>
+                          <label className="text-xs text-surface-400 font-medium">SKU</label>
                           <input
                             value={part.sku || ''}
                             onChange={e => updatePart(idx, 'sku', e.target.value)}
                             placeholder="輸入 SKU"
-                            className="w-full p-2 rounded bg-gray-600 text-white focus:ring-1 focus:ring-blue-500 outline-none"
+                            className="w-full p-2 rounded bg-surface-600 text-white focus:ring-1 focus:ring-blue-500 outline-none"
                           />
                         </div>
                         <div className="flex flex-col gap-1">
-                          <label className="text-xs text-gray-400 font-medium">零件名稱 *</label>
+                          <label className="text-xs text-surface-400 font-medium">零件名稱 *</label>
                           <input
                             value={part.name || ''}
                             onChange={e => updatePart(idx, 'name', e.target.value)}
                             placeholder="輸入名稱"
-                            className="w-full p-2 rounded bg-gray-600 text-white"
+                            className="w-full p-2 rounded bg-surface-600 text-white"
                           />
                         </div>
                         <div className="flex flex-col gap-1">
-                          <label className="text-xs text-gray-400 font-medium">品牌</label>
+                          <label className="text-xs text-surface-400 font-medium">品牌</label>
                           <input
                             value={part.brand || ''}
                             onChange={e => updatePart(idx, 'brand', e.target.value)}
                             placeholder="輸入品牌"
-                            className="w-full p-2 rounded bg-gray-600 text-white"
+                            className="w-full p-2 rounded bg-surface-600 text-white"
                           />
                         </div>
                         <div className="flex flex-col gap-1">
-                          <label className="text-xs text-gray-400 font-medium">建議售價</label>
+                          <label className="text-xs text-surface-400 font-medium">建議售價</label>
                           <input
                             value={part.msrp_price ?? ''}
                             onChange={e => updatePart(idx, 'msrp_price', e.target.value ? parseFloat(e.target.value) : null)}
                             placeholder="輸入建議售價"
                             type="number"
-                            className="w-full p-2 rounded bg-gray-600 text-white"
+                            className="w-full p-2 rounded bg-surface-600 text-white"
                           />
                         </div>
                         <div className="flex flex-col gap-1">
-                          <label className="text-xs text-gray-400 font-medium">批發價</label>
+                          <label className="text-xs text-surface-400 font-medium">批發價</label>
                           <input
                             value={part.wholesale_price ?? ''}
                             onChange={e => updatePart(idx, 'wholesale_price', e.target.value ? parseFloat(e.target.value) : null)}
                             placeholder="輸入批發價"
                             type="number"
-                            className="w-full p-2 rounded bg-gray-600 text-white"
+                            className="w-full p-2 rounded bg-surface-600 text-white"
                           />
                         </div>
                         <div className="flex flex-col gap-1">
-                          <label className="text-xs text-gray-400 font-medium">圖片網址</label>
+                          <label className="text-xs text-surface-400 font-medium">圖片網址</label>
                           <input
                             value={part.image_url || ''}
                             onChange={e => updatePart(idx, 'image_url', e.target.value)}
                             placeholder="輸入圖片網址"
-                            className="w-full p-2 rounded bg-gray-600 text-white"
+                            className="w-full p-2 rounded bg-surface-600 text-white"
                           />
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div className="flex flex-col gap-1">
-                          <label className="text-xs text-gray-400 font-medium">主分類</label>
+                          <label className="text-xs text-surface-400 font-medium">主分類</label>
                           <select
                             value={part.category_id || ''}
                             onChange={e => {
                               updatePart(idx, 'category_id', e.target.value);
                               updatePart(idx, 'subcategory_id', '');
                             }}
-                            className="w-full p-2 rounded bg-gray-600 text-white focus:ring-1 focus:ring-blue-500 outline-none"
+                            className="w-full p-2 rounded bg-surface-600 text-white focus:ring-1 focus:ring-blue-500 outline-none"
                             disabled={categoriesError}
                           >
                             <option value="">請選擇主分類</option>
@@ -367,16 +367,16 @@ export default function AdminAiDrafts() {
                             ))}
                           </select>
                           {part.category && !part.category_id && (
-                            <p className="text-xs text-gray-500">AI 原始分類：{part.category}</p>
+                            <p className="text-xs text-surface-500">AI 原始分類：{part.category}</p>
                           )}
                         </div>
                         <div className="flex flex-col gap-1">
-                          <label className="text-xs text-gray-400 font-medium">子分類</label>
+                          <label className="text-xs text-surface-400 font-medium">子分類</label>
                           <select
                             value={part.subcategory_id || ''}
                             onChange={e => updatePart(idx, 'subcategory_id', e.target.value)}
                             disabled={!part.category_id || categoriesError}
-                            className="w-full p-2 rounded bg-gray-600 text-white disabled:opacity-50"
+                            className="w-full p-2 rounded bg-surface-600 text-white disabled:opacity-50"
                           >
                             <option value="">請選擇子分類</option>
                             {part.category_id && getSubcategories(part.category_id).map(sub => (
@@ -384,19 +384,19 @@ export default function AdminAiDrafts() {
                             ))}
                           </select>
                           {part.subcategory && !part.subcategory_id && (
-                            <p className="text-xs text-gray-500">AI 原始子分類：{part.subcategory}</p>
+                            <p className="text-xs text-surface-500">AI 原始子分類：{part.subcategory}</p>
                           )}
                         </div>
                       </div>
 
                       <div className="flex flex-col gap-1">
-                        <label className="text-xs text-gray-400 font-medium">描述</label>
+                        <label className="text-xs text-surface-400 font-medium">描述</label>
                         <textarea
                           value={part.description || ''}
                           onChange={e => updatePart(idx, 'description', e.target.value)}
                           placeholder="輸入描述"
                           rows={2}
-                          className="w-full p-2 rounded bg-gray-600 text-white"
+                          className="w-full p-2 rounded bg-surface-600 text-white"
                         />
                       </div>
                     </div>
@@ -417,14 +417,14 @@ export default function AdminAiDrafts() {
                     </button>
                     <button
                       onClick={() => setEditingId(null)}
-                      className="bg-gray-600 px-4 py-2 rounded text-white hover:bg-gray-500 transition"
+                      className="bg-surface-600 px-4 py-2 rounded text-white hover:bg-surface-500 transition"
                     >
                       取消
                     </button>
                   </div>
                 </div>
               ) : (
-                <pre className="mt-4 bg-gray-700 p-3 rounded text-xs text-gray-300 overflow-x-auto max-h-96">
+                <pre className="mt-4 bg-surface-700 p-3 rounded text-xs text-surface-300 overflow-x-auto max-h-96">
                   {JSON.stringify(d.result_json, null, 2)}
                 </pre>
               )}

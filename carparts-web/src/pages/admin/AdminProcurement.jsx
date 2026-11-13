@@ -82,10 +82,10 @@ export default function AdminProcurement() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-white">🚢 進貨成本管理</h1>
         {/* Tab 切換 */}
-        <div className="flex gap-2 bg-gray-800 rounded-xl p-1">
+        <div className="flex gap-2 bg-surface-800 rounded-xl p-1">
           {[['shipments', '📦 進貨批次'], ['suppliers', '🏭 供貨商'], ['report', '📈 月營收報表']].map(([k, label]) => (
             <button key={k} onClick={() => setTab(k)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${tab === k ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${tab === k ? 'bg-blue-600 text-white' : 'text-surface-400 hover:text-white'}`}>
               {label}
             </button>
           ))}
@@ -93,7 +93,7 @@ export default function AdminProcurement() {
       </div>
 
       {loading ? (
-        <p className="text-gray-400">載入中...</p>
+        <p className="text-surface-400">載入中...</p>
       ) : (
         <>
           {tab === 'shipments' && (
@@ -131,7 +131,7 @@ function ShipmentsTab({ shipments, suppliers, statusFilter, onFilter, onAdvance,
     <>
       <div className="flex items-center gap-3 mb-4">
         <select value={statusFilter} onChange={e => onFilter(e.target.value)}
-          className="bg-gray-800 border border-gray-600 text-white rounded-lg px-3 py-2 text-sm">
+          className="bg-surface-800 border border-surface-600 text-white rounded-lg px-3 py-2 text-sm">
           <option value="">全部狀態</option>
           {Object.entries(STATUS_MAP).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
@@ -143,11 +143,11 @@ function ShipmentsTab({ shipments, suppliers, statusFilter, onFilter, onAdvance,
       {showForm && <ShipmentForm editing={editing} suppliers={suppliers} onClose={onDone} onSaved={onDone} />}
 
       {shipments.length === 0 ? (
-        <div className="text-center py-16 text-gray-500">尚無進貨批次</div>
+        <div className="text-center py-16 text-surface-500">尚無進貨批次</div>
       ) : (
         <div className="space-y-4">
           {shipments.map(sh => (
-            <div key={sh.id} className="bg-gray-800 rounded-xl p-5 border border-gray-700">
+            <div key={sh.id} className="bg-surface-800 rounded-xl p-5 border border-surface-700">
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-3">
                 <span className="font-mono text-blue-300 font-bold">{sh.shipment_no}</span>
                 <span className="text-xs px-2 py-0.5 rounded-md text-white" style={{ backgroundColor: TYPE_MAP[sh.type] === '國外進口' ? '#7c3aed' : '#0891b2' }}>
@@ -156,11 +156,11 @@ function ShipmentsTab({ shipments, suppliers, statusFilter, onFilter, onAdvance,
                 <span className="text-xs px-2 py-0.5 rounded-md text-white" style={{ backgroundColor: STATUS_COLOR[sh.status] }}>
                   {STATUS_MAP[sh.status]}
                 </span>
-                <span className="text-gray-400 text-sm">{sh.supplier?.name}</span>
+                <span className="text-surface-400 text-sm">{sh.supplier?.name}</span>
                 <span className="ml-auto font-black text-white">{NT(sh.total_landed_cost_twd)}</span>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-x-4 gap-y-1 text-xs text-gray-400 mb-3">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-x-4 gap-y-1 text-xs text-surface-400 mb-3">
                 <span>貨款 {NT(sh.goods_cost_twd)}</span>
                 <span>國際運費 {NT(sh.intl_freight_twd)}</span>
                 <span>國內運費 {NT(sh.local_freight_twd)}</span>
@@ -170,7 +170,7 @@ function ShipmentsTab({ shipments, suppliers, statusFilter, onFilter, onAdvance,
 
               {/* 明細摘要 */}
               {sh.items.length > 0 && (
-                <div className="text-xs text-gray-500 mb-3 truncate">
+                <div className="text-xs text-surface-500 mb-3 truncate">
                   {sh.items.map(i => `${i.part?.sku || '?'} ×${i.qty}`).join('、')}（共 {sh.total_qty} 件）
                 </div>
               )}
@@ -184,7 +184,7 @@ function ShipmentsTab({ shipments, suppliers, statusFilter, onFilter, onAdvance,
                 )}
                 {(sh.status === 'DRAFT' || sh.status === 'ORDERED' || sh.status === 'IN_TRANSIT') && (
                   <button onClick={() => onEdit(sh)}
-                    className="px-3 py-1.5 rounded-lg text-xs bg-gray-700 hover:bg-gray-600 text-gray-200 transition">
+                    className="px-3 py-1.5 rounded-lg text-xs bg-surface-700 hover:bg-surface-600 text-surface-200 transition">
                     ✏️ 編輯
                   </button>
                 )}
@@ -298,7 +298,7 @@ function ShipmentForm({ editing, suppliers, onClose, onSaved }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 py-8" onClick={onClose}>
-      <div className="bg-gray-800 rounded-2xl w-full max-w-3xl p-6 border border-gray-700" onClick={e => e.stopPropagation()}>
+      <div className="bg-surface-800 rounded-2xl w-full max-w-3xl p-6 border border-surface-700" onClick={e => e.stopPropagation()}>
         <h2 className="text-lg font-bold text-white mb-5">{isEdit ? `✏️ 編輯批次 ${editing.shipment_no}` : '➕ 新增進貨批次'}</h2>
 
         {/* 基本資訊 */}
@@ -326,20 +326,20 @@ function ShipmentForm({ editing, suppliers, onClose, onSaved }) {
         {/* 明細 */}
         <div className="mb-5">
           <div className="flex items-center justify-between mb-2">
-            <label className="text-sm font-bold text-gray-300">進貨明細 *</label>
+            <label className="text-sm font-bold text-surface-300">進貨明細 *</label>
             {/* 零件搜尋 */}
             <div className="relative w-72">
               <input value={partQuery} onChange={e => setPartQuery(e.target.value)}
                 placeholder="搜尋 SKU / 名稱加入明細…"
                 aria-label="搜尋零件"
-                className="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-1.5 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none" />
+                className="w-full bg-surface-900 border border-surface-600 rounded-lg px-3 py-1.5 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none" />
               {partResults.length > 0 && (
-                <ul className="absolute right-0 top-full mt-1 w-full max-w-md bg-gray-900 border border-gray-600 rounded-lg overflow-hidden z-10 shadow-xl">
+                <ul className="absolute right-0 top-full mt-1 w-full max-w-md bg-surface-900 border border-surface-600 rounded-lg overflow-hidden z-10 shadow-xl">
                   {partResults.map(p => (
                     <li key={p.id}>
-                      <button onClick={() => addItem(p)} className="w-full text-left px-3 py-2 hover:bg-gray-700 text-sm text-white flex justify-between gap-2">
+                      <button onClick={() => addItem(p)} className="w-full text-left px-3 py-2 hover:bg-surface-700 text-sm text-white flex justify-between gap-2">
                         <span className="truncate">{p.name}</span>
-                        <span className="font-mono text-gray-400 shrink-0">{p.sku}</span>
+                        <span className="font-mono text-surface-400 shrink-0">{p.sku}</span>
                       </button>
                     </li>
                   ))}
@@ -350,7 +350,7 @@ function ShipmentForm({ editing, suppliers, onClose, onSaved }) {
           {items.length > 0 && (
             <table className="w-full text-sm text-white mb-1">
               <thead>
-                <tr className="text-gray-400 text-xs border-b border-gray-700">
+                <tr className="text-surface-400 text-xs border-b border-surface-700">
                   <th className="py-1.5 text-left">零件</th>
                   <th className="py-1.5 text-right w-20">數量</th>
                   <th className="py-1.5 text-right w-28">單價(TWD)</th>
@@ -360,23 +360,23 @@ function ShipmentForm({ editing, suppliers, onClose, onSaved }) {
               </thead>
               <tbody>
                 {items.map((it, idx) => (
-                  <tr key={it.partId} className="border-b border-gray-700/50">
-                    <td className="py-1.5 pr-2"><span className="font-mono text-xs text-gray-400 mr-1">{it.sku}</span>{it.name}</td>
+                  <tr key={it.partId} className="border-b border-surface-700/50">
+                    <td className="py-1.5 pr-2"><span className="font-mono text-xs text-surface-400 mr-1">{it.sku}</span>{it.name}</td>
                     <td className="py-1.5">
                       <input type="number" min="1" value={it.qty} aria-label={`${it.sku} 數量`}
                         onChange={e => setItems(prev => prev.map((x, i) => i === idx ? { ...x, qty: e.target.value } : x))}
-                        className="w-16 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-right focus:ring-2 focus:ring-blue-500 outline-none" />
+                        className="w-16 bg-surface-900 border border-surface-600 rounded px-2 py-1 text-right focus:ring-2 focus:ring-blue-500 outline-none" />
                     </td>
                     <td className="py-1.5">
                       <input type="number" min="0" step="0.01" value={it.unitPriceTwd} aria-label={`${it.sku} 單價`}
                         onChange={e => setItems(prev => prev.map((x, i) => i === idx ? { ...x, unitPriceTwd: e.target.value } : x))}
-                        className="w-24 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-right focus:ring-2 focus:ring-blue-500 outline-none" />
+                        className="w-24 bg-surface-900 border border-surface-600 rounded px-2 py-1 text-right focus:ring-2 focus:ring-blue-500 outline-none" />
                     </td>
-                    <td className="py-1.5 text-right font-mono text-gray-300">{NT((Number(it.unitPriceTwd) || 0) * (parseInt(it.qty) || 0))}</td>
+                    <td className="py-1.5 text-right font-mono text-surface-300">{NT((Number(it.unitPriceTwd) || 0) * (parseInt(it.qty) || 0))}</td>
                     <td className="py-1.5 text-center">
                       <button onClick={() => setItems(prev => prev.filter((_, i) => i !== idx))}
                         aria-label={`移除 ${it.sku}`}
-                        className="text-gray-500 hover:text-red-400 transition">✕</button>
+                        className="text-surface-500 hover:text-red-400 transition">✕</button>
                     </td>
                   </tr>
                 ))}
@@ -408,19 +408,19 @@ function ShipmentForm({ editing, suppliers, onClose, onSaved }) {
         </div>
 
         {/* 即時成本預覽 */}
-        <div className="bg-gray-900 rounded-xl p-4 mb-5 text-sm">
-          <div className="flex flex-wrap gap-x-6 gap-y-1 text-gray-300">
+        <div className="bg-surface-900 rounded-xl p-4 mb-5 text-sm">
+          <div className="flex flex-wrap gap-x-6 gap-y-1 text-surface-300">
             <span>貨款合計：<b className="text-white">{NT(goodsTotal)}</b></span>
             <span>費用合計：<b className="text-white">{NT(overheadTotal)}</b></span>
             <span>總成本：<b className="text-amber-400">{NT(goodsTotal + overheadTotal)}</b></span>
           </div>
-          <p className="text-xs text-gray-500 mt-1.5">
+          <p className="text-xs text-surface-500 mt-1.5">
             入庫時將依「{form.allocation_method === 'BY_AMOUNT' ? '貨款金額比' : '數量比'}」把費用分攤到每件零件，算出到岸成本。
           </p>
         </div>
 
         <div className="flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-sm transition">取消</button>
+          <button onClick={onClose} className="px-4 py-2 rounded-lg bg-surface-700 hover:bg-surface-600 text-white text-sm transition">取消</button>
           <button onClick={handleSubmit} disabled={saving}
             className="btn-primary px-5 py-2 rounded-lg text-sm font-bold disabled:opacity-50 bg-blue-600 hover:bg-blue-500 text-white transition">
             {saving ? '儲存中…' : isEdit ? '更新批次' : '建立批次'}
@@ -444,16 +444,16 @@ function SuppliersTab({ suppliers, onCreate, onEdit, showForm, editing, onClose,
       {showForm && <SupplierForm editing={editing} onClose={onClose} onSaved={onSaved} />}
 
       {suppliers.length === 0 ? (
-        <div className="text-center py-16 text-gray-500">尚無供貨商資料</div>
+        <div className="text-center py-16 text-surface-500">尚無供貨商資料</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {suppliers.map(s => (
-            <div key={s.id} className="bg-gray-800 rounded-xl p-5 border border-gray-700">
+            <div key={s.id} className="bg-surface-800 rounded-xl p-5 border border-surface-700">
               <div className="flex items-start justify-between mb-2">
                 <h3 className="font-bold text-white">{s.name}</h3>
-                <span className="chip text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded">{s.currency}</span>
+                <span className="chip text-xs bg-surface-700 text-surface-300 px-2 py-0.5 rounded">{s.currency}</span>
               </div>
-              <dl className="text-xs text-gray-400 space-y-1 mb-3">
+              <dl className="text-xs text-surface-400 space-y-1 mb-3">
                 {s.country && <div>🌍 {s.country}</div>}
                 {s.contact_person && <div>👤 {s.contact_person}{s.phone ? ` · ${s.phone}` : ''}</div>}
                 {s.email && <div>✉️ {s.email}</div>}
@@ -500,7 +500,7 @@ function SupplierForm({ editing, onClose, onSaved }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
-      <div className="bg-gray-800 rounded-2xl w-full max-w-lg p-6 border border-gray-700" onClick={e => e.stopPropagation()}>
+      <div className="bg-surface-800 rounded-2xl w-full max-w-lg p-6 border border-surface-700" onClick={e => e.stopPropagation()}>
         <h2 className="text-lg font-bold text-white mb-5">{isEdit ? '✏️ 編輯供貨商' : '➕ 新增供貨商'}</h2>
 
         <div className="grid grid-cols-2 gap-3 mb-4">
@@ -521,7 +521,7 @@ function SupplierForm({ editing, onClose, onSaved }) {
         </div>
 
         <div className="flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-sm transition">取消</button>
+          <button onClick={onClose} className="px-4 py-2 rounded-lg bg-surface-700 hover:bg-surface-600 text-white text-sm transition">取消</button>
           <button onClick={handleSubmit} disabled={saving}
             className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold disabled:opacity-50 transition">
             {saving ? '儲存中…' : '儲存'}
@@ -534,7 +534,7 @@ function SupplierForm({ editing, onClose, onSaved }) {
 
 /* ==================== 月營收報表 ==================== */
 function ReportTab({ report }) {
-  if (!report) return <p className="text-gray-400">載入中...</p>;
+  if (!report) return <p className="text-surface-400">載入中...</p>;
   const monthly = report.monthly || [];
   const maxRev = Math.max(...monthly.map(m => m.revenue), 1);
   const totalRev = monthly.reduce((a, m) => a + m.revenue, 0);
@@ -551,13 +551,13 @@ function ReportTab({ report }) {
       </div>
 
       {monthly.length === 0 ? (
-        <div className="text-center py-16 text-gray-500">期間內尚無已付款訂單</div>
+        <div className="text-center py-16 text-surface-500">期間內尚無已付款訂單</div>
       ) : (
-        <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+        <div className="bg-surface-800 rounded-xl p-6 border border-surface-700">
           <h2 className="font-bold text-white mb-4">月度損益（近 6 個月）</h2>
           <table className="w-full text-sm text-white">
             <thead>
-              <tr className="text-gray-400 text-xs border-b border-gray-700">
+              <tr className="text-surface-400 text-xs border-b border-surface-700">
                 <th className="p-2 text-left">月份</th>
                 <th className="p-2 text-right">營收</th>
                 <th className="p-2 text-right">銷貨成本</th>
@@ -568,16 +568,16 @@ function ReportTab({ report }) {
             </thead>
             <tbody>
               {monthly.map(m => (
-                <tr key={m.month} className="border-b border-gray-700/50">
+                <tr key={m.month} className="border-b border-surface-700/50">
                   <td className="p-2 font-mono">{m.month}</td>
                   <td className="p-2 text-right">{NT(m.revenue)}</td>
-                  <td className="p-2 text-right text-gray-400">{NT(m.cogs)}</td>
+                  <td className="p-2 text-right text-surface-400">{NT(m.cogs)}</td>
                   <td className={`p-2 text-right font-bold ${m.gross_profit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                     {NT(m.gross_profit)}
                   </td>
-                  <td className="p-2 text-right text-gray-300">{m.gross_margin != null ? `${m.gross_margin}%` : '—'}</td>
+                  <td className="p-2 text-right text-surface-300">{m.gross_margin != null ? `${m.gross_margin}%` : '—'}</td>
                   <td className="p-2">
-                    <div className="h-2.5 bg-gray-700 rounded-full overflow-hidden">
+                    <div className="h-2.5 bg-surface-700 rounded-full overflow-hidden">
                       <div className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 rounded-full"
                         style={{ width: `${Math.max((m.revenue / maxRev) * 100, 2)}%` }} />
                     </div>
@@ -586,7 +586,7 @@ function ReportTab({ report }) {
               ))}
             </tbody>
           </table>
-          <p className="text-xs text-gray-500 mt-3">{report.note}</p>
+          <p className="text-xs text-surface-500 mt-3">{report.note}</p>
         </div>
       )}
     </div>
@@ -594,8 +594,8 @@ function ReportTab({ report }) {
 }
 
 /* ==================== 小元件 ==================== */
-const inputCls = 'w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none';
-const Label = ({ children }) => <label className="text-xs block mb-1 text-gray-400">{children}</label>;
+const inputCls = 'w-full bg-surface-900 border border-surface-600 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none';
+const Label = ({ children }) => <label className="text-xs block mb-1 text-surface-400">{children}</label>;
 
 function Field({ label, error, children }) {
   return (
@@ -612,10 +612,10 @@ function Num({ v, set }) {
 function KpiCard({ title, value, tone = 'blue', sub }) {
   const colorMap = { blue: 'border-l-blue-500 text-blue-400', green: 'border-l-emerald-500 text-emerald-400', red: 'border-l-red-500 text-red-400' };
   return (
-    <div className={`bg-gray-800 rounded-xl p-5 border border-gray-700 border-l-4 ${colorMap[tone].split(' ')[0]}`}>
-      <p className="text-xs text-gray-400 mb-1">{title}</p>
+    <div className={`bg-surface-800 rounded-xl p-5 border border-surface-700 border-l-4 ${colorMap[tone].split(' ')[0]}`}>
+      <p className="text-xs text-surface-400 mb-1">{title}</p>
       <p className={`text-2xl font-black ${colorMap[tone].split(' ')[1]}`}>{value}</p>
-      {sub && <p className="text-[11px] text-gray-500 mt-1">{sub}</p>}
+      {sub && <p className="text-[11px] text-surface-500 mt-1">{sub}</p>}
     </div>
   );
 }

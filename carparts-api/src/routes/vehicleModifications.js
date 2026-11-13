@@ -1,10 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
 const auth = require('../middleware/authMiddleware');
 const { uploadFields, handleUploadError, processUploadedFiles } = require('../middleware/fileUploadValidation');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 router.use(auth);
 
 /**
@@ -346,46 +345,92 @@ router.get('/:id/completed-work-orders', async (req, res) => {
         vehicle_id: vehicle.id,
         status: { in: ['COMPLETED', 'DELIVERED'] }
       },
-      include: {
-        garage: { select: { id: true, garage_name: true, company_name: true } },
-        technician_user: { select: { id: true, name: true } },
-        items: { include: { part: { select: { id: true, name: true, brand: true, sku: true } } } },
-        laborItems: { include: { laborFee: { select: { id: true, name: true, price: true } } } }
-      },
       orderBy: { completed_at: 'desc' },
       take: 20
     });
 
-    const result = orders.map(o => ({
-      id: o.id,
-      garage_id: o.garage_id,
-      garage_name: o.garage?.garage_name,
-      garage_company_name: o.garage?.company_name,
-      technician: o.technician_user?.name,
-      completed_at: o.completed_at,
-      mileage_km: o.mileage_km,
-      summary: o.summary,
-      items: [
-        ...o.items.map(i => ({
-          id: `part-${i.id}`,
-          kind: 'PART',
-          name: i.part?.name || i.name,
-          brand: i.part?.brand,
-          quantity: i.quantity,
-          unit_price: Number(i.unit_price)
-        })),
-        ...o.laborItems.map(i => ({
-          id: `labor-${i.id}`,
-          kind: 'LABOR',
-          name: i.laborFee?.name || i.name,
-          brand: null,
-          quantity: 1,
-          unit_price: Number(i.amount)
-        }))
-      ],
-      before_photos: Array.isArray(o.photos) ? o.photos.filter(p => p.type === 'before').map(p => p.url) : [],
-      after_photos: Array.isArray(o.photos) ? o.photos.filter(p => p.type === 'after').map(p => p.url) : []
-    }));
+    // schema 的 WorkOrder 沒有關聯欄位，改以 id 批次查詢後組裝
+    const orderIds = orders.map(o => o.id);
+    const garageIds = [...new Set(orders.map(o => o.garage_id).filter(Boolean))];
+    const techIds = [...new Set(orders.map(o => o.technician_id).filter(Boolean))];
+
+    const [garages, techs, orderItems, laborItems] = await Promise.all([
+      garageIds.length
+        ? prisma.workshop.findMany({ where: { id: { in: garageIds } }, select: { id: true, garage_name: true, company_name: true } })
+        : [],
+      techIds.length
+        ? prisma.endUser.findMany({ where: { id: { in: techIds } }, select: { id: true, name: true } })
+        : [],
+      orderIds.length
+        ? prisma.workOrderItem.findMany({ where: { work_order_id: { in: orderIds } } })
+        : [],
+      orderIds.length
+        ? prisma.workOrderLaborItem.findMany({ where: { work_order_id: { in: orderIds } } })
+        : [],
+    ]);
+
+    const partIds = [...new Set(orderItems.map(i => i.part_id).filter(Boolean))];
+    const feeIds = [...new Set(laborItems.map(i => i.labor_fee_id).filter(Boolean))];
+    const [parts, fees] = await Promise.all([
+      partIds.length
+        ? prisma.part.findMany({ where: { id: { in: partIds } }, select: { id: true, name: true, brand: true, sku: true } })
+        : [],
+      feeIds.length
+        ? prisma.garageLaborFee.findMany({ where: { id: { in: feeIds } }, select: { id: true, name: true, price: true } })
+        : [],
+    ]);
+
+    const gMap = Object.fromEntries(garages.map(g => [g.id, g]));
+    const tMap = Object.fromEntries(techs.map(t => [t.id, t]));
+    const pMap = Object.fromEntries(parts.map(p => [p.id, p]));
+    const fMap = Object.fromEntries(fees.map(f => [f.id, f]));
+    const itemsByOrder = {};
+    for (const i of orderItems) (itemsByOrder[i.work_order_id] ||= []).push(i);
+    const laborByOrder = {};
+    for (const i of laborItems) (laborByOrder[i.work_order_id] ||= []).push(i);
+
+    const parsePhotos = (value) => {
+      if (Array.isArray(value)) return value;
+      if (typeof value !== 'string') return [];
+      try { return JSON.parse(value); } catch { return []; }
+    };
+
+    const result = orders.map(o => {
+      const garage = gMap[o.garage_id];
+      const items = itemsByOrder[o.id] || [];
+      const labors = laborByOrder[o.id] || [];
+      const photos = parsePhotos(o.photos);
+      return {
+        id: o.id,
+        garage_id: o.garage_id,
+        garage_name: garage?.garage_name,
+        garage_company_name: garage?.company_name,
+        technician: tMap[o.technician_id]?.name || null,
+        completed_at: o.completed_at,
+        mileage_km: o.mileage_km ?? null,
+        summary: o.initial_notes || null,
+        items: [
+          ...items.map(i => ({
+            id: `part-${i.id}`,
+            kind: 'PART',
+            name: pMap[i.part_id]?.name || i.name,
+            brand: pMap[i.part_id]?.brand || null,
+            quantity: i.quantity,
+            unit_price: Number(i.unit_price)
+          })),
+          ...labors.map(i => ({
+            id: `labor-${i.id}`,
+            kind: 'LABOR',
+            name: fMap[i.labor_fee_id]?.name || i.name,
+            brand: null,
+            quantity: 1,
+            unit_price: Number(i.amount)
+          }))
+        ],
+        before_photos: photos.filter(p => p.type === 'before').map(p => p.url),
+        after_photos: photos.filter(p => p.type === 'after').map(p => p.url)
+      };
+    });
 
     res.json(result);
   } catch (error) {

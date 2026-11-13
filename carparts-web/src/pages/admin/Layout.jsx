@@ -33,12 +33,12 @@ export default function AdminLayout() {
 
   return (
     <>
-    <div className="min-h-screen bg-gray-900 flex">
+    <div className="min-h-screen bg-surface-900 flex">
       {/* 側邊欄 */}
-      <div className={`bg-gray-800 ${sidebarOpen ? 'w-64' : 'w-20'} transition-all duration-300 flex flex-col`}>
-        <div className="p-4 flex items-center justify-between border-b border-gray-700">
+      <div className={`bg-surface-800 ${sidebarOpen ? 'w-64' : 'w-20'} transition-all duration-300 flex flex-col`}>
+        <div className="p-4 flex items-center justify-between border-b border-surface-700">
           {sidebarOpen && <h1 className="text-white font-bold text-lg">🔧 車大師</h1>}
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-gray-400 hover:text-white">
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-surface-400 hover:text-white">
             {sidebarOpen ? '◀' : '▶'}
           </button>
         </div>
@@ -49,7 +49,7 @@ export default function AdminLayout() {
               key={item.path}
               onClick={() => navigate(item.path)}
               className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition
-                ${location.pathname === item.path ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
+                ${location.pathname === item.path ? 'bg-blue-600 text-white' : 'text-surface-300 hover:bg-surface-700'}`}
             >
               <span className="text-xl">{item.icon}</span>
               {sidebarOpen && <span>{item.label}</span>}
@@ -57,9 +57,9 @@ export default function AdminLayout() {
           ))}
         </nav>
 
-        <div className="p-4 border-t border-gray-700">
+        <div className="p-4 border-t border-surface-700">
           {sidebarOpen && (
-            <p className="text-gray-400 text-sm mb-2">{adminUser.company_name || '管理員'}</p>
+            <p className="text-surface-400 text-sm mb-2">{adminUser.company_name || '管理員'}</p>
           )}
           <button onClick={handleLogout} className="w-full text-left px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700">
             {sidebarOpen ? '🚪 登出' : '🚪'}

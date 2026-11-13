@@ -65,16 +65,16 @@ function OrderProgress({ status, items }) {
                 'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold border-2 transition',
                 done ? 'bg-green-600 border-green-500 text-white'
                 : active ? 'bg-blue-600 border-blue-400 text-white ring-4 ring-blue-500/20'
-                : 'bg-gray-700 border-gray-600 text-gray-500',
+                : 'bg-surface-700 border-surface-600 text-surface-500',
               ].join(' ')}>
                 {done ? '✓' : i + 1}
               </div>
-              <span className={`mt-1 text-xs whitespace-nowrap ${active ? 'text-blue-300 font-bold' : done ? 'text-green-400/80' : 'text-gray-500'}`}>
+              <span className={`mt-1 text-xs whitespace-nowrap ${active ? 'text-blue-300 font-bold' : done ? 'text-green-400/80' : 'text-surface-500'}`}>
                 {step.label}
               </span>
             </div>
             {i < PROGRESS_STEPS.length - 1 && (
-              <div className={`flex-1 h-0.5 mx-1 mb-4 rounded ${i < current ? 'bg-green-600' : 'bg-gray-700'}`} />
+              <div className={`flex-1 h-0.5 mx-1 mb-4 rounded ${i < current ? 'bg-green-600' : 'bg-surface-700'}`} />
             )}
           </div>
         );
@@ -111,11 +111,11 @@ function StepTracker({ steps, current }) {
         return (
           <div key={s} className="flex items-start flex-1 last:flex-none">
             <div className="flex flex-col items-center">
-              <div className={`w-3.5 h-3.5 rounded-full border-2 mt-0.5 ${done ? 'bg-amber-500 border-amber-400' : active ? 'bg-blue-500 border-blue-300 shadow-[0_0_8px_rgba(59,130,246,0.5)]' : 'bg-gray-700 border-gray-600'}`} />
-              <span className={`mt-1 text-xs whitespace-nowrap ${active ? 'text-blue-300 font-bold' : done ? 'text-amber-400/90' : 'text-gray-500'}`}>{s}</span>
+              <div className={`w-3.5 h-3.5 rounded-full border-2 mt-0.5 ${done ? 'bg-amber-500 border-amber-400' : active ? 'bg-blue-500 border-blue-300 shadow-[0_0_8px_rgba(59,130,246,0.5)]' : 'bg-surface-700 border-surface-600'}`} />
+              <span className={`mt-1 text-xs whitespace-nowrap ${active ? 'text-blue-300 font-bold' : done ? 'text-amber-400/90' : 'text-surface-500'}`}>{s}</span>
             </div>
             {i < steps.length - 1 && (
-              <div className={`flex-1 h-0.5 mx-1 mt-[9px] min-w-3 ${i < current ? 'bg-amber-500' : 'bg-gray-700'}`} />
+              <div className={`flex-1 h-0.5 mx-1 mt-[9px] min-w-3 ${i < current ? 'bg-amber-500' : 'bg-surface-700'}`} />
             )}
           </div>
         );
@@ -284,9 +284,9 @@ export default function Orders() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="min-h-screen bg-surface-900 text-white">
       <Navbar />
-      <main className="p-8 pt-6 max-w-7xl mx-auto">
+      <main className="p-8 pt-6 page-shell">
         <h1 className="text-2xl font-bold mb-8">📋 我的訂單</h1>
 
         {/* 下單成功通知（Checkout 跳轉過來時顯示完整匯款資訊） */}
@@ -310,12 +310,12 @@ export default function Orders() {
         )}
 
         {loading ? (
-          <div className="text-center py-10 text-gray-400">載入訂單中...</div>
+          <div className="text-center py-10 text-surface-400">載入訂單中...</div>
         ) : loadError ? (
           <ErrorState message="訂單載入失敗" onRetry={() => loadOrders(page)} />
         ) : orders.length === 0 ? (
-          <div className="bg-gray-800 p-10 rounded-xl text-center border border-gray-700">
-            <p className="text-gray-400 text-lg mb-4">尚無訂單記錄</p>
+          <div className="bg-surface-800 p-10 rounded-xl text-center border border-surface-700">
+            <p className="text-surface-400 text-lg mb-4">尚無訂單記錄</p>
             <button onClick={() => navigate('/shop')} className="text-blue-400 hover:text-blue-300 transition underline">
               前往商城購物 →
             </button>
@@ -323,7 +323,7 @@ export default function Orders() {
         ) : (
           <div className="space-y-3">
             {orders.map(order => (
-              <div key={order.id} className="bg-gray-800 p-4 rounded-xl border border-gray-700/50 hover:border-gray-600 transition">
+              <div key={order.id} className="bg-surface-800 p-4 rounded-xl border border-surface-700/50 hover:border-surface-600 transition">
                 <div className="flex flex-wrap items-center gap-2 mb-2">
                   <span className="font-bold text-blue-400">#{order.order_number}</span>
                   {/* 🆕 P2 訂單編號複製 */}
@@ -332,7 +332,7 @@ export default function Orders() {
                     onClick={async () => {
                       try { await navigator.clipboard.writeText(order.order_number); } catch { /* ignore */ }
                     }}
-                    className="px-1.5 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-xs text-gray-300 transition"
+                    className="px-1.5 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-xs text-surface-300 transition"
                     title="複製訂單編號"
                   >⧉</button>
                   {(() => {
@@ -357,7 +357,7 @@ export default function Orders() {
                         {latestAftersaleLabel}
                       </span>
                     ) : (
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColor[order.status] || 'text-gray-400'}`}>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColor[order.status] || 'text-surface-400'}`}>
                         {label}
                       </span>
                     );
@@ -368,13 +368,13 @@ export default function Orders() {
                       (order.issues && order.issues.length > 0) ||
                       (order.returns && order.returns.some(r => ['PENDING', 'APPROVED', 'RECEIVED'].includes(r.status)));
                     return activeAftersale ? (
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-surface-500">
                         原訂單狀態：{statusMap[order.status] || order.status}
                       </span>
                     ) : null;
                   })()}
                   {/* 訂單類型（中性屬性：外框風格） */}
-                  <span className="px-2.5 py-0.5 rounded-full text-xs text-gray-400 border border-gray-600/60">
+                  <span className="px-2.5 py-0.5 rounded-full text-xs text-surface-400 border border-surface-600/60">
                     {orderTypeMap[order.orderType] || '現貨'}
                   </span>
                   {/* 🆕 售後問題標籤 */}
@@ -395,7 +395,7 @@ export default function Orders() {
                     </span>
                   )}
                   {/* 訂單日期 */}
-                  <span className="text-xs text-gray-500 ml-auto">
+                  <span className="text-xs text-surface-500 ml-auto">
                     🗓️ {new Date(order.created_at).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                   </span>
                 </div>
@@ -403,32 +403,32 @@ export default function Orders() {
                 {/* 訂單進度條（置於訂單卡最上方）🆕 傳入 items */}
                 <OrderProgress status={order.status} items={order.items} />
 
-                <div className="text-sm text-gray-400 flex flex-wrap gap-x-2 gap-y-0.5 items-baseline">
+                <div className="text-sm text-surface-400 flex flex-wrap gap-x-2 gap-y-0.5 items-baseline">
                   <span>{order.items?.length || 0} 項商品</span>
                   {Number(order.shipping_fee) > 0 || Number(order.tax_amount) > 0 ? (
                     <>
-                      <span className="text-gray-600">|</span>
+                      <span className="text-surface-600">|</span>
                       <span>商品 NT$ {Number(order.subtotal_amount || 0).toLocaleString()}</span>
                       {Number(order.shipping_fee) > 0 && (
                         <>
-                          <span className="text-gray-600">|</span>
+                          <span className="text-surface-600">|</span>
                           <span>🚚 運費 NT$ {Number(order.shipping_fee).toLocaleString()}</span>
                         </>
                       )}
                       {Number(order.tax_amount) > 0 && (
                         <>
-                          <span className="text-gray-600">|</span>
+                          <span className="text-surface-600">|</span>
                           <span>🧾 稅金 NT$ {Number(order.tax_amount).toLocaleString()}</span>
                         </>
                       )}
                     </>
                   ) : null}
-                  <span className="text-gray-600">|</span>
+                  <span className="text-surface-600">|</span>
                   {/* 總額：最大字級加粗，一眼確認 */}
                   <span className="text-sm font-bold text-white">總額 NT$ {Number(order.total_amount || 0).toLocaleString()}</span>
                   {Number(order.bankDepositActualAmount) > 0 && (
                     <>
-                      <span className="text-gray-600">|</span>
+                      <span className="text-surface-600">|</span>
                       <span className="text-green-300">✅ 已匯累計：NT$ {Number(order.bankDepositActualAmount).toLocaleString()}</span>
                       {Number(order.bankDepositActualAmount) >= Number(order.total_amount || 0) && (
                         <span className="ml-1 px-2 py-0.5 rounded text-xs bg-green-900/50 text-green-200 border border-green-600/50 font-bold" title="累計匯款已達應付總額">✅ 已付清</span>
@@ -439,10 +439,10 @@ export default function Orders() {
 
                 {/* 商品明細：商品 / 品牌 / 狀態 / 數量 / 單價 / 小計 */}
                 {order.items?.length > 0 && (
-                  <div className="mt-2 bg-gray-900/40 rounded-xl border border-gray-700/40 overflow-hidden">
+                  <div className="mt-2 bg-surface-900/40 rounded-xl border border-surface-700/40 overflow-hidden">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="text-gray-500 text-left text-xs">
+                        <tr className="text-surface-500 text-left text-xs">
                           <th className="px-3 py-1 font-medium">商品</th>
                           <th className="px-3 py-1 font-medium">品牌</th>
                           <th className="px-3 py-1 font-medium">狀態</th>
@@ -453,19 +453,19 @@ export default function Orders() {
                       </thead>
                       <tbody>
                         {order.items.map(it => (
-                          <tr key={it.id} className="border-t border-gray-700/30">
+                          <tr key={it.id} className="border-t border-surface-700/30">
                             <td className="px-3 py-1">
-                              <span className="text-gray-200">{it.name_snapshot || it.part?.name}</span>
+                              <span className="text-surface-200">{it.name_snapshot || it.part?.name}</span>
                               {/* 代購（特殊訂購）商品標籤 */}
                               {it.is_preorder && (
-                                <span className="ml-1.5 px-1.5 py-0.5 rounded text-xs text-gray-400 bg-gray-800/60 border border-gray-600/50 whitespace-nowrap">
+                                <span className="ml-1.5 px-1.5 py-0.5 rounded text-xs text-surface-400 bg-surface-800/60 border border-surface-600/50 whitespace-nowrap">
                                   {it.promised_weeks_min && it.promised_weeks_max
                                     ? `代購 預計${it.promised_weeks_min}-${it.promised_weeks_max}週`
                                     : (it.promised_weeks ? `代購 ${it.promised_weeks}週` : '代購')}
                                 </span>
                               )}
                             </td>
-                            <td className="px-3 py-1 text-gray-500 text-xs">{it.part?.brand || '—'}</td>
+                            <td className="px-3 py-1 text-surface-500 text-xs">{it.part?.brand || '—'}</td>
                             <td className="px-3 py-1">
                               {(() => {
                                 // 商品級單號優先；無商品級單號時回退訂單級國內單號（訂單已出貨，其餘商品視同已出貨）
@@ -473,7 +473,7 @@ export default function Orders() {
                                 const shipped = !!it.shipped_at || (['SHIPPED', 'COMPLETED'].includes(order.status) && !!order.trackingCodeDomestic);
                                 if (shipped) {
                                   return (
-                                    <span className="px-1.5 py-0.5 rounded text-xs text-gray-300 bg-gray-800/60 border border-gray-600/50 whitespace-nowrap">
+                                    <span className="px-1.5 py-0.5 rounded text-xs text-surface-300 bg-surface-800/60 border border-surface-600/50 whitespace-nowrap">
                                       🚚 已出貨{order.domesticCarrier ? `（${order.domesticCarrier.name}）` : ''} {trackCode && (
                                         <TrackingLink code={trackCode} carrier={order.domesticCarrier} />
                                       )}
@@ -487,12 +487,12 @@ export default function Orders() {
                                     </span>
                                   );
                                 }
-                                return <span className="text-xs text-gray-600">備貨中</span>;
+                                return <span className="text-xs text-surface-600">備貨中</span>;
                               })()}
                             </td>
-                            <td className="px-3 py-1 text-center text-gray-400">×{it.qty}</td>
-                            <td className="px-3 py-1 text-right text-gray-400">NT$ {Number(it.price_snapshot).toLocaleString()}</td>
-                            <td className="px-3 py-1 text-right text-gray-200 pr-4">NT$ {(Number(it.price_snapshot) * it.qty).toLocaleString()}</td>
+                            <td className="px-3 py-1 text-center text-surface-400">×{it.qty}</td>
+                            <td className="px-3 py-1 text-right text-surface-400">NT$ {Number(it.price_snapshot).toLocaleString()}</td>
+                            <td className="px-3 py-1 text-right text-surface-200 pr-4">NT$ {(Number(it.price_snapshot) * it.qty).toLocaleString()}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -513,7 +513,7 @@ export default function Orders() {
                         <span className={`inline-block transition-transform ${collapsed[`issues-${order.id}`] ? '' : 'rotate-90'}`}>▸</span>
                         🛠️ 您的售後回報紀錄
                       </button>
-                      <span className="text-xs font-normal text-gray-400">
+                      <span className="text-xs font-normal text-surface-400">
                         （共 {order.issues.length} 筆{order.issues.some(i => i.status === 'RESOLVED') ? '，已結案' : order.issues.some(i => i.status === 'PROCESSING') ? '，客服處理中' : '，待處理'}）
                       </span>
                     </h4>
@@ -525,11 +525,11 @@ export default function Orders() {
                             <span className="px-2 py-0.5 rounded bg-red-900/50 text-red-200 font-bold">
                               {issue.issueType === 'DEFECT' ? '商品瑕疵/損壞' : '規格/型號不符'}
                             </span>
-                            <span className={`px-2 py-0.5 rounded font-bold ${issue.status === 'RESOLVED' ? 'bg-green-900/50 text-green-200' : issue.status === 'PROCESSING' ? 'bg-amber-900/50 text-amber-200' : 'bg-slate-700/60 text-gray-300'}`}>
+                            <span className={`px-2 py-0.5 rounded font-bold ${issue.status === 'RESOLVED' ? 'bg-green-900/50 text-green-200' : issue.status === 'PROCESSING' ? 'bg-amber-900/50 text-amber-200' : 'bg-slate-700/60 text-surface-300'}`}>
                               {issue.status === 'RESOLVED' ? '結案' : issue.status === 'PROCESSING' ? '客服處理中' : '已回報'}
                             </span>
                             <div className="flex items-center gap-2 ml-auto">
-                              <span className="text-gray-400">
+                              <span className="text-surface-400">
                                 {new Date(issue.createdAt).toLocaleString('zh-TW')}
                               </span>
                               {/* 🆕 編輯 / 刪除按鈕 */}
@@ -554,7 +554,7 @@ export default function Orders() {
                             steps={['已回報', '客服處理中', '結案']}
                             current={issue.status === 'RESOLVED' ? 2 : issue.status === 'PROCESSING' ? 1 : 0}
                           />
-                          <p className="text-gray-300 whitespace-pre-wrap">{issue.description}</p>
+                          <p className="text-surface-300 whitespace-pre-wrap">{issue.description}</p>
                           
                           {/* 🆕 顯示附件縮圖（圖片直接顯示預覽，影片與其他顯示圖示） */}
                           {issue.mediaUrls && issue.mediaUrls.length > 0 && (
@@ -607,12 +607,12 @@ export default function Orders() {
                             <div className="mt-2 pt-2 border-t border-amber-700/30">
                               <div className="flex items-center gap-2 mb-1.5">
                                 <span className="text-amber-300 font-bold text-xs">💬 客服回覆</span>
-                                <span className="text-gray-500 text-xs">{issue.adminNotes.length} 筆</span>
+                                <span className="text-surface-500 text-xs">{issue.adminNotes.length} 筆</span>
                               </div>
                               <div className="space-y-1">
                                 {issue.adminNotes.map((note, i) => (
                                   <div key={i} className="bg-amber-900/10 border border-amber-700/30 rounded px-2 py-1 text-xs">
-                                    <div className="flex justify-between text-gray-400 mb-0.5">
+                                    <div className="flex justify-between text-surface-400 mb-0.5">
                                       <span>👤 {note.byName || '客服'}</span>
                                       <span>{new Date(note.at).toLocaleString('zh-TW')}</span>
                                     </div>
@@ -632,7 +632,7 @@ export default function Orders() {
                                 onChange={e => setFollowupDrafts(prev => ({ ...prev, [issue.id]: e.target.value }))}
                                 onKeyDown={e => { if (e.key === 'Enter') submitFollowup(order, issue); }}
                                 placeholder="回覆客服，延續對話…"
-                                className="flex-1 min-w-0 px-2 py-1.5 bg-slate-800 border border-slate-600 rounded text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-cyan-500 transition"
+                                className="flex-1 min-w-0 px-2 py-1.5 bg-slate-800 border border-slate-600 rounded text-xs text-surface-200 placeholder-surface-500 focus:outline-none focus:border-cyan-500 transition"
                               />
                               <button
                                 type="button"
@@ -664,7 +664,7 @@ export default function Orders() {
                         <span className={`inline-block transition-transform ${collapsed[`returns-${order.id}`] ? '' : 'rotate-90'}`}>▸</span>
                         🔄 退貨申請紀錄
                       </button>
-                      <span className="text-xs font-normal text-gray-400">（共 {order.returns.length} 筆）</span>
+                      <span className="text-xs font-normal text-surface-400">（共 {order.returns.length} 筆）</span>
                     </h4>
                     {!collapsed[`returns-${order.id}`] && (
                     <div className="space-y-2">
@@ -677,12 +677,12 @@ export default function Orders() {
                         return (
                           <div key={ret.id} className="bg-slate-900/60 rounded-lg p-2.5 text-xs">
                             <div className="flex justify-between items-center mb-1 gap-2 flex-wrap">
-                              <span className={`px-2 py-0.5 rounded font-bold ${RETURN_STATUS_COLOR[ret.status] || 'text-gray-400'}`}>
+                              <span className={`px-2 py-0.5 rounded font-bold ${RETURN_STATUS_COLOR[ret.status] || 'text-surface-400'}`}>
                                 {RETURN_STATUS_MAP[ret.status] || ret.status}
                               </span>
-                              <span className="text-gray-500">{ret.returnReason ? RETURN_REASON_MAP[ret.returnReason] || ret.returnReason : ''}</span>
+                              <span className="text-surface-500">{ret.returnReason ? RETURN_REASON_MAP[ret.returnReason] || ret.returnReason : ''}</span>
                               <div className="flex items-center gap-2 ml-auto">
-                                <span className="text-gray-400">
+                                <span className="text-surface-400">
                                   {new Date(ret.createdAt).toLocaleString('zh-TW')}
                                 </span>
                                 {ret.status === 'PENDING' && (
@@ -713,18 +713,18 @@ export default function Orders() {
                             )}
                             {/* 退貨商品明細 */}
                             {retItemList ? (
-                              <ul className="text-gray-400 mb-1 space-y-0.5">
+                              <ul className="text-surface-400 mb-1 space-y-0.5">
                                 {retItemList.map(ri => (
                                   <li key={ri.id}>
                                     📦 {ri.orderItem?.name_snapshot || '未知商品'} ×{ri.qty}
-                                    <span className="text-gray-500"> ｜ NT$ {(Number(ri.price) * ri.qty).toLocaleString()}</span>
+                                    <span className="text-surface-500"> ｜ NT$ {(Number(ri.price) * ri.qty).toLocaleString()}</span>
                                   </li>
                                 ))}
                               </ul>
                             ) : (
-                              <p className="text-gray-400 mb-1">📦 {itemName}</p>
+                              <p className="text-surface-400 mb-1">📦 {itemName}</p>
                             )}
-                            <p className="text-gray-300 whitespace-pre-wrap">{ret.description}</p>
+                            <p className="text-surface-300 whitespace-pre-wrap">{ret.description}</p>
                             {ret.isExchange ? (
                               <p className="text-cyan-300 mt-1 font-bold">
                                 🔄 換貨單（免退款，將寄送新品）
@@ -735,18 +735,18 @@ export default function Orders() {
                               </p>
                             )}
                             {Number(ret.returnShippingFee || 0) > 0 && (
-                              <p className="text-gray-500 mt-0.5">
+                              <p className="text-surface-500 mt-0.5">
                                 🚚 退貨運費：NT$ {Number(ret.returnShippingFee).toLocaleString()}（客戶負擔，已自退款扣除）
                               </p>
                             )}
                             {ret.isExchange && ret.exchangeTrackingCode && (
                               <p className="text-cyan-400 mt-0.5">
                                 🔄 換貨出貨單號：<TrackingLink code={ret.exchangeTrackingCode} carrier={order.domesticCarrier} />
-                                {ret.exchangeShippedAt && <span className="text-gray-500 ml-1">（{new Date(ret.exchangeShippedAt).toLocaleString('zh-TW')}）</span>}
+                                {ret.exchangeShippedAt && <span className="text-surface-500 ml-1">（{new Date(ret.exchangeShippedAt).toLocaleString('zh-TW')}）</span>}
                               </p>
                             )}
                             {ret.refundAccount && !ret.isExchange && (
-                              <p className="text-gray-400 mt-0.5">
+                              <p className="text-surface-400 mt-0.5">
                                 🏦 退款帳戶：{ret.refundBankCode}-{String(ret.refundAccount).length > 5 ? '****' + String(ret.refundAccount).slice(-5) : '****'}｜{ret.refundAccountName}
                               </p>
                             )}
@@ -789,12 +789,12 @@ export default function Orders() {
                               <div className="mt-2 pt-2 border-t border-amber-700/30">
                                 <div className="flex items-center gap-2 mb-1.5">
                                   <span className="text-amber-300 font-bold text-xs">💬 客服回覆</span>
-                                  <span className="text-gray-500 text-xs">{ret.adminNotes.length} 筆</span>
+                                  <span className="text-surface-500 text-xs">{ret.adminNotes.length} 筆</span>
                                 </div>
                                 <div className="space-y-1">
                                   {ret.adminNotes.map((note, i) => (
                                     <div key={i} className="bg-amber-900/10 border border-amber-700/30 rounded px-2 py-1 text-xs">
-                                      <div className="flex justify-between text-gray-400 mb-0.5">
+                                      <div className="flex justify-between text-surface-400 mb-0.5">
                                         <span>👤 {note.byName || '客服'}</span>
                                         <span>{new Date(note.at).toLocaleString('zh-TW')}</span>
                                       </div>
@@ -814,7 +814,7 @@ export default function Orders() {
 
                 {/* 匯款明細（入賬=綠色已確認、待核=黃色等待後台對帳） */}
                 {order.remittances?.length > 0 && (
-                  <div className="mt-2 text-xs text-gray-300 bg-gray-900/40 border border-gray-700/40 rounded-lg px-3 py-1.5">
+                  <div className="mt-2 text-xs text-surface-300 bg-surface-900/40 border border-surface-700/40 rounded-lg px-3 py-1.5">
                     💵 匯款明細：
                     {order.remittances.map((r, i) => (
                       <div key={i} className="ml-3 flex justify-between">
@@ -844,13 +844,13 @@ export default function Orders() {
                           {order.items.filter(it => it.arrived_at).map(it => (
                             <li key={it.id}>
                               ✅ {it.name_snapshot || it.part?.name}
-                              {it.sku_snapshot && <span className="font-mono text-gray-400 ml-1">{it.sku_snapshot}</span>}
-                              <span className="text-gray-300"> ×{it.qty}</span>
+                              {it.sku_snapshot && <span className="font-mono text-surface-400 ml-1">{it.sku_snapshot}</span>}
+                              <span className="text-surface-300"> ×{it.qty}</span>
                             </li>
                           ))}
                         </ul>
                         {order.items.some(it => !it.arrived_at && !it.shipped_at) && (
-                          <p className="text-gray-400 mt-1">⏳ 其餘 {order.items.filter(it => !it.arrived_at && !it.shipped_at).length} 項仍待到貨</p>
+                          <p className="text-surface-400 mt-1">⏳ 其餘 {order.items.filter(it => !it.arrived_at && !it.shipped_at).length} 項仍待到貨</p>
                         )}
                       </div>
                     )}
@@ -879,17 +879,17 @@ export default function Orders() {
 
                 {/* 下單備註顯示 */}
                 {order.note && (
-                  <div className="mt-2 text-sm text-gray-300 bg-gray-900/40 border border-gray-700/40 rounded-lg px-3 py-2">
+                  <div className="mt-2 text-sm text-surface-300 bg-surface-900/40 border border-surface-700/40 rounded-lg px-3 py-2">
                     📝 備註：{order.note}
                   </div>
                 )}
 
                 {/* 物流追蹤碼顯示（國內單號已併入商品列「已出貨」標籤，其餘商品共用訂單級單號） */}
                 {order.trackingCodeInternational && (
-                  <div className="text-sm text-gray-300 mt-1">🌐 國際物流單號：<TrackingLink code={order.trackingCodeInternational} /></div>
+                  <div className="text-sm text-surface-300 mt-1">🌐 國際物流單號：<TrackingLink code={order.trackingCodeInternational} /></div>
                 )}
                 {!order.trackingCodeDomestic && !order.trackingCodeInternational && order.shipping_address && (
-                  <div className="text-sm text-gray-500 mt-1">收件地址：{order.shipping_address}</div>
+                  <div className="text-sm text-surface-500 mt-1">收件地址：{order.shipping_address}</div>
                 )}
 
                 {/* 補登匯款與其他操作按鈕 */}
@@ -948,12 +948,12 @@ export default function Orders() {
                     if (!['SHIPPED', 'COMPLETED'].includes(order.status) || !d) return null;
                     if (new Date() <= d) {
                       return (
-                        <span className="text-xs text-gray-400 self-center">
+                        <span className="text-xs text-surface-400 self-center">
                           （退貨期限至 {d.toLocaleDateString('zh-TW')}）
                         </span>
                       );
                     }
-                    return <span className="text-xs text-gray-600 self-center">（退貨期限已過）</span>;
+                    return <span className="text-xs text-surface-600 self-center">（退貨期限已過）</span>;
                   })()}
 
                   {/* 取消訂單按鈕（待付款／匯款審核中／訂金未入款） */}
@@ -978,24 +978,24 @@ export default function Orders() {
             <button
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page <= 1 || loading}
-              className="px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm disabled:opacity-40 hover:border-gray-500 transition"
+              className="px-4 py-2 rounded-lg bg-surface-800 border border-surface-700 text-sm disabled:opacity-40 hover:border-surface-500 transition"
             >
               ← 上一頁
             </button>
-            <span className="text-sm text-gray-400">
+            <span className="text-sm text-surface-400">
               第 {pagination.page} / {pagination.totalPages} 頁（共 {pagination.total} 筆）
             </span>
             <button
               onClick={() => setPage(p => Math.min(pagination.totalPages, p + 1))}
               disabled={page >= pagination.totalPages || loading}
-              className="px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm disabled:opacity-40 hover:border-gray-500 transition"
+              className="px-4 py-2 rounded-lg bg-surface-800 border border-surface-700 text-sm disabled:opacity-40 hover:border-surface-500 transition"
             >
               下一頁 →
             </button>
           </div>
         )}
 
-        <button onClick={() => navigate('/')} className="mt-8 bg-gray-700 hover:bg-gray-600 px-6 py-3 rounded-lg font-medium transition">
+        <button onClick={() => navigate('/')} className="mt-8 bg-surface-700 hover:bg-surface-600 px-6 py-3 rounded-lg font-medium transition">
           ← 回首頁
         </button>
       </main>

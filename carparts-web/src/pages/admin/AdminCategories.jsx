@@ -81,32 +81,32 @@ export default function AdminCategories() {
       <h1 className="text-2xl font-bold text-white mb-6">🗂️ 商品目錄管理</h1>
 
       {/* 新增主分類 */}
-      <div className="bg-gray-800 p-4 rounded-xl mb-6 flex gap-2">
+      <div className="bg-surface-800 p-4 rounded-xl mb-6 flex gap-2">
         <input
           value={newCategoryName}
           onChange={e => setNewCategoryName(e.target.value)}
           placeholder="輸入新主分類名稱"
-          className="flex-1 p-2 rounded bg-gray-700 text-white"
+          className="flex-1 p-2 rounded bg-surface-700 text-white"
         />
         <button onClick={addCategory} className="bg-blue-600 px-4 py-2 rounded text-white">新增主分類</button>
       </div>
 
       {loading ? (
-        <div className="text-gray-400">載入中...</div>
+        <div className="text-surface-400">載入中...</div>
       ) : (
         <div className="space-y-4">
           {categories.map(cat => (
-            <div key={cat.id} className="bg-gray-800 p-6 rounded-xl border border-gray-700">
+            <div key={cat.id} className="bg-surface-800 p-6 rounded-xl border border-surface-700">
               <div className="flex justify-between items-center gap-4">
                 {editingCategoryId === cat.id ? (
                   <div className="flex items-center gap-2 flex-1">
                     <input
                       value={editingCategoryName}
                       onChange={e => setEditingCategoryName(e.target.value)}
-                      className="flex-1 p-2 rounded bg-gray-700 text-white"
+                      className="flex-1 p-2 rounded bg-surface-700 text-white"
                     />
                     <button onClick={() => saveCategoryName(cat.id)} className="bg-green-600 px-3 py-1 rounded text-white">儲存</button>
-                    <button onClick={() => setEditingCategoryId(null)} className="bg-gray-600 px-3 py-1 rounded text-white">取消</button>
+                    <button onClick={() => setEditingCategoryId(null)} className="bg-surface-600 px-3 py-1 rounded text-white">取消</button>
                   </div>
                 ) : (
                   <>
@@ -115,7 +115,7 @@ export default function AdminCategories() {
                           setEditingCategoryId(cat.id);
                           setEditingCategoryName(cat.name);
                         }}>
-                      {cat.name} <span className="text-xs text-gray-400 ml-1">✏️</span>
+                      {cat.name} <span className="text-xs text-surface-400 ml-1">✏️</span>
                     </h3>
                     <button onClick={() => deleteCategory(cat.id, cat.name)} className="bg-red-600 px-3 py-1 rounded text-white text-sm">刪除</button>
                   </>
@@ -124,18 +124,18 @@ export default function AdminCategories() {
 
               {/* 子分類 */}
               <div className="mt-4 space-y-2">
-                {cat.subcategories.length === 0 && <p className="text-gray-500 text-sm">尚無子分類</p>}
+                {cat.subcategories.length === 0 && <p className="text-surface-500 text-sm">尚無子分類</p>}
                 {cat.subcategories.map(sub => (
-                  <div key={sub.id} className="flex justify-between items-center bg-gray-700 px-4 py-2 rounded">
+                  <div key={sub.id} className="flex justify-between items-center bg-surface-700 px-4 py-2 rounded">
                     {editingSubId === sub.id ? (
                       <div className="flex items-center gap-2 flex-1">
                         <input
                           value={editingSubName}
                           onChange={e => setEditingSubName(e.target.value)}
-                          className="flex-1 p-1 rounded bg-gray-600 text-white"
+                          className="flex-1 p-1 rounded bg-surface-600 text-white"
                         />
                         <button onClick={() => saveSubName(sub.id)} className="bg-green-600 px-2 py-1 rounded text-white text-sm">儲存</button>
-                        <button onClick={() => setEditingSubId(null)} className="bg-gray-600 px-2 py-1 rounded text-white text-sm">取消</button>
+                        <button onClick={() => setEditingSubId(null)} className="bg-surface-600 px-2 py-1 rounded text-white text-sm">取消</button>
                       </div>
                     ) : (
                       <>
@@ -144,7 +144,7 @@ export default function AdminCategories() {
                                 setEditingSubId(sub.id);
                                 setEditingSubName(sub.name);
                               }}>
-                          {sub.name} <span className="text-xs text-gray-400">✏️</span>
+                          {sub.name} <span className="text-xs text-surface-400">✏️</span>
                         </span>
                         <button onClick={() => deleteSubcategory(sub.id, sub.name)} className="text-red-400 text-sm">刪除</button>
                       </>
@@ -159,7 +159,7 @@ export default function AdminCategories() {
                   value={newSubNames[cat.id] || ''}
                   onChange={e => setNewSubNames(prev => ({ ...prev, [cat.id]: e.target.value }))}
                   placeholder="新子分類名稱"
-                  className="flex-1 p-2 rounded bg-gray-700 text-white"
+                  className="flex-1 p-2 rounded bg-surface-700 text-white"
                 />
                 <button onClick={() => addSubcategory(cat.id)} className="bg-green-600 px-3 py-1 rounded text-white">新增</button>
               </div>

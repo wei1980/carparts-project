@@ -1,10 +1,10 @@
 // src/routes/appointments.js
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
 const auth = require('../middleware/authMiddleware');
 const { pushMessage } = require('../services/lineService');
-const prisma = new PrismaClient();
+const { getBookingCapacity } = require('../utils/bookingCapacity');
+const prisma = require('../lib/prisma');
 
 router.use(auth);
 
@@ -83,10 +83,19 @@ async function notifyGarageNewAppointment(appointment) {
 // POST /api/appointments — 建立預約
 router.post('/', async (req, res) => {
   try {
-    const { vehicleId, garageId, serviceType, scheduledAt, note, partIds, installItems } = req.body;
+    const { vehicleId, garageId, serviceType, scheduledAt, note, partIds, installItems, mileageKm } = req.body;
 
     if (!vehicleId || !garageId || !scheduledAt) {
       return res.status(400).json({ error: 'vehicleId, garageId, scheduledAt 為必填' });
+    }
+
+    // 里程（選填）：只接受合理範圍，稍後寫回車輛
+    let parsedMileage = null;
+    if (mileageKm !== undefined && mileageKm !== null && mileageKm !== '') {
+      parsedMileage = parseInt(mileageKm, 10);
+      if (!Number.isInteger(parsedMileage) || parsedMileage < 0 || parsedMileage > 2000000) {
+        return res.status(400).json({ error: '目前里程格式不正確' });
+      }
     }
 
     // 確認車輛屬於該車主
@@ -134,27 +143,65 @@ router.post('/', async (req, res) => {
       }
     }
 
-    const appointment = await prisma.appointment.create({
-      data: {
-        vehicle_id: vehicleId,
+    // 同車廠同時段容量檢查（每廠可設定 1–20 台）→ 409
+    const capacity = getBookingCapacity(garage.garage_slots);
+    const slotStart = new Date(apptDate.getTime() - 60 * 1000);
+    const slotEnd = new Date(apptDate.getTime() + 60 * 1000);
+    const existingCount = await prisma.appointment.count({
+      where: {
         garage_id: parseInt(garageId),
-        user_id: req.userId,
-        service_type: serviceType || (installItems?.length ? '安裝訂單零件' : '保養'),
-        scheduled_at: new Date(scheduledAt),
-        note: note || '',
-        part_ids: partIds || [],
-        install_items: Array.isArray(installItems) && installItems.length > 0 ? installItems : null,
+        scheduled_at: { gte: slotStart, lte: slotEnd },
+        status: { in: ['PENDING', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'] },
       },
-      include: {
-        vehicle: { select: { make: true, model: true, licensePlate: true } },
-        user: { select: { name: true, phone: true, lineId: true } },
-      },
+    });
+    if (existingCount >= capacity) {
+      return res.status(409).json({
+        code: 'SLOT_TAKEN',
+        error: `這個時段已滿（同時可接 ${capacity} 台），請選擇其他時間。`,
+      });
+    }
+
+    // 里程只往前寫：比目前紀錄新才更新，避免把車廠/較新的資料蓋回去
+    const shouldUpdateMileage = parsedMileage != null
+      && (vehicle.current_mileage == null || parsedMileage > vehicle.current_mileage);
+
+    const appointment = await prisma.$transaction(async (tx) => {
+      const created = await tx.appointment.create({
+        data: {
+          vehicle_id: vehicleId,
+          garage_id: parseInt(garageId),
+          user_id: req.userId,
+          service_type: serviceType || (installItems?.length ? '安裝訂單零件' : '保養'),
+          scheduled_at: new Date(scheduledAt),
+          note: note || '',
+          part_ids: partIds || [],
+          install_items: Array.isArray(installItems) && installItems.length > 0 ? installItems : null,
+        },
+        include: {
+          vehicle: { select: { make: true, model: true, licensePlate: true } },
+          user: { select: { name: true, phone: true, lineId: true } },
+        },
+      });
+
+      if (shouldUpdateMileage) {
+        await tx.vehicleProfile.update({
+          where: { id: vehicleId },
+          data: {
+            current_mileage: parsedMileage,
+            mileage_updated_at: new Date(),
+            mileage_source: 'customer',
+            mileage_source_note: '線上預約填寫',
+          },
+        });
+      }
+
+      return created;
     });
 
     // 🆕 LINE 通知車廠（失敗不擋流程）
     notifyGarageNewAppointment(appointment);
 
-    res.status(201).json(appointment);
+    res.status(201).json({ ...appointment, mileage_updated: shouldUpdateMileage });
   } catch (error) {
     console.error('建立預約失敗:', error);
     res.status(500).json({ error: '伺服器內部錯誤，請稍後再試' });
