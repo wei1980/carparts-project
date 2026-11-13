@@ -3,9 +3,8 @@ const prisma = require('../lib/prisma');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-// 🔒 只接受 Authorization: Bearer。已移除 `?admin_token=` query 參數支援：
-//    token 走 query 會進 access log / 瀏覽器歷史 / Referrer header。
-// 🔒 回查 DB：token 內的 role 只是 7 天期的宣告，降級或停用後仍以 DB 為準。
+// 🔒 只接受 Authorization header 的 Bearer token。
+//    已去除 admin_token query 參數：token 走 query 會進 access log / 浏覽器歷史 / Referrer。
 module.exports = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.startsWith('Bearer ')

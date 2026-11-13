@@ -187,6 +187,33 @@ const mediaDir = path.join(__dirname, "../media");
 if (!fs.existsSync(mediaDir)) fs.mkdirSync(mediaDir, { recursive: true });
 
 // ============================================================
+// 🔥 點閱統計節流（記憶體視窗）
+// 同一 IP 對同一個 part 在 VIEW_THROTTLE_MS 內只算一次。
+// 目的：讓「熱門零件」排序反映真實瀏覽，而不是可被迴圈灌值的數字。
+// 短時間記憶體用量 = 活躍 (ip, partId) 組合數，每 10 分鐘自然淘汰。
+// ============================================================
+const VIEW_THROTTLE_MS = 10 * 60 * 1000;
+const recentViews = new Map(); // key: `${ip}:${partId}` → timestamp
+
+function shouldCountView(req, partId) {
+  const ip = req.ip || 'unknown';
+  const key = `${ip}:${partId}`;
+  const now = Date.now();
+
+  // 順手清理過期條目，避免 Map 無限長大
+  if (recentViews.size > 50000) {
+    for (const [k, ts] of recentViews) {
+      if (now - ts > VIEW_THROTTLE_MS) recentViews.delete(k);
+    }
+  }
+
+  const last = recentViews.get(key);
+  if (last && now - last < VIEW_THROTTLE_MS) return false;
+  recentViews.set(key, now);
+  return true;
+}
+
+// ============================================================
 // 🔒 /media 存取控制
 //
 // 背景：/media 是 importers 的工作目錄（CSV/XLSX/JSON 大量落地），同時也是使用者
@@ -635,10 +662,15 @@ app.get('/api/parts/:id', optionalGarageAuth, async (req, res) => {
     }
 
     // 🔥 點閱統計（熱門零件排序用；不阻塞回應、失敗不影響瀏覽）
-    prisma.part.update({
-      where: { id },
-      data: { view_count: { increment: 1 } }
-    }).catch(err => console.error('點閱統計失敗:', err.message));
+    // ⚠️ 必須節流：單純每次 GET 都 +1 的話，任何人寫個迴圈就能把某商品推上熱門
+    //    （或把競爭對手的數字灌爆）。這裡用「同一 IP + 同一 part 只記一次 / 10 分鐘」
+    //    的記憶體視窗，成本極低且不依賴 Redis。
+    if (shouldCountView(req, id)) {
+      prisma.part.update({
+        where: { id },
+        data: { view_count: { increment: 1 } }
+      }).catch(err => console.error('點閱統計失敗:', err.message));
+    }
 
     res.status(200).json(payload);
   } catch (error) {

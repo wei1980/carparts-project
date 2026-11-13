@@ -7,6 +7,7 @@ const Redis = require('ioredis');
 const axios = require('axios');
 
 const prisma = require('../lib/prisma');
+const adminAuth = require('../middleware/adminAuth');
 
 // 快取 Redis 連線
 let redisClient = null;
@@ -33,7 +34,10 @@ router.get('/health', async (req, res) => {
 });
 
 // 詳細健康檢查 (含依賴服務)
-router.get('/health/detailed', async (req, res) => {
+// 🔒 需要 ADMIN：輸出含 DB/Redis/外部服務的內部狀態與錯誤細節，
+//    對外暴露等於給攻擊者一張「哪裡會壞」的地圖。
+//    /health 與 /health/live 仍維持公開，供 LB 與外部監控使用。
+router.get('/health/detailed', adminAuth, async (req, res) => {
   const startTime = Date.now();
   const checks = {
     database: { status: 'unknown', latencyMs: 0, details: {} },
@@ -202,7 +206,8 @@ router.get('/health/live', (req, res) => {
 });
 
 // Queue / Redis 健康檢查（BullMQ 佇列統計 + 連線狀態）
-router.get('/health/queues', async (req, res) => {
+// 🔒 需要 ADMIN：輸出佇列待處理/失敗數與 Redis 狀態，屬內部維運資訊。
+router.get('/health/queues', adminAuth, async (req, res) => {
   try {
     let redisStatus = { status: 'not_configured' };
     try {
