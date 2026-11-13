@@ -21,7 +21,7 @@ const MAX_FILES = 10;
 // 檔案類型驗證
 function fileFilter(req, file, cb) {
   if (!ALLOWED_IMAGE_TYPES.includes(file.mimetype)) {
-    return cb(new Error(`不支援的檔案類型：${file.mimetype}，僅允許 JPEG、PNG、WebP、GIF`), false);
+    return cb(Object.assign(new Error(`不支援的檔案類型：${file.mimetype}，僅允許 JPEG、PNG、WebP、GIF`), { code: 'INVALID_FILE_TYPE' }), false);
   }
   cb(null, true);
 }

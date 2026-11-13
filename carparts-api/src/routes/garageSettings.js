@@ -21,7 +21,7 @@ const photoUpload = multer({
   limits: { fileSize: 8 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (/^image\/(jpeg|png|webp)$/.test(file.mimetype)) return cb(null, true);
-    cb(new Error('僅支援 JPG / PNG / WebP 圖片'));
+    cb(Object.assign(new Error('僅支援 JPG / PNG / WebP 圖片'), { code: 'INVALID_FILE_TYPE' }));
   },
 });
 

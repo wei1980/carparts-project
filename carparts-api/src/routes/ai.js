@@ -19,8 +19,10 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
+    // ⚠️ 必須帶 code：全域錯誤處理器依 code 決定回 4xx 並給人話，
+    //    否則會落進 500「伺服器內部錯誤」，前端只看得懂「辨識失敗」。
     if (file.mimetype.startsWith('image/')) cb(null, true);
-    else cb(new Error('僅接受圖片檔案'));
+    else cb(Object.assign(new Error('僅接受圖片檔案'), { code: 'INVALID_FILE_TYPE' }));
   },
 });
 
@@ -41,7 +43,7 @@ const modPhotoUpload = multer({
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) cb(null, true);
-    else cb(new Error('僅接受圖片檔案'));
+    else cb(Object.assign(new Error('僅接受圖片檔案'), { code: 'INVALID_FILE_TYPE' }));
   },
 });
 

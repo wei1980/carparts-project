@@ -81,7 +81,7 @@ const avatarUpload = multer({
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (AVATAR_IMAGE_MIMES.includes(file.mimetype)) cb(null, true);
-    else cb(new Error('只允許上傳 JPG, PNG, WebP 圖片'));
+    else cb(Object.assign(new Error('只允許上傳 JPG, PNG, WebP 圖片'), { code: 'INVALID_FILE_TYPE' }));
   },
 });
 

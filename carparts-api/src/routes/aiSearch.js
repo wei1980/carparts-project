@@ -24,7 +24,9 @@ const upload = multer({
     },
   }),
   limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => cb(null, IMAGE_MIMES.includes(file.mimetype)),
+  fileFilter: (req, file, cb) => (IMAGE_MIMES.includes(file.mimetype)
+    ? cb(null, true)
+    : cb(Object.assign(new Error('僅接受圖片檔案'), { code: 'INVALID_FILE_TYPE' }))),
 });
 
 router.use(auth);

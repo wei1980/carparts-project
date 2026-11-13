@@ -343,6 +343,17 @@ app.use("/media", express.static(mediaDir));
 // ============================================================
 const uploadsDir = path.join(__dirname, "../uploads");
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+// 🔒 客戶售後附件（照片/影片）需登入才能取用。
+//    檔名是 timestamp-random，但 URL 會出現在訂單 API 回應裡；先前任何人
+//    只要拿到連結就能看客戶的車輛/零件照片。
+//    前端用 <img src="/uploads/..."> 顯示，瀏覽器會帶 SameSite=Lax 的
+//    carparts_at cookie（登入時由 /api/auth/login 配發），因此不需改前端。
+app.use("/uploads", (req, res, next) => {
+  if (hasValidMediaSession(req)) return next();
+  return res.status(401).json({ error: "需要登入才能存取此檔案" });
+});
+
 app.use("/uploads", express.static(uploadsDir, {
   maxAge: '7d',
   setHeaders: (res, filePath) => {
@@ -747,6 +758,21 @@ app.use((req, res) => notFoundError(res, 'Not Found', { path: req.originalUrl })
 // 全域錯誤處理
 const { internalError } = require('./utils/errorHandler');
 app.use((err, req, res, next) => {
+  // 🔒 multer 的上傳錯誤是 client 錯誤，且不該當成 500：
+  //    檔案過大 / 型別不符時，先前的行為是回 500 並把 multer 的內部訊息
+  //    當成 server error 記到 stack（同時前端只看到「辨識失敗」）。
+  if (err && (err.code === 'LIMIT_FILE_SIZE' || err.code === 'LIMIT_FILE_COUNT'
+              || err.code === 'LIMIT_UNEXPECTED_FILE' || err.code === 'INVALID_FILE_TYPE')) {
+    const map = {
+      LIMIT_FILE_SIZE: ['檔案過大（上限 5 MB）', 413],
+      LIMIT_FILE_COUNT: ['檔案數量超過上限', 400],
+      LIMIT_UNEXPECTED_FILE: ['上傳欄位不正確', 400],
+      INVALID_FILE_TYPE: ['只接受圖片檔案', 415],
+    };
+    const [message, status] = map[err.code] || ['上傳失敗', 400];
+    return res.status(status).json({ code: err.code, message, requestId: req.requestId });
+  }
+
   console.error('[Global Error]', err.stack);
   // 如果已經有響應，則不要覆蓋
   if (res.headersSent) {
@@ -760,7 +786,7 @@ app.use((err, req, res, next) => {
       requestId: req.requestId,
     });
   }
-  // 🔒 不回傳 err.message（可能含檔案路徑、連線字串片段、Prisma 內部欄位名）
+  // 🔒 不回傳 err.message（可能含檔案路徑、連線字串片段、Prisma 内部欄位名）
   internalError(res, 'Internal Server Error', null);
 });
 

@@ -404,7 +404,7 @@ router.post('/work-orders/:id/photos', async (req, res) => {
       limits: { fileSize: 5 * 1024 * 1024 },
       fileFilter: (req, file, cb) => {
         if (['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) cb(null, true);
-        else cb(new Error('只支援 JPEG/PNG/WebP 格式'));
+        else cb(Object.assign(new Error('只支援 JPEG/PNG/WebP 格式'), { code: 'INVALID_FILE_TYPE' }));
       }
     });
 
