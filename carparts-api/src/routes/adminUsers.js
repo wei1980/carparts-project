@@ -1,10 +1,9 @@
 // src/routes/adminUsers.js
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 const adminAuth = require('../middleware/adminAuth');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 router.use(adminAuth);
 
@@ -26,22 +25,42 @@ router.get('/', async (req, res) => {
       where.is_active = false;
     }
 
-    const users = await prisma.endUser.findMany({
-      where,
-      select: {
-        id: true,
-        phone: true,
-        name: true,
-        lineId: true,
-        address: true,
-        is_approved: true,
-        is_active: true,
-        createdAt: true,
-        _count: { select: { vehicles: true, orders: true } },
-      },
-      orderBy: { createdAt: 'desc' },
+    // 🔒 EndUser 沒有 vehicles 關聯（也沒有 orders）——不能用 _count 猜名字。
+    //     vehicles 走 VehicleProfile.userId；訂單走 ConsumerOrder.userId。
+    //     _count 只保留真正存在的關聯，其餘用 groupBy 另算（避免整個端點 500）。
+    const [users, vehicleCounts, orderCounts] = await Promise.all([
+      prisma.endUser.findMany({
+        where,
+        select: {
+          id: true,
+          phone: true,
+          name: true,
+          lineId: true,
+          address: true,
+          is_approved: true,
+          is_active: true,
+          createdAt: true,
+          _count: { select: { consumerOrders: true, appointments: true, wishItems: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.vehicleProfile.groupBy({ by: ['userId'], _count: { _all: true } }),
+      prisma.consumerOrder.groupBy({ by: ['userId'], _count: { _all: true } }),
+    ]);
+
+    const vehicleMap = new Map(vehicleCounts.map((v) => [v.userId, v._count._all]));
+    const orderMap = new Map(orderCounts.map((o) => [o.userId, o._count._all]));
+
+    const payload = users.map((u) => {
+      const { _count, ...rest } = u;
+      return {
+        ...rest,
+        vehicle_count: vehicleMap.get(u.id) || 0,
+        order_count: orderMap.get(u.id) || _count.consumerOrders,
+      };
     });
-    res.json(users);
+
+    res.json(payload);
   } catch (error) {
     res.status(500).json({ error: '伺服器內部錯誤，請稍後再試' });
   }

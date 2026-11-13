@@ -1,9 +1,8 @@
 // src/routes/adminCategories.js
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
 const adminAuth = require('../middleware/adminAuth');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 router.use(adminAuth);
 
 // GET /api/admin/categories/tree — 取得主分類樹（含子分類）

@@ -1,9 +1,8 @@
 // src/routes/adminAiDrafts.js
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
 const adminAuth = require('../middleware/adminAuth');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 router.use(adminAuth);
 
 // GET /api/admin/ai-drafts?status=ready|pending|approved|rejected|failed

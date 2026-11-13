@@ -1,7 +1,6 @@
 // src/routes/consumerOrders.js
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
 const auth = require('../middleware/authMiddleware');
 const multer = require('multer'); // 🆕 引入 multer 處理 FormData 檔案上傳
 const fs = require('fs');         // 🆕 檔案系統操作
@@ -15,7 +14,7 @@ const {
 } = require('../services/inventoryTransaction');
 
 const { saveBankSubmission } = require('../services/orderBankSubmission');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 // 🆕 訂單加收費用（暫時由系統設定決定是否開啟；因目前未開發票）
 const ORDER_SHIPPING_FEE = 60;   // 每筆訂單加收運費 NT$60
@@ -315,7 +314,26 @@ router.get('/', async (req, res) => {
       where,
       include: {
         items: {
-          include: { part: true },
+          // 🔒 顯式投影：不可用 include: { part: true }（會帶出 wholesale_price 成本價）
+          select: {
+            id: true,
+            qty: true,
+            price_snapshot: true,
+            sku_snapshot: true,
+            name_snapshot: true,
+            is_preorder: true,
+            promised_weeks: true,
+            promised_weeks_min: true,
+            promised_weeks_max: true,
+            shipped_at: true,
+            tracking_code: true,
+            part: {
+              select: {
+                id: true, name: true, brand: true, sku: true,
+                image_url: true, msrp_price: true, stock_qty: true,
+              },
+            },
+          },
         },
         // 🆕 加入售後問題回報，讓客戶端也能看到自己提交過的紀錄		
 		issues: {
@@ -475,7 +493,26 @@ router.get('/:id', async (req, res) => {
       },
       include: {
         items: {
-          include: { part: true },
+          // 🔒 顯式投影：不可用 include: { part: true }（會帶出 wholesale_price 成本價）
+          select: {
+            id: true,
+            qty: true,
+            price_snapshot: true,
+            sku_snapshot: true,
+            name_snapshot: true,
+            is_preorder: true,
+            promised_weeks: true,
+            promised_weeks_min: true,
+            promised_weeks_max: true,
+            shipped_at: true,
+            tracking_code: true,
+            part: {
+              select: {
+                id: true, name: true, brand: true, sku: true,
+                image_url: true, msrp_price: true, stock_qty: true,
+              },
+            },
+          },
         },
         // 🆕 單一訂單詳情也帶上 issues
         issues: {

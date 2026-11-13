@@ -2,10 +2,9 @@
 // 🆕 管理端 B2B 採購單處理（確認 / 出貨）
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
 const adminAuth = require('../middleware/adminAuth');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 router.use(adminAuth);
 
 // 🔔 採購單狀態變更 → 主動通知車廠（LINE 官方帳號好友；失敗不擋管理端流程）

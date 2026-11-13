@@ -1,5 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 const TRIAL_LIMIT = 100; // 試用會員每月 100 次
 

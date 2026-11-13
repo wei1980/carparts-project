@@ -1,8 +1,7 @@
 // src/routes/seo.js — 🆕 sitemap.xml 自動生成（商品 + 車廠 + 主要頁面）
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 const SITE = process.env.SITE_URL || 'https://carparts.example.com';
 

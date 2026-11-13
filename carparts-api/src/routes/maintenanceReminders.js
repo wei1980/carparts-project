@@ -1,11 +1,10 @@
 // src/routes/maintenanceReminders.js — 車主端：保養提醒管理
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
 const auth = require('../middleware/authMiddleware');
 const { withDueStates } = require('../services/maintenanceReminderService');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 router.use(auth);
 
 // GET /api/maintenance-reminders — 我的提醒（含到期狀態）
@@ -15,26 +14,43 @@ router.get('/', async (req, res) => {
     const where = { user_id: req.userId };
     if (vehicleId) where.vehicle_id = vehicleId;
 
+    // ⚠️ MaintenanceReminder 沒有 vehicle 關聯（schema 只有 vehicle_id 純欄位），
+    // 因此 include: { vehicle: ... } 會讓整個端點 500。改為批次抓取後併入。
     const reminders = await prisma.maintenanceReminder.findMany({
       where,
-      include: {
-        vehicle: { select: { id: true, make: true, model: true, licensePlate: true } },
-      },
       orderBy: [{ enabled: 'desc' }, { due_date: 'asc' }],
     });
 
-    // 取各車最新工單里程作為當前里程參考
+    // 取各車最新工單里程作為當前里程參考（含車輛基本資料）
     const vehicleIds = [...new Set(reminders.map((r) => r.vehicle_id))];
     const mileageMap = {};
-    for (const vid of vehicleIds) {
-      const last = await prisma.serviceRecord.findFirst({
-        where: { vehicle_id: vid, mileage_km: { not: null } },
-        orderBy: { completed_at: 'desc' },
-      });
-      if (last?.mileage_km != null) mileageMap[vid] = last.mileage_km;
+    const vehicleMap = {};
+    if (vehicleIds.length > 0) {
+      const [vehicles, lastRecords] = await Promise.all([
+        prisma.vehicleProfile.findMany({
+          where: { id: { in: vehicleIds }, userId: req.userId },
+          select: { id: true, make: true, model: true, licensePlate: true },
+        }),
+        prisma.serviceRecord.findMany({
+          where: { vehicle_id: { in: vehicleIds }, mileage_km: { not: null } },
+          orderBy: { completed_at: 'desc' },
+          select: { vehicle_id: true, mileage_km: true },
+        }),
+      ]);
+      for (const v of vehicles) {
+        vehicleMap[v.id] = { id: v.id, make: v.make, model: v.model, licensePlate: v.licensePlate };
+      }
+      // findMany 已依 completed_at 遞減排序，故每個 vehicle_id 的第一筆即最新里程
+      for (const rec of lastRecords) {
+        if (rec.mileage_km != null && mileageMap[rec.vehicle_id] == null) {
+          mileageMap[rec.vehicle_id] = rec.mileage_km;
+        }
+      }
     }
 
-    res.json(await withDueStates(reminders, mileageMap));
+    const withVehicle = reminders.map((r) => ({ ...r, vehicle: vehicleMap[r.vehicle_id] || null }));
+
+    res.json(await withDueStates(withVehicle, mileageMap));
   } catch (error) {
     console.error('查詢保養提醒失敗:', error);
     res.status(500).json({ error: '伺服器內部錯誤，請稍後再試' });

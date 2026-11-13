@@ -5,8 +5,7 @@
 //   LINE      → .env ADMIN_LINE_USER_ID（你的 LINE userId，非車廠的 line_id）
 //   Telegram  → .env TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID
 const axios = require('axios');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;

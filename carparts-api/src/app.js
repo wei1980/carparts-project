@@ -6,7 +6,7 @@ const path = require('path');
 const fs = require('fs');
 const compression = require('compression');
 const crypto = require('crypto');
-const { PrismaClient } = require('@prisma/client');
+const jwt = require('jsonwebtoken');
 const { needsInstalledCaliperReview } = require('./services/installedCaliperCompatibility');
 
 const garageCustomersRoutes = require('./routes/garageCustomers'); // 🆕 車廠客戶管理
@@ -66,7 +66,7 @@ const adminDashboardInsightsRoutes = require('./routes/adminDashboardInsights');
 const adminProcurementRoutes = require('./routes/adminProcurement'); // 🆕 進貨成本管理
 const adminBankRoutes = require('./routes/adminBank'); // 🆕 管理端銀行對帳與訂單操作
 
-const prisma = new PrismaClient();
+const prisma = require('./lib/prisma');
 const app = express();
 
 // 🔒 可選車廠辨識：公開商品端點依 req.isGarage 決定是否回傳批發價/料號
@@ -89,8 +89,19 @@ app.use(cors({
     return cb(null, false);
   }
 }));
-app.use(express.json({ limit: "10mb" }));
+// 🔒 body 上限 1mb：JSON API 的 payload 都很小（表單、id、清單）。
+//    10mb 對全站開放等於留一個記憶體型 DoS 面；檔案上傳另由 multer 各自限制
+//    （ CSV 20mb、售後附件 20mb、行照/大頭照 5mb），不受此上限影響。
+app.use(express.json({ limit: "1mb" }));
 app.use(compression());
+
+// 🔒 反向代理（nginx / ELB）後端：不設 trust proxy 的話 req.ip 會是 proxy 的 IP，
+//    所有 per-IP 限流（登入、重設密碼、註冊）都會變成全域共用一個桶子——不是擋到所有人
+//    就是誰都沒擋。這裡信任第一層 proxy（1 = 只信任直接連線的那一台）。
+//    ⚠️ 若實際部署是 2 層以上 proxy，把 1 改成對應層數；設 0（或留空）表示沒有 proxy。
+if (process.env.TRUST_PROXY_HOPS) {
+  app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS));
+}
 
 // CSRF 保護：針對會話型認證的路由（排除純 token API、webhook、公開端點）
 // 規則：
@@ -174,6 +185,101 @@ app.use((req, res, next) => {
 // 靜態目錄掛載
 const mediaDir = path.join(__dirname, "../media");
 if (!fs.existsSync(mediaDir)) fs.mkdirSync(mediaDir, { recursive: true });
+
+// ============================================================
+// 🔒 /media 存取控制
+//
+// 背景：/media 是 importers 的工作目錄（CSV/XLSX/JSON 大量落地），同時也是使用者
+// 上傳（行照、施工照、名片、大頭照、AI 上傳）的存放處。express.static 完全不檢查身分，
+// 因此先前實測：
+//   GET /media/Data/Powerflex_零件資料.csv → 200，99 MB，含「車廠批發價」243,559 列
+//   GET /media/business_cards/card_*.jpg    → 200（車廠名片＝PII）
+//
+// 規則：
+// - PUBLIC_PREFIXES：商品圖、Logo 等一律公開（前台 <img> 直接引用，無 cookie）。
+// - 其餘一律需要登入（Authorization: Bearer 或 Cookie），且：
+//     * business_cards / regphotos / work_photos / ai_uploads / modifications / avatars
+//       只允許 ADMIN 或車廠（管理端檢視用）。
+//     * Data / _originals_parts 完全封閉（匯入素材與成本表，任何角色都不經 HTTP 提供）。
+// - 目錄本身不列目錄（express.static 預設關閉 listing，這裡明確再擋一次）。
+// ============================================================
+const MEDIA_PUBLIC_PREFIXES = ["/parts/", "/Logo/", "/garage_photos/"];
+const MEDIA_ADMIN_ONLY_PREFIXES = [
+  "/business_cards/",
+  "/regphotos/",
+  "/work_photos/",
+  "/ai_uploads/",
+  "/modifications/",
+  "/avatars/",
+];
+// 完全不走 HTTP 的目錄（匯入素材、原始圖、後台資料）
+const MEDIA_BLOCKED_PREFIXES = ["/Data/", "/_originals_parts/"];
+
+function hasValidMediaSession(req) {
+  const header = req.headers.authorization;
+  if (header && header.startsWith("Bearer ")) {
+    try {
+      jwt.verify(header.slice("Bearer ".length).trim(), process.env.JWT_SECRET);
+      return true;
+    } catch (_) {
+      /* 無效 token，往下滑 */
+    }
+  }
+  // <img src="/media/..."> 不會帶 Authorization header，所以登入時會一併下一個
+  // httpOnly + SameSite=Lax 的 cookie（carparts_at）供媒體使用。httpOnly 讓 JS 讀不到，
+  // SameSite=Lax 允許同源 <img> / top-level 導覽帶 cookie，但不允許跨站 POST。
+  const cookieHeader = req.headers.cookie;
+  if (cookieHeader) {
+    const match = cookieHeader.match(/(?:^|;\s*)carparts_at=([^;]+)/);
+    if (match) {
+      try {
+        jwt.verify(decodeURIComponent(match[1]), process.env.JWT_SECRET);
+        return true;
+      } catch (_) {
+        /* cookie 過期或無效 */
+      }
+    }
+  }
+  return false;
+}
+
+app.use("/media", (req, res, next) => {
+  const requestPath = req.path;
+
+  if (MEDIA_BLOCKED_PREFIXES.some((p) => requestPath.startsWith(p))) {
+    return res.status(404).json({ error: "Not Found" });
+  }
+
+  if (MEDIA_PUBLIC_PREFIXES.some((p) => requestPath.startsWith(p))) {
+    return next();
+  }
+
+  if (!hasValidMediaSession(req)) {
+    return res.status(401).json({ error: "需要登入才能存取此檔案" });
+  }
+
+  // 有登入身分後，管理/PII 目錄仍限 ADMIN 或車廠
+  // ⚠️ 車廠 token 的 role 實際是 TRIAL / VERIFIED（不是字串 'GARAGE'），
+  //    所以判斷要用「有 workshopId」而不是比對 role 字面值。
+  if (MEDIA_ADMIN_ONLY_PREFIXES.some((p) => requestPath.startsWith(p))) {
+    let isAdmin = false;
+    let isGarage = false;
+    const header = req.headers.authorization;
+    try {
+      const decoded = jwt.verify(header.slice("Bearer ".length).trim(), process.env.JWT_SECRET);
+      isGarage = Boolean(decoded.workshopId);
+      isAdmin = decoded.role === "ADMIN";
+    } catch (_) {
+      isAdmin = false;
+      isGarage = false;
+    }
+    if (!isAdmin && !isGarage) {
+      return res.status(403).json({ error: "權限不足" });
+    }
+  }
+
+  next();
+});
 
 // 🟢 圖片自動補全中間件（雙向支援 PNG ↔ JPG ↔ WebP）
 app.use("/media", (req, res, next) => {
@@ -373,13 +479,10 @@ app.get('/api/parts/recommended', optionalGarageAuth, async (req, res) => {
     let whereClause = { is_active: true };
 
     if (variantId) {
-      // 🆕 通用型零件（is_universal）在任何車型篩選下都會出現
+      // 專車專用清單：只回傳已連結至該車型的零件；通用件不納入（無車／搜尋路徑另行處理）
       whereClause.AND = [
         {
-          OR: [
-            { is_universal: true },
-            { compatible_vehicles: { some: { vehicle_id: parseInt(variantId) } } },
-          ],
+          compatible_vehicles: { some: { vehicle_id: parseInt(variantId) } },
         },
       ];
     }
@@ -597,8 +700,13 @@ app.get("/api/health", (req, res) => res.json({ ok: true })); // 與 /health 同
 
 // ========================================
 // 🏥 健康檢查端點 (詳細版)
+// ⚠️ 這支 router 內的路徑本身就以 /health 開頭（/health/detailed、/health/ready…），
+//    所以必須掛在 /api 前綴，否則實際路徑會變成 /health/health/detailed。
+//    同時保留 /health/* 的別名，讓舊的檢查腳本不會壞掉。
 // ========================================
-app.use('/health', require('./routes/health'));
+const healthRouter = require('./routes/health');
+app.use('/api', healthRouter);
+app.use('/', healthRouter);
 
 // 404 處理 - 使用統一錯誤格式
 const { notFoundError } = require('./utils/errorHandler');
@@ -612,7 +720,16 @@ app.use((err, req, res, next) => {
   if (res.headersSent) {
     return next(err);
   }
-  internalError(res, 'Internal Server Error', err.message);
+  // 🔒 payload 過大是 client 錯誤，不是 500：回 413 且不附帶任何內部細節
+  if (err.type === 'entity.too.large' || err.status === 413) {
+    return res.status(413).json({
+      code: 'PAYLOAD_TOO_LARGE',
+      message: '請求內容過大',
+      requestId: req.requestId,
+    });
+  }
+  // 🔒 不回傳 err.message（可能含檔案路徑、連線字串片段、Prisma 內部欄位名）
+  internalError(res, 'Internal Server Error', null);
 });
 
 module.exports = app;

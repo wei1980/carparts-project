@@ -1,8 +1,7 @@
 // src/services/stockAlertService.js — 🆕 低庫存警示（可開關，LINE 推播管理員）
-const { PrismaClient } = require('@prisma/client');
 const { pushMessage } = require('./lineService');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 // 預設門檻與間隔
 const DEFAULTS = {

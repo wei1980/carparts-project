@@ -12,9 +12,8 @@
 //   GET /api/brake-specs/cross-reference  依料號查跨廠牌對應件（含 FMSI/WVA/OE 對照）
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 // 煞車規格資料尚未初始化時（正式庫尚未套用 migration 20261020120000_brake_spec_group），
 // 明確回報初始化狀態，而不是籠統的「查詢失敗」。

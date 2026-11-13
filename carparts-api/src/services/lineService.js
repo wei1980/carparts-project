@@ -1,7 +1,6 @@
 // src/services/lineService.js
 const axios = require('axios');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 // 引入 Flex Message 樣板
 const { 

@@ -5,9 +5,8 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const http = require('http');
-const { PrismaClient } = require('@prisma/client');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 const WEBHOOK_URL = process.env.HERMES_WEBHOOK_URL || 'http://127.0.0.1:8644/webhooks/carparts-live-chat';
 const WEBHOOK_SECRET = process.env.HERMES_WEBHOOK_SECRET || '';

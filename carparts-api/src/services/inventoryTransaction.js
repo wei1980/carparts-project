@@ -3,9 +3,8 @@
  * 單一 transaction 內完成：stockQty 扣減/增加 + InventoryLog 寫入
  * 支援冪等鍵、樂觀鎖、並發庫存不足處理
  */
-const { PrismaClient } = require('@prisma/client');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 /** InventoryLog 類型枚舉 - 對應前端顯示與稽核追蹤 */
 const InventoryLogType = {

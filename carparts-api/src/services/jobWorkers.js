@@ -2,12 +2,11 @@
  * Background Job Workers
  * 實際執行各類背景任務的處理器
  */
-const { PrismaClient } = require('@prisma/client');
 const { pushMessage } = require('./lineService');
 const { cacheService } = require('./cacheService');
 const { invalidateCache } = require('../middleware/cacheMiddleware');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 /**
  * 維護提醒 Worker

@@ -1,10 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
 const garageAuth = require('../middleware/garageAuth');
 const { notifyAppointmentUpdate } = require('../services/lineService');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 router.use(garageAuth);
 
 // ==================== 工單流程 ====================

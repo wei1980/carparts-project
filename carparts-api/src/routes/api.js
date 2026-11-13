@@ -1,8 +1,7 @@
 // src/routes/api.js
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 const auth = require('../middleware/authMiddleware');
 
 // 測試用
@@ -17,8 +16,9 @@ router.get('/ping', (req, res) => {
 // 0. 取得所有年份
 router.get('/years', async (req, res) => {
   try {
-    // 撈取資料庫中所有車型的起始與結束年份
+    // 🔒 is_approved: 使用者送審的車型必須通過審核才會出現在公開層級
     const variants = await prisma.vehicleVariant.findMany({
+      where: { is_approved: true },
       select: { year_start: true, year_end: true }
     });
     
@@ -42,7 +42,7 @@ router.get('/years', async (req, res) => {
 router.get('/makes', async (req, res) => {
   try {
     const { year } = req.query;
-    let whereClause = {};
+    let whereClause = { is_approved: true };
 
     // 如果有傳年份，根據年份區間過濾
     if (year) {
@@ -75,7 +75,7 @@ router.get('/models', async (req, res) => {
     const { make, year } = req.query;
     if (!make) return res.status(400).json({ error: '請提供 make 參數' });
 
-    let whereClause = { make: String(make) };
+    let whereClause = { make: String(make), is_approved: true };
 
     if (year) {
       const targetYear = Number(year);
@@ -104,9 +104,10 @@ router.get('/variants', async (req, res) => {
     const { make, model, year } = req.query;
     if (!make || !model) return res.status(400).json({ error: '請提供 make 和 model 參數' });
 
-    let whereClause = { 
-      make: String(make), 
-      model: String(model) 
+    let whereClause = {
+      make: String(make),
+      model: String(model),
+      is_approved: true,
     };
 
     if (year) {

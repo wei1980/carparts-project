@@ -1,11 +1,10 @@
 // src/routes/wishlist.js — 車主端願望清單 + 降價通知
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
 const auth = require('../middleware/authMiddleware');
 const adminAuth = require('../middleware/adminAuth');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 // ─── 車主端（需登入）─────────────────────────────
 

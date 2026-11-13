@@ -3,19 +3,14 @@
  * 優化 Prisma 查詢效能與連線池設定
  */
 
-const { PrismaClient } = require('@prisma/client');
-
-// 延遲載入 Prisma Client (避免重複建立)
+// 延遲載入共用 Prisma 單例（src/lib/prisma.js）。
+// 這個模組未被任何路由使用，但保留可作為查詢工具的預設 client；
+// 關鍵是**不要再自行 new PrismaClient()** — 那會多一個獨立連線池。
 let prismaInstance = null;
 
 function getPrismaClient() {
   if (!prismaInstance) {
-    prismaInstance = new PrismaClient({
-      log: process.env.NODE_ENV === 'development' 
-        ? ['query', 'info', 'warn', 'error'] 
-        : ['warn', 'error'],
-      errorFormat: 'pretty',
-    });
+    prismaInstance = require('../lib/prisma');
   }
   return prismaInstance;
 }

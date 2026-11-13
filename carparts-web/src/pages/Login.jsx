@@ -193,7 +193,7 @@ export default function Login() {
   // 🆕 忘記密碼：驗證碼 + 新密碼重設
   const handleResetPassword = async () => {
     if (!/^\d{6}$/.test(resetCode)) { toast.error('驗證碼為 6 位數字'); return; }
-    if (newPassword.length < 6) { toast.error('新密碼至少需 6 碼'); return; }
+    if (newPassword.length < 8) { toast.error('新密碼至少需 8 碼'); return; }
     try {
       await api.post('/auth/reset-password', {
         phone: resetPhone.trim(), code: resetCode, newPassword,
@@ -233,7 +233,7 @@ export default function Login() {
             vin,
           },
         });
-        toast.success('註冊成功，請等待管理員審核後登入');
+        toast.success('註冊成功，請等待管理員審核通過後再登入');
         setIsRegister(false);
       } else {
         await login(phone, password);
@@ -269,7 +269,7 @@ export default function Login() {
                 inputMode="numeric" placeholder="例：123456"
                 className="w-full p-3 mb-4 rounded bg-gray-700 text-white font-mono tracking-widest text-center text-lg" />
 
-              <label className="block text-sm text-gray-400 mb-1">新密碼（至少 6 碼）</label>
+              <label className="block text-sm text-gray-400 mb-1">新密碼（至少 8 碼）</label>
               <input value={newPassword} onChange={e => setNewPassword(e.target.value)} type="password"
                 placeholder="設定新密碼"
                 className="w-full p-3 mb-4 rounded bg-gray-700 text-white" />
@@ -305,7 +305,7 @@ export default function Login() {
         <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="09xxxxxxxx" className="w-full p-3 mb-4 rounded bg-gray-700 text-white" />
 
         <label className="block text-sm text-gray-400 mb-1">密碼</label>
-        <input value={password} onChange={e => setPassword(e.target.value)} type="password" placeholder={isRegister ? '設定密碼' : '輸入密碼'} className="w-full p-3 mb-4 rounded bg-gray-700 text-white" />
+        <input value={password} onChange={e => setPassword(e.target.value)} type="password" minLength={isRegister ? 8 : undefined} placeholder={isRegister ? '設定密碼（至少 8 碼）' : '輸入密碼'} className="w-full p-3 mb-4 rounded bg-gray-700 text-white" />
 
         {isRegister && (
           <>

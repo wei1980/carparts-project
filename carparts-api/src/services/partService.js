@@ -1,6 +1,5 @@
 // src/services/partService.js
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 /**
  * 零件服務層：封裝對 Part 模型的常見操作

@@ -3,19 +3,41 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { PrismaClient } = require('@prisma/client');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const authMiddleware = require('../middleware/authMiddleware');
-const { userLoginLimiter, adminLoginLimiter, garageLoginLimiter, registerLimiter } = require('../middleware/rateLimiters');
+const { userLoginLimiter, adminLoginLimiter, garageLoginLimiter, registerLimiter, resetPasswordLimiter } = require('../middleware/rateLimiters');
 
 // 🔐 緩存 JWT_SECRET，防止運行時被修改
 const JWT_SECRET = process.env.JWT_SECRET;
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 const crypto = require('crypto');
 const { pushMessage } = require('../services/lineService');
+const { deleteAccount } = require('../services/accountDeletion');
+
+// ============================================================
+// 🍪 媒體存取 cookie
+//
+// <img src="/media/..."> 不會帶 Authorization header，因此登入時一併下一個
+// httpOnly + SameSite=Lax 的 cookie，讓 /media 的存取控制（app.js）能驗證身分。
+// - httpOnly：前端 JS 讀不到，降低 XSS 外洩風險
+// - SameSite=Lax：允許同源 <img> 帶 cookie，跨站 POST 不帶（搭配 CSRF）
+// - maxAge 與 JWT 的 7 天一致；JWT 過期後 cookie 自然也失效
+// ============================================================
+const MEDIA_COOKIE = {
+  httpOnly: true,
+  sameSite: 'lax',
+  secure: process.env.NODE_ENV === 'production',
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+  path: '/',
+};
+
+function setMediaCookie(res, token) {
+  if (!token) return;
+  res.cookie('carparts_at', token, MEDIA_COOKIE);
+}
 
 // ==========================================
 // 📁 檔案上傳目錄設定
@@ -137,6 +159,7 @@ router.post('/register', userLoginLimiter, async (req, res) => {
   try {
     const { phone, password, name, lineId, address, vehicle } = req.body;
     if (!phone || !password) return res.status(400).json({ error: '手機號碼和密碼為必填' });
+    if (String(password).length < 8) return res.status(400).json({ error: '密碼至少 8 碼' });
     if (!lineId) return res.status(400).json({ error: 'LINE 帳號為必填' });
 
     const existingUser = await prisma.endUser.findUnique({ where: { phone } });
@@ -260,11 +283,17 @@ router.post('/register', userLoginLimiter, async (req, res) => {
       await prisma.endUser.update({ where: { id: user.id }, data: { currentVehicleId: vp.id } });
     }
 
-    const token = jwt.sign({ userId: user.id, phone: user.phone }, JWT_SECRET, { expiresIn: '7d' });
-    res.status(201).json({ token, user: { id: user.id, phone: user.phone, name: user.name, lineId: user.lineId } });
+    // 🔒 未通過審核的帳號不發 token：以前這裡會發 7 天有效的 JWT，等於核可前就有完整權限
+    //    （實測可打 profile / wishlist / orders / appointments 等全部消費者端點）。
+    //    註冊成功只回報待審核，請使用者等審核通過再登入。
+    res.status(201).json({
+      message: '註冊成功，請等待管理員審核通過後再登入',
+      id: user.id,
+      is_approved: user.is_approved,
+    });
   } catch (error) {
     console.error('註冊失敗:', error);
-    res.status(500).json({ error: '伺服器內部錯誤', detail: error.message });
+    res.status(500).json({ error: '伺服器內部錯誤' });
   }
 });
 
@@ -280,9 +309,10 @@ router.post('/login', userLoginLimiter, async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) return res.status(401).json({ error: '手機號碼或密碼錯誤' });
     const token = jwt.sign({ userId: user.id, phone: user.phone }, JWT_SECRET, { expiresIn: '7d' });
+    setMediaCookie(res, token);
     res.json({ token, user: { id: user.id, phone: user.phone, name: user.name, lineId: user.lineId } });
   } catch (error) {
-    res.status(500).json({ error: '登入失敗', detail: error.message });
+    res.status(500).json({ error: '登入失敗',  });
   }
 });
 
@@ -293,15 +323,13 @@ router.post('/admin/login', adminLoginLimiter, async (req, res) => {
     if (!phone || !password) return res.status(400).json({ error: '請提供手機號碼和密碼' });
     const workshop = await prisma.workshop.findFirst({ where: { phone, role: 'ADMIN' } });
     if (!workshop) return res.status(401).json({ error: '手機號碼或密碼錯誤' });
+    if (!workshop.is_active) return res.status(403).json({ error: '帳號已被停用' });
     const isMatch = await bcrypt.compare(password, workshop.password_hash);
     if (!isMatch) return res.status(401).json({ error: '手機號碼或密碼錯誤' });
-    console.log('[DEBUG] JWT_SECRET at sign:', JWT_SECRET ? JWT_SECRET.substring(0, 20) + '...' : 'UNDEFINED', 'len:', JWT_SECRET?.length);
-    console.log('[DEBUG] JWT_SECRET raw bytes:', Buffer.from(JWT_SECRET).toString('hex').substring(0, 40) + '...');
-    console.log('[DEBUG] JWT_SECRET sha256:', crypto.createHash('sha256').update(JWT_SECRET).digest('hex'));
+    // ⚠️ 不要在這裡印 JWT_SECRET 的任何片段（前綴 / 原始位元組 / sha256）或完整 token。
+    //    部分金鑰＋穩定 hash 等於洩漏指紋，可被用來跨環境比對與縮小暴力破解範圍。
     const token = jwt.sign({ workshopId: workshop.id, phone: workshop.phone, role: workshop.role }, JWT_SECRET, { expiresIn: '7d' });
-    console.log('[DEBUG] Generated token sig len:', token.split('.')[2].length);
-    console.log('[DEBUG] Generated token full:', token);
-    console.log('[DEBUG] Generated token parts:', token.split('.').length);
+    setMediaCookie(res, token);
     res.json({ token, user: { id: workshop.id, phone: workshop.phone, company_name: workshop.company_name, role: workshop.role } });
   } catch (error) {
     res.status(500).json({ error: '伺服器內部錯誤，請稍後再試' });
@@ -319,6 +347,7 @@ router.post('/garage/login', garageLoginLimiter, async (req, res) => {
     const isMatch = await bcrypt.compare(password, workshop.password_hash);
     if (!isMatch) return res.status(401).json({ error: '手機號碼或密碼錯誤' });
     const token = jwt.sign({ workshopId: workshop.id, phone: workshop.phone, role: workshop.role }, JWT_SECRET, { expiresIn: '7d' });
+    setMediaCookie(res, token);
     res.json({ token, user: { id: workshop.id, phone: workshop.phone, garage_name: workshop.garage_name || workshop.company_name, role: workshop.role } });
   } catch (error) {
     res.status(500).json({ error: '伺服器內部錯誤，請稍後再試' });
@@ -359,7 +388,7 @@ router.post('/garage/register', cardUpload.single('business_card'), async (req, 
     });
     res.status(201).json({ message: '註冊成功，請等待管理員審核', id: workshop.id });
   } catch (error) {
-    res.status(500).json({ error: '註冊失敗', detail: error.message });
+    res.status(500).json({ error: '註冊失敗',  });
   }
 });
 
@@ -391,10 +420,15 @@ router.post('/forgot-password', userLoginLimiter, async (req, res) => {
 });
 
 // ==================== 🆕 重設密碼（驗證碼驗證）====================
-router.post('/reset-password', async (req, res) => {
+// 🔒 限流：驗證碼只有 6 位數、10 分鐘有效，沒有 attempt 上限等於可線上暴力破解。
+//    這支 limiter 是本端點唯一的嘗試次數防線（5 次 / 15 分鐘 / IP）。
+router.post('/reset-password', resetPasswordLimiter, async (req, res) => {
   try {
     const { phone, code, newPassword } = req.body;
     if (!phone || !code || !newPassword) return res.status(400).json({ error: '請提供手機號碼、驗證碼、新密碼' });
+    if (String(newPassword).length < 8) {
+      return res.status(400).json({ error: '新密碼至少 8 碼' });
+    }
     const user = await prisma.endUser.findFirst({ where: { phone, is_active: true } });
     if (!user || !user.resetCodeHash || !user.resetCodeExpires) {
       return res.status(400).json({ error: '驗證碼無效或已過期' });
@@ -425,7 +459,7 @@ router.patch('/bind-line', authMiddleware, async (req, res) => {
     await prisma.endUser.update({ where: { id: req.userId }, data: { lineId } });
     res.json({ success: true, message: 'LINE 已綁定' });
   } catch (error) {
-    res.status(500).json({ error: '綁定失敗', detail: error.message });
+    res.status(500).json({ error: '綁定失敗',  });
   }
 });
 
@@ -436,8 +470,8 @@ router.patch('/change-password', authMiddleware, async (req, res) => {
     if (!oldPassword || !newPassword) {
       return res.status(400).json({ error: '請填寫舊密碼與新密碼' });
     }
-    if (String(newPassword).length < 6) {
-      return res.status(400).json({ error: '新密碼至少 6 碼' });
+    if (String(newPassword).length < 8) {
+      return res.status(400).json({ error: '新密碼至少 8 碼' });
     }
 
     const user = await prisma.endUser.findUnique({ where: { id: req.userId } });
@@ -502,7 +536,7 @@ router.put('/profile', authMiddleware, async (req, res) => {
     res.json(user);
   } catch (error) {
     console.error('更新個人資料失敗:', error);
-    res.status(500).json({ error: '伺服器內部錯誤', detail: error.message });
+    res.status(500).json({ error: '伺服器內部錯誤',  });
   }
 });
 
@@ -549,6 +583,45 @@ router.get('/workshop-profile', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('取得車廠資料失敗:', error);
     res.status(500).json({ error: '伺服器內部錯誤' });
+  }
+});
+
+// ==================== 🆕 刪除我的帳號（隱私權政策：刪除請求） ====================
+// DELETE /api/auth/account
+//   一律要求再次確認（confirm: true）與重複輸入手機號碼（phone），避免誤觸或 XSS 被濫用。
+//   - 有交易/工單紀錄 → 匿名化（保留訂單數字供對帳，個資清空、帳號停用）
+//   - 完全無紀錄     → 硬刪（連同車輛、提醒、願望清單）
+//   兩種情況都會寫 AuditLog。
+router.delete('/account', authMiddleware, async (req, res) => {
+  try {
+    const { confirm, phone } = req.body || {};
+    if (confirm !== true) {
+      return res.status(400).json({ error: '請明確送出 confirm: true 以確認刪除帳號' });
+    }
+    const me = await prisma.endUser.findUnique({ where: { id: req.userId }, select: { phone: true } });
+    if (!me) return res.status(404).json({ error: '找不到使用者' });
+    if (phone !== me.phone) {
+      return res.status(400).json({ error: '手機號碼不符，無法刪除帳號' });
+    }
+
+    const result = await deleteAccount({
+      userId: req.userId,
+      actorId: req.userId,
+      actorType: 'USER',
+      requestId: req.requestId,
+      ip: req.ip,
+    });
+
+    res.clearCookie('carparts_at', { path: '/' });
+    res.json({
+      message: result.mode === 'anonymized'
+        ? `帳號已匿名化；為符合會計與對帳需求，保留 ${result.retainedOrders} 筆既有訂單紀錄`
+        : '帳號與相關資料已刪除',
+      ...result,
+    });
+  } catch (error) {
+    console.error('刪除帳號失敗:', error);
+    res.status(500).json({ error: '刪除帳號失敗，請稍後再試' });
   }
 });
 

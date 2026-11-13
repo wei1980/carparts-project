@@ -1,10 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
 const adminAuth = require('../middleware/adminAuth');
 const garageAuth = require('../middleware/garageAuth');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 // ==================== 公開/管理端銷售儀表板 ====================
 

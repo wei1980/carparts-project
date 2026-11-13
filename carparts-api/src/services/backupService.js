@@ -27,7 +27,9 @@ function executeBackup() {
       }
 
       // 2. 備份後端程式
-      const apiCmd = `powershell -Command "Compress-Archive -Path 'C:\\carparts\\carparts-api\\src', 'C:\\carparts\\carparts-api\\prisma', 'C:\\carparts\\carparts-api\\package.json', 'C:\\carparts\\carparts-api\\.env' -DestinationPath '${path.join(backupDir, 'carparts-api.zip')}' -Force"`;
+      // 🔒 不要把 .env 放進備份：裡面有 JWT_SECRET 與 DATABASE_URL。備份會在本機留 7 天，
+      //    zip 外流即等於金鑰與整庫憑證外流。需要還原設定請用 .env.example。
+      const apiCmd = `powershell -Command "Compress-Archive -Path 'C:\\carparts\\carparts-api\\src', 'C:\\carparts\\carparts-api\\prisma', 'C:\\carparts\\carparts-api\\package.json' -DestinationPath '${path.join(backupDir, 'carparts-api.zip')}' -Force"`;
 
       exec(apiCmd, { shell: 'cmd.exe' }, (apiError) => {
         if (apiError) {

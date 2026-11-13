@@ -1,6 +1,5 @@
 // src/services/modificationService.js
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 /**
  * 改裝聯動服務：處理改裝項目對零件推薦的影響

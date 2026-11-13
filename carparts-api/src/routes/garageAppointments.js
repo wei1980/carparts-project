@@ -4,10 +4,9 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { PrismaClient } = require('@prisma/client');
 const garageAuth = require('../middleware/garageAuth');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 router.use(garageAuth);
 
 // 設定施工照上傳目錄

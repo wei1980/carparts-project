@@ -1,6 +1,5 @@
 // src/services/autoCompleteOrders.js
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 // 7 天 = 7 * 24 * 60 * 60 * 1000 毫秒
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;

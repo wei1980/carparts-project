@@ -2,11 +2,10 @@
 // 彙總：車輛資料 + 保養歷史（工單）+ 提醒到期狀態 + 建議保養項目
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
 const auth = require('../middleware/authMiddleware');
 const { withDueStates, DEFAULT_INTERVALS } = require('../services/maintenanceReminderService');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 router.use(auth);
 
 // GET /api/my-car/dashboard — 我的爱车总览

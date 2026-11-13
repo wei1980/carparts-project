@@ -1,10 +1,9 @@
 // src/routes/repurchase.js — 車主端：回購專區（工單零件 + 歷史訂單彙整）
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
 const auth = require('../middleware/authMiddleware');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 router.use(auth);
 
 // GET /api/repurchase — 彙整可回購商品

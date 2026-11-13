@@ -34,4 +34,23 @@ const registerLimiter = rateLimit({
   message: message('註冊次數過多，請稍後再試'),
 });
 
-module.exports = { userLoginLimiter, adminLoginLimiter, garageLoginLimiter, registerLimiter };
+// 重設密碼：每 IP 15 分鐘最多 5 次。
+// ⚠️ 驗證碼「發送」與「驗證」是兩個端點，限流必須各自掛。
+//    forgot-password 有 userLoginLimiter，但 reset-password 之前完全沒有 →
+//    6 位數驗證碼（10 分鐘有效）可被線上暴力破解。這支 limiter 專門補這個洞。
+const resetPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => `reset:${ipKeyGenerator(req.ip)}`,
+  message: message('重設密碼嘗試次數過多，請 15 分鐘後再試'),
+});
+
+module.exports = {
+  userLoginLimiter,
+  adminLoginLimiter,
+  garageLoginLimiter,
+  registerLimiter,
+  resetPasswordLimiter,
+};

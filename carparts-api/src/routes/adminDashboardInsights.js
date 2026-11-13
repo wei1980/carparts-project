@@ -1,10 +1,9 @@
 // src/routes/adminDashboardInsights.js — 管理端儀表板：熱銷排行 / 庫存週轉 / 代購逾期
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
 const adminAuth = require('../middleware/adminAuth');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 router.use(adminAuth);
 
 // GET /api/admin/dashboard-insights — 三合一聚合（可 ?days=30）

@@ -2,10 +2,9 @@
 // 車型管理 API - 提供同引擎同世代車型查詢
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
 const adminAuth = require('../middleware/adminAuth');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 router.use(adminAuth);
 
 /**

@@ -6,8 +6,18 @@ const auth = require('../middleware/authMiddleware');
 const modificationService = require('../services/modificationService');
 const { consumerPartRecommendationCacheMiddleware } = require('../middleware/cacheMiddleware');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 router.use(auth);
+
+// 🔒 消費者端零件欄位白名單：Part 同一列有 msrp_price 與 wholesale_price，
+//    未投影的查詢會把成本價回給消費者。新增欄位前必須先登記在這裡（不得加 wholesale_price）。
+const CONSUMER_PART_SELECT = {
+  id: true, name: true, brand: true, sku: true, msrp_price: true,
+  stock_qty: true, distributor_stock_qty: true, preorder_lead_time_days: true,
+  image_url: true, description: true, category: true, subcategory_id: true,
+  is_universal: true, is_official: true, is_active: true,
+  sales_count: true, view_count: true, created_at: true, updated_at: true,
+};
 
 router.get('/recommended', consumerPartRecommendationCacheMiddleware(300), async (req, res) => {
   try {
@@ -160,11 +170,7 @@ router.get('/recommended', consumerPartRecommendationCacheMiddleware(300), async
         if (matchedTargetIds.length > 0) {
           modificationParts = await prisma.part.findMany({
             where: { id: { in: matchedTargetIds }, is_active: true },
-            select: { 
-              id: true, name: true, brand: true, sku: true, msrp_price: true, 
-              wholesale_price: true, stock_qty: true, distributor_stock_qty: true, image_url: true,
-              category: true, subcategory_id: true
-            }
+            select: CONSUMER_PART_SELECT
           });
         }
       }
@@ -173,7 +179,10 @@ router.get('/recommended', consumerPartRecommendationCacheMiddleware(300), async
     const [parts, total] = await Promise.all([
       prisma.part.findMany({
         where,
-        include: { subcategory: { include: { category: true } } },
+        select: {
+          ...CONSUMER_PART_SELECT,
+          subcategory: { select: { id: true, name: true, category_id: true, category: { select: { id: true, name: true } } } },
+        },
         orderBy,
         skip,
         take,

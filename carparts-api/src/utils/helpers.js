@@ -1,4 +1,4 @@
-﻿const { PrismaClient } = require("@prisma/client");
+const prisma = require("../lib/prisma");
 
 // 非負整數轉換器
 const toIntNonNeg = (v, d = 0) => {
@@ -21,7 +21,6 @@ async function prepareWorkshopQuota(workshopId) {
   const yearMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
   const limit = 100; 
 
-  const prisma = new PrismaClient();
   const usage = await prisma.workshopQueryUsage.upsert({
     where: { workshop_id_year_month: { workshop_id: workshopId, year_month: yearMonth } },
     create: { workshop_id: workshopId, year_month: yearMonth, query_count: 0, rows_returned: 0 },
@@ -38,7 +37,6 @@ async function prepareWorkshopQuota(workshopId) {
 async function finalizeWorkshopQuota(quotaCtx, rowsReturned) {
   if (!quotaCtx?.usageKey) return;
   const count = Math.max(0, rowsReturned != null ? Number(rowsReturned) : 0);
-  const prisma = new PrismaClient();
   await prisma.workshopQueryUsage.update({
     where: { workshop_id_year_month: quotaCtx.usageKey },
     data: { query_count: { increment: 1 }, rows_returned: { increment: count }, last_query_at: new Date() },

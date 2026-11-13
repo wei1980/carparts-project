@@ -1,10 +1,9 @@
 // src/routes/garageReports.js — 🆕 車廠月報表（工單數/營收/熱門工項）
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
 const garageAuth = require('../middleware/garageAuth');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 router.use(garageAuth);
 
 // GET /api/garage/reports/monthly?month=2026-08（預設當月）

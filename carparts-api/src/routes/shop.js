@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 // 🔒 可選車廠辨識（決定是否回傳批發價/料號）
 const optionalGarageAuth = require('../middleware/optionalGarageAuth');
 

@@ -1,7 +1,6 @@
 // src/services/maintenanceReminderService.js
 // 保養提醒：工單完工時依更換項目自動產生（可調整週期），車主亦可手動自訂。
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 // 預設保養週期表：關鍵字 → { interval_km, interval_days }
 const DEFAULT_INTERVALS = [

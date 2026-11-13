@@ -3,10 +3,9 @@
  * 防止超賣：使用 Lua 腳本實現原子性扣減庫存
  */
 
-const { PrismaClient } = require('@prisma/client');
 const cacheService = require('./cacheService');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 // Redis Lua 腳本：原子性扣減庫存
 const DECREMENT_STOCK_SCRIPT = `

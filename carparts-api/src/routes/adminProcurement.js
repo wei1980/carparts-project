@@ -1,10 +1,9 @@
 // src/routes/adminProcurement.js — 進貨成本管理：供貨商 / 進貨批次 / 到岸成本
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
 const adminAuth = require('../middleware/adminAuth');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 router.use(adminAuth);
 
 // ───────────────────────── 供貨商 ─────────────────────────

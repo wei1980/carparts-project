@@ -3,11 +3,10 @@
 
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
 const Redis = require('ioredis');
 const axios = require('axios');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 // 快取 Redis 連線
 let redisClient = null;
@@ -55,7 +54,7 @@ router.get('/health/detailed', async (req, res) => {
     checks.database = {
       status: 'unhealthy',
       latencyMs: Date.now() - startTime,
-      details: { error: error.message }
+      details: { error: 'unavailable' } // 不對外回傳原始例外字串
     };
   }
 
@@ -83,7 +82,7 @@ router.get('/health/detailed', async (req, res) => {
     checks.redis = {
       status: 'unhealthy',
       latencyMs: 0,
-      details: { error: error.message }
+      details: { error: 'unavailable' } // 不對外回傳原始例外字串
     };
   }
 
@@ -105,7 +104,7 @@ router.get('/health/detailed', async (req, res) => {
         name: 'ai_service',
         status: 'unhealthy',
         latencyMs: 0,
-        error: error.message
+        error: 'unavailable'
       });
     }
   }
@@ -128,7 +127,7 @@ router.get('/health/detailed', async (req, res) => {
         name: 'line_api',
         status: 'unhealthy',
         latencyMs: 0,
-        error: error.message
+        error: 'unavailable'
       });
     }
   }
@@ -148,7 +147,7 @@ router.get('/health/detailed', async (req, res) => {
         name: 'ngrok_tunnel',
         status: 'unhealthy',
         latencyMs: 0,
-        error: error.message
+        error: 'unavailable'
       });
     }
   }
@@ -192,7 +191,7 @@ router.get('/health/ready', async (req, res) => {
     res.status(503).json({ 
       ready: false, 
       timestamp: new Date().toISOString(),
-      error: error.message 
+      error: 'not ready'
     });
   }
 });
@@ -234,11 +233,12 @@ router.get('/health/queues', async (req, res) => {
         status: 'unhealthy',
         timestamp: new Date().toISOString(),
         redis: redisStatus,
-        error: queueErr.message,
+        error: 'unavailable',
       });
     }
   } catch (error) {
-    res.status(500).json({ status: 'unknown', error: error.message });
+    console.error('[HEALTH] queues check failed:', { message: error.message });
+    res.status(500).json({ status: 'unknown', error: 'check failed' });
   }
 });
 

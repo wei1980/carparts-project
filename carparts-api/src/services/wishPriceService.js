@@ -1,9 +1,8 @@
 // src/services/wishPriceService.js — 降價通知檢查
 // 呼叫時機：商品價格更新（admin PUT /parts/:id）後、或定時掃描
-const { PrismaClient } = require('@prisma/client');
 const { pushMessage } = require('./lineService');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 /**
  * 檢查某零件（或全部）的願望清單，現價 ≤ targetPrice 且尚未通知 → 推 LINE

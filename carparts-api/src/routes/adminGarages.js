@@ -1,10 +1,9 @@
 // src/routes/adminGarages.js
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 const adminAuth = require('../middleware/adminAuth');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 router.use(adminAuth);
 

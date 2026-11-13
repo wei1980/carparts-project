@@ -1,6 +1,5 @@
 // src/services/vehicleService.js
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 /**
  * 車輛服務層：封裝對 VehicleVariant、VehicleProfile 等模型的常見操作

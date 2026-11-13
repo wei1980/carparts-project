@@ -1,8 +1,7 @@
 // src/routes/categories.js
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 // GET /api/categories/tree - 获取分类树形结构
 router.get('/tree', async (req, res) => {

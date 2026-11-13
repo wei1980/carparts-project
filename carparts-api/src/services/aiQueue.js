@@ -1,8 +1,7 @@
 // src/services/aiQueue.js
-const { PrismaClient } = require('@prisma/client');
 const { aggregateAIResults } = require('./aiAggregator');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 let isProcessing = false;
 
 async function processPendingDrafts() {

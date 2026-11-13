@@ -12,9 +12,8 @@ require('./services/aiQueue');
 
 // 引入 Express App
 const app = require('./app'); // 指向 src/app.js
-const { PrismaClient } = require('@prisma/client');
 const { startAutoCompleteJob } = require('./services/autoCompleteOrders');
-const prisma = new PrismaClient();
+const prisma = require('./lib/prisma');
 const PORT = process.env.PORT || 3000;
 
 async function startServer() {

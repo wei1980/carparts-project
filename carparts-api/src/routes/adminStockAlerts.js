@@ -2,6 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const adminAuth = require('../middleware/adminAuth');
+const prisma = require('../lib/prisma');
 const { checkLowStock, getStockSettings, DEFAULTS } = require('../services/stockAlertService');
 
 router.use(adminAuth);
@@ -20,10 +21,8 @@ router.get('/', async (req, res) => {
 // PATCH /api/admin/stock-alerts — 更新警示設定（寫入 ADMIN garage_slots.system）
 router.patch('/', async (req, res) => {
   try {
-    const { PrismaClient } = require('@prisma/client');
-    const prisma = new PrismaClient();
     const admin = await prisma.workshop.findFirst({ where: { role: 'ADMIN' } });
-    if (!admin) { await prisma.$disconnect(); return res.status(404).json({ error: '找不到管理員' }); }
+    if (!admin) return res.status(404).json({ error: '找不到管理員' });
 
     const slots = admin.garage_slots || {};
     const system = { ...(slots.system || {}) };
@@ -31,17 +30,16 @@ router.patch('/', async (req, res) => {
     if (req.body.lowStockEnabled !== undefined) system.lowStockEnabled = Boolean(req.body.lowStockEnabled);
     if (req.body.lowStockThreshold !== undefined) {
       const t = parseInt(req.body.lowStockThreshold);
-      if (!(t >= 0)) { await prisma.$disconnect(); return res.status(400).json({ error: '門檻必須 ≥ 0' }); }
+      if (!(t >= 0)) return res.status(400).json({ error: '門檻必須 ≥ 0' });
       system.lowStockThreshold = t;
     }
     if (req.body.lowStockIntervalHours !== undefined) {
       const h = parseInt(req.body.lowStockIntervalHours);
-      if (!(h >= 1 && h <= 168)) { await prisma.$disconnect(); return res.status(400).json({ error: '間隔需 1–168 小時' }); }
+      if (!(h >= 1 && h <= 168)) return res.status(400).json({ error: '間隔需 1–168 小時' });
       system.lowStockIntervalHours = h;
     }
 
     await prisma.workshop.update({ where: { id: admin.id }, data: { garage_slots: { ...slots, system } } });
-    await prisma.$disconnect();
 
     const cfg = await getStockSettings();
     res.json({ success: true, settings: cfg });

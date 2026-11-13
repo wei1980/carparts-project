@@ -2,8 +2,7 @@
 // 空濾模糊比對核心演算法 - 從 run_match_new_files.py 移植而來
 // 策略：Model_core ≥ 60% → Gen ≥ 50% → Engine 100% → Disp/HP 容許誤差
 
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 // ===== 常數與正規化規則 =====
 

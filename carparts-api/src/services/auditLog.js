@@ -19,6 +19,9 @@ async function recordAudit(prisma, entry, req = null, actorType = 'ADMIN') {
   try {
     await prisma.auditLog.create({
       data: {
+        // AuditLog.id 沒有 @default，必須由呼叫端提供；
+        // 先前所有 recordAudit 呼叫都因缺 id 而靜默失敗（只寫進 AUDIT_WRITE_FAILURE log）。
+        id: require('crypto').randomUUID(),
         action: entry.action,
         entityType: entry.entityType,
         entityId: String(entry.entityId),
