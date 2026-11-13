@@ -195,3 +195,16 @@ carparts-web/fix_checkout.py
 # Prisma 資料備份（.bak / .bak_YYYYMMDD_*）
 carparts-api/prisma/*.bak
 carparts-api/prisma/*.bak_*
+
+# Vite 快取與測試 mock（由 tooling 產生）
+carparts-web/.vite/
+
+# 誤存的檔案（內容其實是別的頁面原始碼，非 tailwind 設定）
+carparts-web/tailwind.config.js
+# 本機權杖產生腳本（含身分上下文，不進版控）
+make_admin_token.js
+# 本機工作目錄
+carparts-api/pfwork/
+carparts-api/scratch/
+carparts-api/scratch_mst_pages/
+carparts-api/uploads/
