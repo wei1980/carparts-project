@@ -51,10 +51,13 @@ export default function AdminGarageSettings() {
       if (w.garage_slots && typeof w.garage_slots === 'object' && w.garage_slots.business_card) {
         cardPath = w.garage_slots.business_card;
       } else if (w.garage_slots && typeof w.garage_slots === 'string') {
+        // ⚠️ 不要靜默吞例外：garage_slots 格式異常時使用者會看到名片空白卻無從得知原因
         try {
           const parsed = JSON.parse(w.garage_slots);
           cardPath = parsed.business_card || '';
-        } catch {}
+        } catch (err) {
+          console.warn('garage_slots 解析失敗，名片路徑略過', { garageId: w.id, message: err.message });
+        }
       }
 
       setForm({
@@ -89,7 +92,17 @@ export default function AdminGarageSettings() {
     try {
       // 🆕 將名片路徑合併回 garage_slots
       let slots = {};
-      try { slots = JSON.parse(form.garage_slots || '{}'); } catch {}
+      try {
+        slots = JSON.parse(form.garage_slots || '{}');
+      } catch (err) {
+        // 格式錯誤時保留原字串，讓後端回 400 說明問題，而不是靜默存成空物件
+        console.warn('garage_slots 儲存前解析失敗，維持原字串', { message: err.message });
+        slots = null;
+      }
+      if (slots === null) {
+        toast.error('門店設定 JSON 格式錯誤，請修正後再儲存');
+        return;
+      }
       if (form.business_card) {
         slots.business_card = form.business_card;
       }

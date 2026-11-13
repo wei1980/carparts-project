@@ -859,8 +859,8 @@ function sendFlexMessage(lineClient, userId, flexMessage) {
   }).then(function() {
     return { success: true };
   }).catch(function(error) {
-    console.error('LINE Flex Message \u767C\u9001\u5931\u6557:', error);
-    return { success: false, error: error.message };
+    console.error('LINE Flex Message \u767C\u9001\u5931\u6557:', { message: error.message });
+    return { success: false, error: 'LINE 訊息發送失敗' };
   });
 }
 
@@ -872,8 +872,8 @@ function sendFlexMessageMulticast(lineClient, userIds, flexMessage) {
   }).then(function() {
     return { success: true };
   }).catch(function(error) {
-    console.error('LINE Flex Message \u7FA4\u767C\u5931\u6557:', error);
-    return { success: false, error: error.message };
+    console.error('LINE Flex Message \u7FA4\u767C\u5931\u6557:', { message: error.message });
+    return { success: false, error: 'LINE 訊息發送失敗' };
   });
 }
 

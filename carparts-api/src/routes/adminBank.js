@@ -1,6 +1,21 @@
 // src/routes/adminBank.js — 管理端銀行對帳（汽車零件保養 O2O 金流模組）
 // 流程：客戶匯款 → 補登後五碼/金額 → 管理員上傳銀行 Excel → 自動比對 → 確認/人工審核
 const express = require('express');
+
+
+// 🔒 對外錯誤訊息白名單：只回傳表內文案，未知錯誤一律通用訊息，
+//    避免 Prisma / 內部例外的訊息直接送到前端。
+const BANK_ERROR_MESSAGES = {
+  BANK_TRANSFER_CLAIMED: '此筆匯款已被認領',
+  STATUS_TRANSITION_RACE: '訂單狀態已變更，請重新整理',
+  INVALID_PAYMENT_STAGE: '付款階段不正確',
+  INVALID_BANK_TRANSFER: '匯款資料不正確',
+  BANK_AMOUNT_MISMATCH: '匯款金額與應付金額不符',
+  ORDER_NOT_FOUND: '找不到這筆訂單',
+  ORDER_NOT_CANCELLABLE: '此訂單狀態不可取消',
+  ORDER_ALREADY_CANCELLED: '此訂單已取消',
+};
+const bankErrorMessage = (code) => BANK_ERROR_MESSAGES[code] || '伺服器內部錯誤，請稍後再試';
 const router = express.Router();
 const path = require('path');
 const fs = require('fs');
@@ -478,7 +493,7 @@ router.post('/orders/:orderId/manual-confirm', async (req, res) => {
     res.json({ message: `已手動確認（${stage}）`, status: updated.status });
   } catch (error) {
     const statuses = { BANK_TRANSFER_CLAIMED: 409, STATUS_TRANSITION_RACE: 409, INVALID_PAYMENT_STAGE: 400, INVALID_BANK_TRANSFER: 400, BANK_AMOUNT_MISMATCH: 400, ORDER_NOT_FOUND: 404 };
-    if (statuses[error.code]) return res.status(statuses[error.code]).json({ code: error.code, error: error.message });
+    if (statuses[error.code]) return res.status(statuses[error.code]).json({ code: error.code, error: bankErrorMessage(error.code) });
     res.status(500).json({ error: '伺服器內部錯誤，請稍後再試' });
   }
 });
@@ -582,7 +597,7 @@ router.patch('/orders/:orderId', async (req, res) => {
     return res.status(400).json({ code: 'UNSUPPORTED_STATUS', error: '不支援的訂單狀態' });
   } catch (error) {
     const statuses = { ORDER_NOT_FOUND: 404, ORDER_NOT_CANCELLABLE: 409, ORDER_ALREADY_CANCELLED: 409 };
-    if (statuses[error.code]) return res.status(statuses[error.code]).json({ code: error.code, error: error.message });
+    if (statuses[error.code]) return res.status(statuses[error.code]).json({ code: error.code, error: bankErrorMessage(error.code) });
     console.error('PATCH /api/admin/orders/:orderId error:', error);
     res.status(500).json({ error: '伺服器內部錯誤，請稍後再試' });
   }
