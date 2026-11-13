@@ -13,6 +13,12 @@ export default function GarageDashboard() {
   const [search, setSearch] = useState('');
   const [parts, setParts] = useState([]);
   const [loading, setLoading] = useState(false);
+  // 🔍 搜尋結果的例外 / 分頁（後端有 pagination，但前端先前沒有任何換頁控制）
+  const [partsError, setPartsError] = useState('');
+  const [partsPage, setPartsPage] = useState(1);
+  const [partsTotalPages, setPartsTotalPages] = useState(0);
+  const [partsTotal, setPartsTotal] = useState(0);
+  const PARTS_PAGE_SIZE = 24;
   
   // 🟢 商品彈窗狀態
   const [selectedPart, setSelectedPart] = useState(null);
@@ -233,14 +239,15 @@ export default function GarageDashboard() {
   const subcategories = currentCategory?.subcategories || [];
 
   // 🟢 車廠的精準零件搜尋功能 (加入分類篩選)
-  const handleGarageSearch = async () => {
+  const handleGarageSearch = async (page = 1) => {
     if (!selectedVariant && !search && !selectedCategory) {
       toast.error('請選擇引擎/世代、目錄分類，或輸入關鍵字進行搜尋。');
       return;
     }
     setLoading(true);
+    setPartsError('');
     try {
-      const params = {};
+      const params = { page, pageSize: PARTS_PAGE_SIZE };
       if (selectedVariant) params.variantId = selectedVariant;
       if (selectedCategory) params.category = selectedCategory;
       if (selectedSubcategory) params.subcategory = selectedSubcategory;
@@ -248,8 +255,14 @@ export default function GarageDashboard() {
 
       const res = await api.get('/parts/recommended', { params });
       setParts(res.data.parts || []);
+      setPartsPage(page);
+      setPartsTotal(res.data.pagination?.total || 0);
+      setPartsTotalPages(res.data.pagination?.pages || 0);
     } catch (err) {
+      // ⚠️ 載入失敗必須讓使用者看到，不能只 console.error 然後顯示「查無零件」
       console.error('搜尋失敗:', err);
+      setParts([]);
+      setPartsError(err?.response?.data?.error || '零件搜尋失敗，請稍後再試');
     } finally {
       setLoading(false);
     }
@@ -434,7 +447,10 @@ export default function GarageDashboard() {
                   </div>
                   <div className="flex-1">
                     <h4 className="font-bold text-md group-hover:text-blue-400 transition-colors line-clamp-2">{part.name}</h4>
-                    <div className="text-xs text-surface-400 mt-1">品牌: {part.brand} | 料號: #{part.id}</div>
+                    {/* 車廠要看的是供應商料號（SKU），不是內部 DB id */}
+                    <div className="text-xs text-surface-400 mt-1">
+                      品牌: {part.brand}{part.sku ? ` | 料號: ${part.sku}` : ''}
+                    </div>
                   </div>
                 </div>
 
@@ -459,13 +475,42 @@ export default function GarageDashboard() {
               </div>
             ))}
             
-            {parts.length === 0 && !loading && (selectedYear || search || selectedCategory) && (
+            {/* 🔴 載入失敗：必須先於空態顯示，否則失敗會被誤讀成「查無零件」 */}
+            {partsError && !loading && (
+              <div className="col-span-full text-center py-10 bg-red-950/30 rounded-xl border border-red-800/50">
+                <span className="text-4xl block mb-2">⚠️</span>
+                <p className="text-red-300">{partsError}</p>
+                <button
+                  onClick={() => handleGarageSearch(partsPage)}
+                  className="mt-3 px-4 py-2 rounded-lg bg-red-600/80 hover:bg-red-600 text-white text-sm font-bold transition"
+                >重新搜尋</button>
+              </div>
+            )}
+
+            {!partsError && parts.length === 0 && !loading && (selectedYear || search || selectedCategory) && (
               <div className="col-span-full text-center py-10 text-surface-400 bg-surface-800/30 rounded-xl border border-dashed border-surface-600">
                 <span className="text-4xl block mb-2">📦</span>
                 <p>查無此零件，請嘗試切換不同的車型、目錄或關鍵字</p>
               </div>
             )}
           </div>
+
+          {/* 分頁：後端有 pagination，先前前端完全沒有換頁控制（只拿得到第 1 頁 12 筆） */}
+          {!loading && !partsError && partsTotalPages > 1 && (
+            <div className="flex items-center justify-center gap-3 mt-5">
+              <button
+                onClick={() => handleGarageSearch(Math.max(1, partsPage - 1))}
+                disabled={partsPage <= 1}
+                className="px-4 py-2 rounded-lg bg-surface-700 border border-surface-600 text-sm disabled:opacity-40"
+              >← 上一頁</button>
+              <span className="text-sm text-surface-400">第 {partsPage} / {partsTotalPages} 頁（共 {partsTotal} 件）</span>
+              <button
+                onClick={() => handleGarageSearch(Math.min(partsTotalPages, partsPage + 1))}
+                disabled={partsPage >= partsTotalPages}
+                className="px-4 py-2 rounded-lg bg-surface-700 border border-surface-600 text-sm disabled:opacity-40"
+              >下一頁 →</button>
+            </div>
+          )}
         </div>
 
         {/* 預約列表（接 API） */}

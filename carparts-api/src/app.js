@@ -242,32 +242,34 @@ const MEDIA_ADMIN_ONLY_PREFIXES = [
 // 完全不走 HTTP 的目錄（匯入素材、原始圖、後台資料）
 const MEDIA_BLOCKED_PREFIXES = ["/Data/", "/_originals_parts/"];
 
-function hasValidMediaSession(req) {
+// 🔧 取出請求的身分（Bearer 優先，其次登入時配發的 httpOnly cookie）。
+//    <img src="/media/..."> 不會帶 Authorization header，只會帶 cookie，
+//    所以兩者都要支援，否則管理端「車廠名片」等 PII 圖片會全部 403。
+function mediaSession(req) {
   const header = req.headers.authorization;
   if (header && header.startsWith("Bearer ")) {
     try {
-      jwt.verify(header.slice("Bearer ".length).trim(), process.env.JWT_SECRET);
-      return true;
+      return jwt.verify(header.slice("Bearer ".length).trim(), process.env.JWT_SECRET);
     } catch (_) {
       /* 無效 token，往下滑 */
     }
   }
-  // <img src="/media/..."> 不會帶 Authorization header，所以登入時會一併下一個
-  // httpOnly + SameSite=Lax 的 cookie（carparts_at）供媒體使用。httpOnly 讓 JS 讀不到，
-  // SameSite=Lax 允許同源 <img> / top-level 導覽帶 cookie，但不允許跨站 POST。
   const cookieHeader = req.headers.cookie;
   if (cookieHeader) {
     const match = cookieHeader.match(/(?:^|;\s*)carparts_at=([^;]+)/);
     if (match) {
       try {
-        jwt.verify(decodeURIComponent(match[1]), process.env.JWT_SECRET);
-        return true;
+        return jwt.verify(decodeURIComponent(match[1]), process.env.JWT_SECRET);
       } catch (_) {
         /* cookie 過期或無效 */
       }
     }
   }
-  return false;
+  return null;
+}
+
+function hasValidMediaSession(req) {
+  return Boolean(mediaSession(req));
 }
 
 app.use("/media", (req, res, next) => {
@@ -289,17 +291,11 @@ app.use("/media", (req, res, next) => {
   // ⚠️ 車廠 token 的 role 實際是 TRIAL / VERIFIED（不是字串 'GARAGE'），
   //    所以判斷要用「有 workshopId」而不是比對 role 字面值。
   if (MEDIA_ADMIN_ONLY_PREFIXES.some((p) => requestPath.startsWith(p))) {
-    let isAdmin = false;
-    let isGarage = false;
-    const header = req.headers.authorization;
-    try {
-      const decoded = jwt.verify(header.slice("Bearer ".length).trim(), process.env.JWT_SECRET);
-      isGarage = Boolean(decoded.workshopId);
-      isAdmin = decoded.role === "ADMIN";
-    } catch (_) {
-      isAdmin = false;
-      isGarage = false;
-    }
+    // ⚠️ 身分可能來自 cookie（<img> 的情況），不能只讀 Authorization header，
+    //    否則管理端「車廠名片」「客戶大頭照」等圖片會全部 403。
+    const session = mediaSession(req) || {};
+    const isGarage = Boolean(session.workshopId);
+    const isAdmin = session.role === "ADMIN";
     if (!isAdmin && !isGarage) {
       return res.status(403).json({ error: "權限不足" });
     }

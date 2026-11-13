@@ -131,7 +131,7 @@ router.post('/', async (req, res) => {
         }
       }
 
-      return tx.purchaseOrder.create({
+      const created = await tx.purchaseOrder.create({
         data: {
           po_number: await generatePoNumber(tx),
           workshop_id: req.workshopId,
@@ -141,10 +141,17 @@ router.post('/', async (req, res) => {
           contact_name: contact_name || null,
           contact_phone: contact_phone || null,
           shipping_address: shipping_address || null,
-          items: { create: orderItems },
         },
-        include: { items: true },
       });
+
+      const createdItems = [];
+      for (const it of orderItems) {
+        createdItems.push(await tx.purchaseOrderItem.create({
+          data: { ...it, purchase_order_id: created.id },
+        }));
+      }
+      // 維持原本回傳形狀（含 items）
+      return { ...created, items: createdItems };
     });
 
     // 🔔 通知平台管理者（通道由後端設定：line/telegram/both/off；失敗不擋下單流程）
@@ -197,13 +204,28 @@ router.get('/', async (req, res) => {
     const [orders, total] = await Promise.all([
       prisma.purchaseOrder.findMany({
         where: { workshop_id: req.workshopId },
-        include: { items: true },
         orderBy: { created_at: 'desc' },
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
       prisma.purchaseOrder.count({ where: { workshop_id: req.workshopId } }),
     ]);
+
+    // ⚠️ PurchaseOrder 沒有 items relation（schema 只有純 purchase_order_id），
+    //    include: { items: true } 會讓整個端點 500。改批次抓取後併入。
+    const orderIds = orders.map((o) => o.id);
+    const items = orderIds.length
+      ? await prisma.purchaseOrderItem.findMany({
+          where: { purchase_order_id: { in: orderIds } },
+          orderBy: { id: 'asc' },
+        })
+      : [];
+    const itemsByOrder = new Map();
+    for (const it of items) {
+      if (!itemsByOrder.has(it.purchase_order_id)) itemsByOrder.set(it.purchase_order_id, []);
+      itemsByOrder.get(it.purchase_order_id).push(it);
+    }
+    for (const o of orders) o.items = itemsByOrder.get(o.id) || [];
 
     res.json({
       orders,
@@ -223,9 +245,13 @@ router.patch('/:id/cancel', async (req, res) => {
 
     const order = await prisma.purchaseOrder.findFirst({
       where: { id: orderId, workshop_id: req.workshopId },
-      include: { items: true },
     });
     if (!order) return res.status(404).json({ error: '採購單不存在' });
+    // 批次抓明細（PurchaseOrder 無 items relation）
+    order.items = await prisma.purchaseOrderItem.findMany({
+      where: { purchase_order_id: order.id },
+      orderBy: { id: 'asc' },
+    });
 
     if (!['SUBMITTED', 'CONFIRMED'].includes(order.status)) {
       return res.status(400).json({ error: `目前狀態（${order.status}）無法取消` });

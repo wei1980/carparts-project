@@ -46,16 +46,40 @@ router.get('/', async (req, res) => {
     const [orders, total] = await Promise.all([
       prisma.purchaseOrder.findMany({
         where,
-        include: {
-          items: true,
-          workshop: { select: { id: true, company_name: true, garage_name: true, phone: true } },
-        },
         orderBy: { created_at: 'desc' },
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
       prisma.purchaseOrder.count({ where }),
     ]);
+
+    // ⚠️ PurchaseOrder 沒有 items relation；workshop 也是純 workshop_id 欄位。
+    //    include 兩個不存在的 relation 會整支 500 → 批次抓取後併入。
+    const orderIds = orders.map((o) => o.id);
+    const [items, workshops] = await Promise.all([
+      orderIds.length
+        ? prisma.purchaseOrderItem.findMany({
+            where: { purchase_order_id: { in: orderIds } },
+            orderBy: { id: 'asc' },
+          })
+        : Promise.resolve([]),
+      orderIds.length
+        ? prisma.workshop.findMany({
+            where: { id: { in: orders.map((o) => o.workshop_id) } },
+            select: { id: true, company_name: true, garage_name: true, phone: true },
+          })
+        : Promise.resolve([]),
+    ]);
+    const itemsByOrder = new Map();
+    for (const it of items) {
+      if (!itemsByOrder.has(it.purchase_order_id)) itemsByOrder.set(it.purchase_order_id, []);
+      itemsByOrder.get(it.purchase_order_id).push(it);
+    }
+    const workshopById = new Map(workshops.map((w) => [w.id, w]));
+    for (const o of orders) {
+      o.items = itemsByOrder.get(o.id) || [];
+      o.workshop = workshopById.get(o.workshop_id) || null;
+    }
 
     res.json({
       orders,
@@ -100,9 +124,13 @@ router.patch('/:id/ship', async (req, res) => {
   try {
     const order = await prisma.purchaseOrder.findUnique({
       where: { id: parseInt(req.params.id) },
-      include: { items: true },
     });
     if (!order) return res.status(404).json({ error: '採購單不存在' });
+    // 批次抓明細（PurchaseOrder 無 items relation）
+    order.items = await prisma.purchaseOrderItem.findMany({
+      where: { purchase_order_id: order.id },
+      orderBy: { id: 'asc' },
+    });
     if (order.status !== 'CONFIRMED') {
       return res.status(400).json({ error: `目前狀態（${order.status}）無法出貨` });
     }
