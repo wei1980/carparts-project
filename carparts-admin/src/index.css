@@ -129,14 +129,14 @@
 .card { border: 1px solid #e5e7eb; border-radius: 12px; background: #fff; display: flex; flex-direction: column; }
 .card-img-wrap {
   width: 100%;
-  background: #fff;      /* 白底 */
-  padding: 8px;          /* 讓圖留白，不貼邊 */
+  background: #1E293B;  /* 深色圖片井：黑底/透明底商品圖自然融和 */
+  padding: 10px;        /* 讓圖留白，不貼邊 */
   border-bottom: 1px solid #f3f4f6;
 }
 .card-img {
   width: 100%;
-  height: auto;          /* ✅ 高度自適應，不裁切 */
-  object-fit: contain;   /* ✅ 不裁切 */
+  height: 100%;         /* ✅ 滿幅容器，比例由 object-fit 保持 */
+  object-fit: contain;  /* ✅ 不裁切 */
   display: block;
 }
 .card-body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 6px; }

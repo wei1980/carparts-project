@@ -1,12 +1,9 @@
-# React + Vite
+# carparts-admin（已退役）
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**這個專案已退役。唯一前端是 `C:\carparts\carparts-web`。**
 
-Currently, two official plugins are available:
+- 啟動請用 `C:\carparts\start_project.bat` 或 `C:\carparts\啟動.bat`
+- API 固定 `http://localhost:3000`
+- 要加功能請看 `C:\carparts\該改哪邊.md`，改 `carparts-web` + `carparts-api`
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+本資料夾只留作歷史參考（早期 B2B 目錄後台）。`npm run dev` 會拒絕啟動，避免佔用 `:5173`。若真的要看舊畫面：`npm run dev:legacy`（port `5179`，不會跟現行前端搶 port）。

@@ -97,15 +97,14 @@ export default function Product() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-        {/* 左側圖片區 */}
-        <div className="bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center min-h-[300px]">
-           {/* 圖片顯示優化: object-contain */}
+        {/* 左側圖片區：深色圖片井（#1E293B），黑底/透明底商品圖皆能自然融和 */}
+        <div className="bg-[#1E293B] rounded-lg overflow-hidden flex items-center justify-center aspect-square w-full max-h-[400px] p-4">
+           {/* 圖片居中、不裁切、统一 1:1 比例 */}
            <img 
              src={part.image_url || '/placeholder.jpg'} 
              onError={(e) => e.target.src = 'https://via.placeholder.com/400?text=No+Image'}
              alt={part.name} 
              className="w-full h-full object-contain"
-             style={{ maxHeight: "400px" }}
            />
         </div>
 

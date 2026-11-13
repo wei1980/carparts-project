@@ -4,17 +4,18 @@ import { Link, Outlet, useLocation } from 'react-router-dom';
 export default function AdminLayout() {
   const location = useLocation();
   
+  // 按路徑長度降序排列：較長的路徑先比對，避免 /admin 先匹配到 /admin/compatibility
   const menuItems = [
     { label: "儀表板", path: "/admin" },
     { label: "商品管理", path: "/admin/parts" },
-    { label: "分類管理", path: "/admin/categories" }, 
+    { label: "分類管理", path: "/admin/categories" },
     { label: "車型資料", path: "/admin/vehicles" },
-    { label: "相容性報表", path: "/admin/compatibility" }, // ✅ Added
+    { label: "相容性報表", path: "/admin/compatibility" },
     { label: "汽車廠牌", path: "/admin/makes" },
     { label: "商品品牌", path: "/admin/brands" },
     { label: "會員管理", path: "/admin/users" },
     { label: "保養廠審核", path: "/admin/shops/review" },
-  ];
+  ].sort((a, b) => b.path.length - a.path.length);
 
   return (
     <div className="min-h-screen bg-gray-100 flex">

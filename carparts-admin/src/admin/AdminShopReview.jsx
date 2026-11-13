@@ -12,8 +12,8 @@ export default function AdminShopReview() {
   async function loadShops() {
     setLoading(true);
     try {
-      // 呼叫後端 API (對應 index.js 中的 /admin/shops/review)
-      const res = await fetch('/admin/shops/review?status=PENDING');
+      // 呼叫後端 API (對應 index.js 中的 /api/shops/review)
+      const res = await fetch('/api/shops/review?status=PENDING');
       if (!res.ok) throw new Error("API Error");
       const data = await res.json();
       setShops(data.shops || []);
@@ -27,7 +27,7 @@ export default function AdminShopReview() {
   async function handleReview(id, action) {
     if (!window.confirm(`確定要${action === 'approve' ? '通過' : '拒絕'}此申請?`)) return;
     try {
-      const res = await fetch(`/admin/shops/${id}/${action}`, { method: 'POST' });
+      const res = await fetch(`/api/shops/${id}/${action}`, { method: 'POST' });
       if (!res.ok) throw new Error("Action Failed");
       alert("操作成功");
       loadShops(); // 重新整理列表
@@ -55,10 +55,10 @@ export default function AdminShopReview() {
                   <h3 className="text-lg font-bold">{shop.company_name}</h3>
                   <div className="text-sm text-gray-600 mt-1">
                     <p>統編: {shop.tax_id}</p>
-                    <p>聯絡人: {shop.contact_person} ({shop.job_title})</p>
+                    <p>聯絡人: {shop.contact_person}{shop.job_title && ` (${shop.job_title})`}</p>
                     <p>電話: {shop.phone}</p>
                     <p>地址: {shop.address}</p>
-                    <p>類型: {shop.shop_type}</p>
+                    {shop.shop_type && <p>類型: {shop.shop_type}</p>}
                   </div>
                 </div>
                 <div className="flex gap-2">
