@@ -29,7 +29,10 @@ router.get('/parts', optionalGarageAuth, async (req, res) => {
     } = req.query;
 
     const pageNum = Number(page) || 1;
-    const take = Number(pageSize) || 24;
+    // 🔒 pageSize 必須有上限：先前無上限時，單一匿名請求
+    //    GET /shop/parts?pageSize=999999 會回傳 12,922 筆 / 249 MB / 耗時 10 秒，
+    //    等於把整包商品資料開放給任何人一次撈走，同時讓 API 吃 CPU 與記憶體。
+    const take = Math.min(Math.max(Number(pageSize) || 24, 1), 100);
     const skip = (pageNum - 1) * take;
 
     // 建構查詢條件

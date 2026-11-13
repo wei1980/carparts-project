@@ -2,6 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/authMiddleware');
+const { createOrderLimiter } = require('../middleware/rateLimiters');
 const multer = require('multer'); // 🆕 引入 multer 處理 FormData 檔案上傳
 const fs = require('fs');         // 🆕 檔案系統操作
 const path = require('path');     // 🆕 路徑處理
@@ -95,8 +96,26 @@ const BANK_INFO = {
 
 const PREORDER_DEPOSIT_RATE = 0.5; // 代購訂金 50%
 
+// 🔒 對外錯誤訊息白名單。
+//    只回傳這裡定義的文案；任何不在表內的錯誤一律回「伺服器內部錯誤」，
+//    避免 Prisma / null deref 等內部例外訊息直接送到前端。
+const ERROR_MESSAGES = {
+  INVALID_ORDER_ITEM: '訂單商品資料不正確',
+  INSUFFICIENT_STOCK: '庫存不足，請調整數量',
+  PART_NOT_FOUND: '部分商品不存在',
+  PART_INACTIVE: '部分商品已下架',
+  ORDER_NOT_FOUND: '找不到這筆訂單',
+  ORDER_NOT_CANCELLABLE: '此訂單狀態不可取消',
+  ORDER_ALREADY_CANCELLED: '此訂單已取消',
+  ORDER_STATE_CHANGED: '訂單狀態已變更，請重新整理',
+  ORDER_ALREADY_PAID: '此訂單已完成付款',
+  RETURN_NOT_PENDING: '此退貨申請已處理，無法修改',
+};
+const GENERIC_ERROR = '伺服器內部錯誤，請稍後再試';
+const errorMessage = (code) => ERROR_MESSAGES[code] || GENERIC_ERROR;
+
 // POST /api/consumer/orders — 建立訂單
-router.post('/', async (req, res) => {
+router.post('/', createOrderLimiter, async (req, res) => {
   try {
     const {
       items,
@@ -267,10 +286,10 @@ router.post('/', async (req, res) => {
   } catch (error) {
     console.error('建立訂單失敗:', { requestId: req.requestId, code: error.code, message: error.message });
     if (error.code === 'INVALID_ORDER_ITEM') {
-      return res.status(400).json({ code: error.code, error: error.message, requestId: req.requestId });
+      return res.status(400).json({ code: error.code, error: errorMessage(error.code), requestId: req.requestId });
     }
     if (error.code === 'INSUFFICIENT_STOCK' || error.code === 'PART_NOT_FOUND' || error.code === 'PART_INACTIVE') {
-      return res.status(409).json({ code: error.code, error: error.message, requestId: req.requestId });
+      return res.status(409).json({ code: error.code, error: errorMessage(error.code), requestId: req.requestId });
     }
     res.status(500).json({ code: 'ORDER_CREATE_FAILED', error: '建立訂單失敗，請稍後再試', requestId: req.requestId });
   }
@@ -600,7 +619,7 @@ router.post('/:id/bank-info', async (req, res) => {
     });
   } catch (error) {
     if (error.code === 'ORDER_STATE_CHANGED') {
-      return res.status(409).json({ code: error.code, error: error.message });
+      return res.status(409).json({ code: error.code, error: errorMessage(error.code) });
     }
     console.error('補登匯款失敗:', error);
     res.status(500).json({ error: '伺服器內部錯誤，請稍後再試' });
@@ -647,7 +666,7 @@ router.post('/:id/issues', upload.array('media', 5), async (req, res) => {
   } catch (error) {
     // 🆕 上傳相關錯誤處理
     if (error.code === 'INVALID_FILE_TYPE') {
-      return res.status(400).json({ code: error.code, error: error.message });
+      return res.status(400).json({ code: error.code, error: errorMessage(error.code) });
     }
     if (error.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({ code: error.code, error: '檔案大小超過 20 MB 限制' });
@@ -732,7 +751,7 @@ router.patch('/:id/issues/:issueId', upload.array('media', 5), async (req, res) 
     res.json({ message: '回報已更新', issue: updated });
   } catch (error) {
     if (error.code === 'INVALID_FILE_TYPE') {
-      return res.status(400).json({ code: error.code, error: error.message });
+      return res.status(400).json({ code: error.code, error: errorMessage(error.code) });
     }
     if (error.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({ code: error.code, error: '檔案大小超過 20 MB 限制' });
@@ -798,9 +817,9 @@ router.patch('/:id', async (req, res) => {
 
     res.json({ message: '訂單已取消' });
   } catch (error) {
-    if (error.code === 'ORDER_NOT_FOUND') return res.status(404).json({ error: error.message });
-    if (error.code === 'ORDER_NOT_CANCELLABLE') return res.status(400).json({ error: error.message });
-    if (error.code === 'ORDER_ALREADY_CANCELLED') return res.status(409).json({ error: error.message });
+    if (error.code === 'ORDER_NOT_FOUND') return res.status(404).json({ error: errorMessage(error.code) });
+    if (error.code === 'ORDER_NOT_CANCELLABLE') return res.status(400).json({ error: errorMessage(error.code) });
+    if (error.code === 'ORDER_ALREADY_CANCELLED') return res.status(409).json({ error: errorMessage(error.code) });
     console.error('更新訂單失敗:', error);
     res.status(500).json({ error: '伺服器內部錯誤，請稍後再試' });
   }
@@ -829,9 +848,9 @@ router.patch('/:id/cancel', async (req, res) => {
 
     res.json({ message: '訂單已取消' });
   } catch (error) {
-    if (error.code === 'ORDER_NOT_FOUND') return res.status(404).json({ error: error.message });
-    if (error.code === 'ORDER_NOT_CANCELLABLE') return res.status(400).json({ error: error.message });
-    if (error.code === 'ORDER_ALREADY_CANCELLED') return res.status(409).json({ error: error.message });
+    if (error.code === 'ORDER_NOT_FOUND') return res.status(404).json({ error: errorMessage(error.code) });
+    if (error.code === 'ORDER_NOT_CANCELLABLE') return res.status(400).json({ error: errorMessage(error.code) });
+    if (error.code === 'ORDER_ALREADY_CANCELLED') return res.status(409).json({ error: errorMessage(error.code) });
     console.error('取消訂單失敗:', error);
     res.status(500).json({ error: '伺服器內部錯誤，請稍後再試' });
   }
@@ -997,7 +1016,7 @@ router.post('/:id/returns', upload.array('media', 5), async (req, res) => {
     res.status(201).json({ message: '退貨申請已送出，等待客服審核', return: returnRecord });
   } catch (error) {
     if (error.code === 'INVALID_FILE_TYPE') {
-      return res.status(400).json({ code: error.code, error: error.message });
+      return res.status(400).json({ code: error.code, error: errorMessage(error.code) });
     }
     if (error.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({ code: error.code, error: '檔案大小超過 20 MB 限制' });
@@ -1075,7 +1094,7 @@ router.patch('/:id/returns/:returnId', upload.array('media', 5), async (req, res
     res.json({ message: '退貨申請已更新', return: updated });
   } catch (error) {
     if (error.code === 'INVALID_FILE_TYPE') {
-      return res.status(400).json({ code: error.code, error: error.message });
+      return res.status(400).json({ code: error.code, error: errorMessage(error.code) });
     }
     if (error.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({ code: error.code, error: '檔案大小超過 20 MB 限制' });

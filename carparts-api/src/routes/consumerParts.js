@@ -17,7 +17,8 @@ const CONSUMER_PART_SELECT = {
   id: true,
   name: true,
   brand: true,
-  sku: true,
+  // 🔒 料號（SKU）是車廠專屬欄位（防比價：避免會員拿料號去供應商官網比價）。
+  //    匿名端點 app.js /api/parts/recommended 一律不回傳；消費者端點必須與之一致。
   msrp_price: true,
   stock_qty: true,
   distributor_stock_qty: true,

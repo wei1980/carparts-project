@@ -47,10 +47,24 @@ const resetPasswordLimiter = rateLimit({
   message: message('重設密碼嘗試次數過多，請 15 分鐘後再試'),
 });
 
+// 下單：每 IP 每小時 20 筆。
+// 下單會真的扣庫存並寫 DB，先前完全沒有節流 → 單一帳號可灌假訂單把熱門商品
+// 庫存打空（惡意擋單），或大量寫入 consumer_orders。額度以「已登入使用者 + IP」
+// 為 key，避免同一個 NAT 後的使用者互相影響。
+const createOrderLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => `order:${req.userId || 'anon'}:${ipKeyGenerator(req.ip)}`,
+  message: message('下單次數過多，請稍後再試'),
+});
+
 module.exports = {
   userLoginLimiter,
   adminLoginLimiter,
   garageLoginLimiter,
   registerLimiter,
   resetPasswordLimiter,
+  createOrderLimiter,
 };
