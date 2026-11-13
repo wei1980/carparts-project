@@ -701,8 +701,12 @@ app.use('/api/brake-specs', require('./routes/brakeSpecs')); // 煞車件規格�
 app.use('/api/consumer/orders', consumerOrderRoutes);
 app.use('/api/admin/garages', adminGarageRoutes);
 app.use('/api/garage/appointments', garageAppointmentRoutes);
-app.use('/api/garage/schedule', require('./routes/garageSchedule')); // 🆕 車廠排程管理
-app.use('/api/garage/work-orders', require('./routes/garageWorkOrders')); // 🆕 車廠工單管理
+// garageSchedule 已移除：整檔依賴不存在的 prisma.user / technician relation /
+// Appointment.technician_id、duration_minutes、bay_id，且 /bays 重複定義、掛載多一層。
+// 前端零引用。排程/工位需求改由 garageWorkOrders + garageAppointments 提供。
+// ⚠️ 這個 router 內部路由本身就以 /work-orders 開頭（/work-orders、/work-orders/:id…），
+//    所以必須掛在 /api/garage，否則實際路徑會變成 /api/garage/work-orders/work-orders。
+app.use('/api/garage', require('./routes/garageWorkOrders')); // 🆕 車廠工單管理
 app.use('/api/garage/settings', garageSettingsRoutes); // 🆕 車廠門店設定（店面照/工資表）
 app.use('/api/garage/customers', garageCustomersRoutes); // 🆕 車廠客戶管理
 app.use('/', seoRoutes); // 🆕 sitemap.xml（掛根路徑）

@@ -4,6 +4,92 @@ const garageAuth = require('../middleware/garageAuth');
 const { notifyAppointmentUpdate } = require('../services/lineService');
 
 const prisma = require('../lib/prisma');
+
+// ============================================================
+// ⚠️ WorkOrder / WorkOrderItem / WorkOrderLaborItem 在 schema 裡**沒有任何 relation**
+//    （vehicle/user/technician/bay/items 都是純 id 欄位）。用 include 會直接
+//    PrismaClientValidationError → 整個車廠工單功能 500。
+//    因此一律：先查工單，再批次抓關聯資料，最後併回同一個物件。
+// ============================================================
+async function hydrateWorkOrders(orders) {
+  if (!Array.isArray(orders) || orders.length === 0) return orders;
+
+  const vehicleIds = [...new Set(orders.map((o) => o.vehicle_id).filter(Boolean))];
+  const userIds = [...new Set(orders.map((o) => o.user_id).filter(Boolean))];
+  const bayIds = [...new Set(orders.map((o) => o.bay_id).filter(Boolean))];
+  const orderIds = orders.map((o) => o.id);
+
+  const [vehicles, users, , bays, items, laborItems, history] = await Promise.all([
+    vehicleIds.length
+      ? prisma.vehicleProfile.findMany({
+          where: { id: { in: vehicleIds } },
+          select: { id: true, make: true, model: true, licensePlate: true, variantId: true },
+        })
+      : [],
+    userIds.length
+      ? prisma.endUser.findMany({
+          where: { id: { in: userIds } },
+          select: { id: true, name: true, phone: true, lineId: true },
+        })
+      : [],
+    // 技師沒有獨立表：存在 Workshop.garage_slots.technicians（JSON），
+    // 無法用 id 批次查 → 保持 null，前端顯示「未指派」。
+    Promise.resolve([]),
+    bayIds.length
+      ? prisma.bay.findMany({ where: { id: { in: bayIds } }, select: { id: true, name: true } })
+      : [],
+    orderIds.length
+      ? prisma.workOrderItem.findMany({
+          where: { work_order_id: { in: orderIds } },
+          orderBy: { id: 'asc' },
+        })
+      : [],
+    orderIds.length
+      ? prisma.workOrderLaborItem.findMany({
+          where: { work_order_id: { in: orderIds } },
+          orderBy: { id: 'asc' },
+        })
+      : [],
+    orderIds.length
+      ? prisma.workOrderStatusHistory.findMany({
+          where: { work_order_id: { in: orderIds } },
+          orderBy: { created_at: 'asc' },
+        })
+      : [],
+  ]);
+
+  const byId = (rows) => new Map(rows.map((r) => [r.id, r]));
+  const vMap = byId(vehicles);
+  const uMap = byId(users);
+  const bMap = byId(bays);
+  const group = (rows) => {
+    const m = new Map();
+    for (const r of rows) {
+      if (!m.has(r.work_order_id)) m.set(r.work_order_id, []);
+      m.get(r.work_order_id).push(r);
+    }
+    return m;
+  };
+  const iMap = group(items);
+  const lMap = group(laborItems);
+  const hMap = group(history);
+
+  return orders.map((o) => ({
+    ...o,
+    vehicle: vMap.get(o.vehicle_id) || null,
+    user: uMap.get(o.user_id) || null,
+    bay: bMap.get(o.bay_id) || null,
+    items: iMap.get(o.id) || [],
+    laborItems: lMap.get(o.id) || [],
+    statusHistory: hMap.get(o.id) || [],
+  }));
+}
+
+async function hydrateWorkOrder(order) {
+  if (!order) return order;
+  const [hydrated] = await hydrateWorkOrders([order]);
+  return hydrated;
+}
 router.use(garageAuth);
 
 // ==================== 工單流程 ====================
@@ -21,13 +107,6 @@ router.get('/work-orders', async (req, res) => {
     const [workOrders, total] = await Promise.all([
       prisma.workOrder.findMany({
         where,
-        include: {
-          vehicle: { select: { make: true, model: true, licensePlate: true, variant: true } },
-          user: { select: { name: true, phone: true, lineId: true } },
-          technician: { select: { id: true, name: true, color: true } },
-          bay: { select: { id: true, name: true } },
-          items: { include: { part: { select: { id: true, name: true, brand: true, sku: true, wholesale_price: true, msrp_price: true } } } }
-        },
         orderBy: { created_at: 'desc' },
         skip: (parseInt(page) - 1) * parseInt(limit),
         take: parseInt(limit)
@@ -35,7 +114,7 @@ router.get('/work-orders', async (req, res) => {
       prisma.workOrder.count({ where })
     ]);
 
-    res.json({ workOrders, total, page: parseInt(page), limit: parseInt(limit) });
+    res.json({ workOrders: await hydrateWorkOrders(workOrders), total, page: parseInt(page), limit: parseInt(limit) });
   } catch (error) {
     console.error('取得工單列表失敗:', error);
     res.status(500).json({ error: '伺服器內部錯誤' });
@@ -58,17 +137,18 @@ router.post('/work-orders', async (req, res) => {
 
     let vehicle_id = vehicleId;
     let user_id = userId;
+    let appt_id = null;
 
     // 如果從預約轉換
     if (appointmentId) {
       const appointment = await prisma.appointment.findFirst({
         where: { id: parseInt(appointmentId), garage_id: req.workshopId },
-        include: { vehicle: true, user: true }
       });
       if (!appointment) return res.status(404).json({ error: '預約不存在' });
-      
+
       vehicle_id = appointment.vehicle_id;
       user_id = appointment.user_id;
+      appt_id = appointment.id;
       
       // 更新預約狀態
       await prisma.appointment.update({
@@ -90,13 +170,10 @@ router.post('/work-orders', async (req, res) => {
         status: 'RECEIVED',
         initial_notes: initialNotes || null,
         estimated_completion: estimatedCompletion ? new Date(estimatedCompletion) : null,
-        items: { create: [] }
+        // WorkOrder 沒有 items relation（WorkOrderItem 是獨立表），
+        // 且 appointment_id 是 UNIQUE，從預約轉單時必須寫入才能追溯。
+        ...(appt_id ? { appointment_id: appt_id } : {})
       },
-      include: {
-        vehicle: { select: { make: true, model: true, licensePlate: true } },
-        technician: { select: { id: true, name: true, color: true } },
-        bay: { select: { id: true, name: true } }
-      }
     });
 
     // 發送 LINE 通知給客戶：車輛已接收
@@ -122,31 +199,18 @@ router.get('/work-orders/:id', async (req, res) => {
   try {
     const workOrder = await prisma.workOrder.findFirst({
       where: { id: parseInt(req.params.id), garage_id: req.workshopId },
-      include: {
-        vehicle: { select: { make: true, model: true, licensePlate: true, variant: true, year: true, engine: true } },
-        user: { select: { name: true, phone: true, lineId: true, email: true } },
-        technician: { select: { id: true, name: true, color: true, phone: true } },
-        bay: { select: { id: true, name: true } },
-        items: { 
-          include: { 
-            part: { select: { id: true, name: true, brand: true, sku: true, wholesale_price: true, msrp_price: true, image_url: true } } 
-          },
-          orderBy: { created_at: 'asc' }
-        },
-        laborItems: { orderBy: { created_at: 'asc' } },
-        statusHistory: { orderBy: { created_at: 'asc' } }
-      }
     });
     if (!workOrder) return res.status(404).json({ error: '工單不存在' });
 
-    // 計算總計
-    const partsTotal = workOrder.items.reduce((sum, item) => sum + Number(item.unit_price || 0) * item.quantity, 0);
-    const laborTotal = workOrder.laborItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    // ⚠️ WorkOrder 沒有 relation，明細與工資必須批次抓取後再算總計
+    const [hydrated] = await hydrateWorkOrders([workOrder]);
+    const partsTotal = (hydrated.items || []).reduce((s, i) => s + Number(i.unit_price || 0) * (i.quantity || 0), 0);
+    const laborTotal = (hydrated.laborItems || []).reduce((s, i) => s + Number(i.amount || 0), 0);
     const subtotal = partsTotal + laborTotal;
     const tax = Math.round(subtotal * 0.05);
     const total = subtotal + tax;
 
-    res.json({ ...workOrder, totals: { partsTotal, laborTotal, subtotal, tax, total } });
+    res.json({ ...hydrated, totals: { partsTotal, laborTotal, subtotal, tax, total } });
   } catch (error) {
     res.status(500).json({ error: '伺服器內部錯誤' });
   }
@@ -165,11 +229,7 @@ router.patch('/work-orders/:id/status', async (req, res) => {
 
     const workOrder = await prisma.workOrder.findFirst({
       where: { id, garage_id: req.workshopId },
-      include: { 
-        vehicle: { select: { make: true, model: true, licensePlate: true } },
-        user: { select: { name: true, lineId: true } },
-        technician: { select: { id: true, name: true } }
-      }
+      
     });
     if (!workOrder) return res.status(404).json({ error: '工單不存在' });
 
@@ -191,10 +251,7 @@ router.patch('/work-orders/:id/status', async (req, res) => {
         ...(status === 'COMPLETED' && { completed_at: new Date() }),
         ...(status === 'DELIVERED' && { delivered_at: new Date() })
       },
-      include: {
-        vehicle: { select: { make: true, model: true, licensePlate: true } },
-        user: { select: { name: true, lineId: true } }
-      }
+      
     });
 
     // 發送 LINE 通知給客戶
@@ -202,7 +259,8 @@ router.patch('/work-orders/:id/status', async (req, res) => {
       await notifyWorkOrderStatus(updated, updated.user, status);
     }
 
-    res.json(updated);
+    // 回應形狀與先前一致（含關聯資料），否則前端畫面會缺欄位
+    res.json(await hydrateWorkOrder(updated));
   } catch (error) {
     console.error('更新工單狀態失敗:', error);
     res.status(500).json({ error: '伺服器內部錯誤' });
@@ -238,7 +296,6 @@ router.post('/work-orders/:id/items', async (req, res) => {
           unit_price: unitPrice || part.wholesale_price || part.msrp_price || 0,
           type: 'PART'
         },
-        include: { part: { select: { id: true, name: true, brand: true, sku: true } } }
       });
     } else if (type === 'LABOR') {
       item = await prisma.workOrderLaborItem.create({
@@ -279,7 +336,6 @@ router.patch('/work-orders/:id/items/:itemId', async (req, res) => {
       item = await prisma.workOrderItem.update({
         where: { id: parseInt(itemId) },
         data: { quantity: quantity || item.quantity, unit_price: unitPrice || item.unit_price },
-        include: { part: { select: { id: true, name: true, brand: true, sku: true } } }
       });
       return res.json(item);
     }
@@ -334,22 +390,18 @@ router.post('/work-orders/:id/quote', async (req, res) => {
     const id = parseInt(req.params.id);
     const { quoteNote, validUntilHours = 24 } = req.body;
 
-    const workOrder = await prisma.workOrder.findFirst({
+    const wo = await prisma.workOrder.findFirst({
       where: { id, garage_id: req.workshopId },
-      include: {
-        items: { include: { part: { select: { name: true } } } },
-        laborItems: true,
-        vehicle: { select: { make: true, model: true, licensePlate: true } },
-        user: { select: { name: true, lineId: true } }
-      }
     });
-    if (!workOrder) return res.status(404).json({ error: '工單不存在' });
-    if (workOrder.status !== 'RECEIVED' && workOrder.status !== 'QUOTING') {
+    if (!wo) return res.status(404).json({ error: '工單不存在' });
+    if (wo.status !== 'RECEIVED' && wo.status !== 'QUOTING') {
       return res.status(400).json({ error: '目前狀態無法送出報價' });
     }
+    // ⚠️ WorkOrder 無 relation：明細與工資必須批次抓取
+    const workOrder = await hydrateWorkOrder(wo);
 
-    const partsTotal = workOrder.items.reduce((sum, item) => sum + Number(item.unit_price || 0) * item.quantity, 0);
-    const laborTotal = workOrder.laborItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    const partsTotal = (workOrder.items || []).reduce((sum, item) => sum + Number(item.unit_price || 0) * item.quantity, 0);
+    const laborTotal = (workOrder.laborItems || []).reduce((sum, item) => sum + Number(item.amount || 0), 0);
     const subtotal = partsTotal + laborTotal;
     const tax = Math.round(subtotal * 0.05);
     const total = subtotal + tax;
@@ -366,10 +418,7 @@ router.post('/work-orders/:id/quote', async (req, res) => {
         quote_valid_until: validUntil,
         quote_sent_at: new Date()
       },
-      include: {
-        vehicle: { select: { make: true, model: true, licensePlate: true } },
-        user: { select: { name: true, lineId: true } }
-      }
+      
     });
 
     // 發送 LINE 通知客戶確認報價
@@ -497,22 +546,22 @@ async function notifyWorkOrderQuote(workOrder, customer) {
       `📋 工單號：#${workOrder.id}`
     ];
 
-    if (workOrder.items.length > 0) {
+    if (Array.isArray(workOrder.items) && workOrder.items.length > 0) {
       lines.push(`🔧 零件費用：`);
       workOrder.items.forEach(item => {
         lines.push(`  • ${item.name} x${item.quantity} = NT$ ${(Number(item.unit_price) * item.quantity).toLocaleString()}`);
       });
     }
 
-    if (workOrder.laborItems.length > 0) {
+    if (Array.isArray(workOrder.laborItems) && workOrder.laborItems.length > 0) {
       lines.push(`👨‍🔧 工資費用：`);
       workOrder.laborItems.forEach(item => {
         lines.push(`  • ${item.name} = NT$ ${Number(item.amount).toLocaleString()}`);
       });
     }
 
-    const subtotal = workOrder.items.reduce((sum, item) => sum + Number(item.unit_price || 0) * item.quantity, 0) +
-                     workOrder.laborItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    const subtotal = (workOrder.items || []).reduce((sum, item) => sum + Number(item.unit_price || 0) * item.quantity, 0) +
+                     (workOrder.laborItems || []).reduce((sum, item) => sum + Number(item.amount || 0), 0);
     const tax = Math.round(subtotal * 0.05);
     const total = subtotal + tax;
 
