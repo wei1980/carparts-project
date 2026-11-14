@@ -152,9 +152,15 @@ router.post('/', async (req, res) => {
     //    容量設 1 仍寫入 10 筆（實測 10/10 都 201）。
     //    這裡把 count + create 放進同一個 Serializable 交易；
     //    若並發造成序列化衝突（P2034），回 409 讓使用者重送。
+    // ⚠️ 「同一時段」的定義必須和 /api/garages/:id/availability 一致，
+    //    否則前端看到「可預約」卻在送出時被 409 擋掉。
+    //    availability 以「時:分」分桶（10:00 與 10:01 算不同時段），
+    //    所以這裡也用同一分鐘桶，而不是 ±60 秒滑動視窗
+    //    （滑動視窗會把 10:00 與 10:01 判為同一時段 → 顯示可預約但送出失敗）。
     const capacity = getBookingCapacity(garage.garage_slots);
-    const slotStart = new Date(apptDate.getTime() - 60 * 1000);
-    const slotEnd = new Date(apptDate.getTime() + 60 * 1000);
+    const slotStart = new Date(apptDate.getFullYear(), apptDate.getMonth(), apptDate.getDate(),
+      apptDate.getHours(), apptDate.getMinutes(), 0, 0);
+    const slotEnd = new Date(slotStart.getTime() + 60 * 1000);
 
     let appointment;
     try {
@@ -170,7 +176,7 @@ router.post('/', async (req, res) => {
         const existingCount = await tx.appointment.count({
           where: {
             garage_id: parseInt(garageId),
-            scheduled_at: { gte: slotStart, lte: slotEnd },
+            scheduled_at: { gte: slotStart, lt: slotEnd },
             status: { in: ['PENDING', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'] },
           },
         });
