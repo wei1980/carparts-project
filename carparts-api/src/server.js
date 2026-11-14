@@ -44,13 +44,16 @@ async function startServer() {
       console.warn(`   - ⚠️ 銀行 Excel 檢查失敗: ${bankErr.message}`);
     }
 
-    // 🆕 初始化 Job System (Redis + BullMQ) - TEMPORARILY DISABLED for auth debugging
-        // try {
-        //   const { initializeJobSystem } = require('./services/jobScheduler');
-        //   await initializeJobSystem();
-        // } catch (jobErr) {
-        //   console.warn(`   - ⚠️ Job System 初始化失敗 (將使用備用模式): ${jobErr.message}`);
-        // }
+    // 🆕 初始化 Job System（排程）
+    //    佇列可用（Redis）→ 走 BullMQ；不可用 → cron 直接呼叫 worker。
+    //    先前因 Redis 未啟動而把整段註解掉，導致 6 個排程從未執行。
+    try {
+      const { initializeJobSystem } = require('./services/jobScheduler');
+      await initializeJobSystem();
+    } catch (jobErr) {
+      const firstLine = String(jobErr.message).split(String.fromCharCode(10))[0];
+      console.warn(`   - ⚠️ Job System 初始化失敗: ${firstLine}`);
+    }
 
     // 啟動 Express Server
     app.listen(PORT, () => {

@@ -14,7 +14,9 @@ const prisma = require('../lib/prisma');
  */
 async function processMaintenanceReminder(job) {
   const { reminderId } = job.data;
-  
+  // 沒有 id 就沒東西可處理（cron 一定會帶；這裡防禦手動觸發或舊任務殘留）
+  if (!reminderId) return { success: true, skipped: true, reason: 'NO_REMINDER_ID' };
+
   try {
     const reminder = await prisma.maintenanceReminder.findUnique({
       where: { id: reminderId },
@@ -88,7 +90,9 @@ async function processMaintenanceReminder(job) {
  */
 async function processAppointmentReminder(job) {
   const { appointmentId, type } = job.data; // type: '1hour' | '1day'
-  
+  // 沒有 id 就沒東西可處理（否則 findUnique({where:{}}) 會拋 → 排程失敗）
+  if (!appointmentId) return { success: true, skipped: true, reason: 'NO_APPOINTMENT_ID' };
+
   try {
     const appointment = await prisma.appointment.findUnique({
       where: { id: appointmentId },
@@ -142,15 +146,15 @@ async function processAppointmentReminder(job) {
 async function processPriceDropNotification(job) {
   try {
     // 找出所有有目標價且商品價格低於目標價的願望清單項目
+    // ⚠️ 不能用 `prisma.wishItem.fields.targetPrice` 做欄位對欄位比較：
+    //    那是 Prisma 4 的舊語法，在 Prisma 5 會拋
+    //    「Expected a referenced scalar field of model Part, but found a field of model WishItem」。
+    //    改成先撈候選、再在記憶體比價（願望清單量級小，可接受）。
     const wishes = await prisma.wishItem.findMany({
       where: {
         partId: { not: null },
         targetPrice: { not: null },
-        notifiedAtPrice: { not: null }, // 已通知過，價格再降才再通知
-        part: {
-          is_active: true,
-          msrp_price: { lt: prisma.wishItem.fields.targetPrice }, // 商品價格 < 目標價
-        },
+        part: { is_active: true },
       },
       include: {
         user: { select: { id: true, name: true, lineId: true } },
@@ -159,14 +163,18 @@ async function processPriceDropNotification(job) {
     });
 
     let sentCount = 0;
-    
+
     for (const wish of wishes) {
       if (!wish.user?.lineId) continue;
+      if (!wish.part) continue;
 
-      const currentPrice = Number(wish.part.msrp_price);
+      const currentPrice = Number(wish.part.msrp_price || 0);
       const targetPrice = Number(wish.targetPrice);
-      
+
+      // 必須低於目標價才通知
       if (currentPrice >= targetPrice) continue;
+      // 已通知過：只有「比上次通知時更便宜」才再通知一次（避免重複轟炸）
+      if (wish.notifiedAtPrice != null && currentPrice >= Number(wish.notifiedAtPrice)) continue;
 
       const lines = [
         `🔔 降價通知！您關注的商品降價了`,
@@ -210,21 +218,19 @@ async function processInventorySync(job) {
   const { supplierId } = job.data;
   
   try {
-    // 這裡可以整合供貨商 API
-    // 範例：更新本地庫存
+    // ⚠️ Part 沒有 supplier_id 欄位（supplier_id 屬於 Shipment）。
+    //    原本 select 不存在的欄位 → PrismaClientValidationError → 每次排程都失敗。
     const parts = await prisma.part.findMany({
-      where: { 
-        is_active: true,
-        ...(supplierId ? { supplier_id: supplierId } : {})
-      },
-      select: { id: true, stock_qty: true, supplier_id: true },
+      where: { is_active: true },
+      select: { id: true, stock_qty: true, distributor_stock_qty: true },
     });
 
     // 這裡應該呼叫供貨商 API 獲取最新庫存
-    // 暫時跳過實際 API 呼叫
-    
-    console.log(`✅ Inventory sync completed for ${parts.length} parts`);
-    return { success: true, synced: parts.length };
+    // 暫時跳過實際 API 呼叫（尚未接供貨商）
+    const lowStock = parts.filter((p) => (p.stock_qty || 0) <= 0).length;
+
+    console.log(`✅ Inventory sync completed: ${parts.length} parts（其中 ${lowStock} 項自備庫存為 0）`);
+    return { success: true, synced: parts.length, supplierId: supplierId || null, lowStock };
   } catch (err) {
     console.error(`Inventory sync job failed:`, err.message);
     throw err;
