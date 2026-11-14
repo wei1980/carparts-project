@@ -465,7 +465,14 @@ router.post('/work-orders/:id/photos', async (req, res) => {
 
     // 處理單檔上傳
     upload.single('photo')(req, res, async (err) => {
-      if (err) return res.status(400).json({ error: err.message });
+      if (err) {
+        // multer 的錯誤字串會帶內部欄位名；只回前端看得懂的訊息
+        const safe = err.code === 'LIMIT_FILE_SIZE' ? '圖片過大（上限 8MB）'
+          : err.code === 'INVALID_FILE_TYPE' ? '只支援 JPEG / PNG / WebP 格式'
+          : '圖片上傳失敗';
+        console.error('施工照片上傳失敗:', err);
+        return res.status(400).json({ error: safe });
+      }
       if (!req.file) return res.status(400).json({ error: '請上傳照片' });
 
       const workOrder = await prisma.workOrder.findFirst({

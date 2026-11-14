@@ -63,7 +63,9 @@ router.get('/list', async (req, res) => {
 
     res.json(result);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    // 🔒 不要把原始例外字串回給 client（會外洩磁碟路徑 / 系統架構）
+    console.error('媒體列表失敗:', err);
+    res.status(500).json({ error: '讀取媒體目錄失敗' });
   }
 });
 
