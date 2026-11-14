@@ -63,6 +63,15 @@ router.patch('/:id', async (req, res) => {
       company_name,
     } = req.body;
 
+    // 🔒 車廠管理端點不得用來改動 ADMIN 帳號：
+    //    否則管理員可把自己停用 / 取消審核（實測會真的 200 並把自己鎖在外面），
+    //    或重設其他管理員密碼。ADMIN 帳號請用 /api/admin/users 或直接改 DB。
+    const target = await prisma.workshop.findUnique({ where: { id }, select: { role: true } });
+    if (!target) return res.status(404).json({ error: '帳號不存在' });
+    if (target.role === 'ADMIN') {
+      return res.status(403).json({ error: '此端點不可修改管理員帳號' });
+    }
+
     const data = {};
     if (is_garage !== undefined) data.is_garage = is_garage;
     if (is_approved !== undefined) data.is_approved = is_approved;
@@ -83,8 +92,14 @@ router.patch('/:id', async (req, res) => {
     }
 
     const updated = await prisma.workshop.update({ where: { id }, data });
-    res.json(updated);
+    // 🔒 不要把 password_hash 回給前端
+    const { password_hash: _omit, ...safe } = updated;
+    res.json(safe);
   } catch (error) {
+    console.error('更新車廠失敗:', error);
+    if (error.code === 'P2002') {
+      return res.status(409).json({ error: '手機號碼已被其他帳號使用' });
+    }
     res.status(500).json({ error: '伺服器內部錯誤，請稍後再試' });
   }
 });
@@ -93,6 +108,13 @@ router.patch('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+
+    // 🔒 不可刪 ADMIN 帳號（會把唯一的管理員移除，全站失去後台權限）
+    const target = await prisma.workshop.findUnique({ where: { id }, select: { role: true } });
+    if (!target) return res.status(404).json({ error: '帳號不存在' });
+    if (target.role === 'ADMIN') {
+      return res.status(403).json({ error: '不可刪除管理員帳號' });
+    }
 
     // 檢查是否有關聯預約
     const appointmentCount = await prisma.appointment.count({

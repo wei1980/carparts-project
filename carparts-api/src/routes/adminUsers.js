@@ -86,9 +86,19 @@ router.patch('/:id', async (req, res) => {
     const user = await prisma.endUser.update({
       where: { id: req.params.id },
       data,
+      // 🔒 不回傳 passwordHash
+      select: {
+        id: true, name: true, phone: true, lineId: true, address: true,
+        email: true, avatar_url: true, is_approved: true, is_active: true,
+        createdAt: true,
+      },
     });
     res.json(user);
   } catch (error) {
+    console.error('更新會員失敗:', error);
+    if (error.code === 'P2002') {
+      return res.status(409).json({ error: '手機號碼已被其他帳號使用' });
+    }
     res.status(500).json({ error: '伺服器內部錯誤，請稍後再試' });
   }
 });
