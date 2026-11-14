@@ -7,6 +7,11 @@ const fs = require('fs');
 const garageAuth = require('../middleware/garageAuth');
 
 const prisma = require('../lib/prisma');
+
+// AppointmentStatus 列舉（與 schema 同步）。傳入非法值時 Prisma 會拋
+// PrismaClientValidationError，被 catch 成 500 —— 但那是 client 的錯，應回 400。
+const APPOINTMENT_STATUSES = ['PENDING', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
+
 router.use(garageAuth);
 
 // 設定施工照上傳目錄
@@ -98,12 +103,15 @@ router.get('/:id', async (req, res) => {
 router.patch('/:id', async (req, res) => {
   try {
     const { status, note } = req.body;
+    if (!APPOINTMENT_STATUSES.includes(String(status || '').toUpperCase())) {
+      return res.status(400).json({ error: '預約狀態不正確' });
+    }
     const appointment = await prisma.appointment.findFirst({
       where: { id: parseInt(req.params.id), garage_id: req.workshopId },
     });
     if (!appointment) return res.status(404).json({ error: '預約不存在' });
 
-    const data = { status };
+    const data = { status: String(status).toUpperCase() };
     if (note) data.note = note;
 
     const updated = await prisma.appointment.update({

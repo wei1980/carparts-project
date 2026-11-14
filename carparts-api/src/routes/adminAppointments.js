@@ -117,7 +117,14 @@ router.patch('/:id', async (req, res) => {
     }
 
     const data = {};
-    if (status) data.status = status.toUpperCase();
+    if (status !== undefined) {
+      const st = String(status).toUpperCase();
+      // 非法列舉值會被 Prisma 拋驗證錯誤 → 500；那其實是 client 的錯，回 400
+      if (!['PENDING', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'].includes(st)) {
+        return res.status(400).json({ error: '預約狀態不正確' });
+      }
+      data.status = st;
+    }
     if (scheduledAt) data.scheduled_at = new Date(scheduledAt);
     if (note !== undefined) data.note = note;
 

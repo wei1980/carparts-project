@@ -147,7 +147,14 @@ router.patch('/:id', async (req, res) => {
     const data = {};
     if (mileageKm != null) data.mileage_km = parseInt(mileageKm);
     if (summary !== undefined) data.summary = summary;
-    if (status) data.status = String(status).toUpperCase();
+    if (status !== undefined && status !== null && status !== '') {
+      const st = String(status).toUpperCase();
+      // ServiceRecordStatus 列舉：非法值會讓 Prisma 拋錯變 500，應回 400
+      if (!['DRAFT', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'].includes(st)) {
+        return res.status(400).json({ error: '工單狀態不正確' });
+      }
+      data.status = st;
+    }
 
     // 完成時記錄完成時間；狀態改 COMPLETED 才鎖總額
     if (data.status === 'COMPLETED') data.completed_at = new Date();
