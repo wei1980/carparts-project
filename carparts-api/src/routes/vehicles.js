@@ -110,16 +110,55 @@ router.get('/:id', async (req, res) => {
 });
 
 // DELETE /api/vehicles/:id
+// ⚠️ 車輛被多張表引用，且大部分「沒有」onDelete: Cascade：
+//      Appointment          → 有 relation，但無 cascade
+//      ServiceRecord        → 純 vehicle_id 欄位
+//      MaintenanceReminder  → 純 vehicle_id 欄位
+//      InsurancePolicy      → 純 vehicle_id 欄位
+//      ConsumerOrder        → 純 vehicle_id 欄位
+//    所以直接 delete 會被 FK 擋下 → 500「刪除失敗」，使用者不知道原因。
+//    這裡先檢查是否有不可移除的歷史資料（訂單 / 工單 / 保單），
+//    有就回 409 說明；沒有的話才連同預約與提醒一起清掉再刪車輛。
 router.delete('/:id', async (req, res) => {
   try {
     const vehicle = await prisma.vehicleProfile.findFirst({
       where: { id: req.params.id, userId: req.userId },
+      select: { id: true },
     });
     if (!vehicle) return res.status(404).json({ error: '車輛不存在' });
 
-    await prisma.vehicleProfile.delete({ where: { id: req.params.id } });
+    // 有交易/保單紀錄的車輛不可直接刪（對帳、保固、稅務需要該車輛存在）
+    const [orderCount, recordCount, policyCount] = await Promise.all([
+      prisma.consumerOrder.count({ where: { vehicle_id: vehicle.id } }),
+      prisma.serviceRecord.count({ where: { vehicle_id: vehicle.id } }),
+      prisma.insurancePolicy.count({ where: { vehicle_id: vehicle.id } }).catch(() => 0),
+    ]);
+
+    if (orderCount > 0 || recordCount > 0 || policyCount > 0) {
+      return res.status(409).json({
+        code: 'VEHICLE_IN_USE',
+        error: `此車輛已有 ${orderCount} 筆訂單、${recordCount} 筆維修紀錄、${policyCount} 筆保單，`
+          + '為保留交易與保固紀錄無法刪除。請改用「停用」或聯絡客服。',
+      });
+    }
+
+    // 無交易紀錄 → 連同預約與提醒一起清掉，避免孤兒資料
+    await prisma.$transaction(async (tx) => {
+      await tx.appointment.deleteMany({ where: { vehicle_id: vehicle.id } });
+      await tx.maintenanceReminder.deleteMany({ where: { vehicle_id: vehicle.id } });
+      await tx.vehicleProfile.delete({ where: { id: vehicle.id } });
+    });
+
     res.json({ success: true, message: '車輛已刪除' });
   } catch (error) {
+    console.error('刪除車輛失敗:', error);
+    // P2003 = FK 約束失敗（仍被其他表引用）
+    if (error.code === 'P2003') {
+      return res.status(409).json({
+        code: 'VEHICLE_IN_USE',
+        error: '此車輛仍被其他紀錄引用，無法刪除。',
+      });
+    }
     res.status(500).json({ error: '刪除失敗' });
   }
 });
