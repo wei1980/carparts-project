@@ -68,12 +68,13 @@ router.get('/recent-parts', async (req, res) => {
 });
 
 // 產生採購單號：PO + 日期 + 4 位流水
-async function generatePoNumber(tx) {
+// ⚠️ 原本用 count+1 產生續號：兩個車廠同時送出會拿到同一個號，
+//    po_number 是 @unique → 其中一筆 create 拋 P2002 → 整張採購單 500。
+//    改為時間毫秒後 6 位 + 3 位隨機，並在 create 處做碰撞重試。
+function generatePoNumber() {
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const count = await tx.purchaseOrder.count({
-    where: { po_number: { startsWith: `PO${dateStr}` } },
-  });
-  return `PO${dateStr}-${String(count + 1).padStart(4, '0')}`;
+  const uniq = `${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+  return `PO${dateStr}-${uniq}`;
 }
 
 // POST /api/garage/purchase-orders — 建立採購單（送出）
@@ -114,35 +115,65 @@ router.post('/', async (req, res) => {
     const order = await prisma.$transaction(async (tx) => {
       // 扣庫存（現貨項目）；代購項目不扣。現貨扣減：先扣自備庫存，不足扣總代理庫存
       for (const item of orderItems) {
-        if (!item.is_preorder) {
-          const gp = await tx.part.findUnique({
-            where: { id: item.part_id },
-            select: { stock_qty: true, distributor_stock_qty: true },
-          });
-          const fromOwn = Math.min((gp?.stock_qty || 0), item.qty);
-          const fromDist = item.qty - fromOwn;
-          await tx.part.update({
-            where: { id: item.part_id },
-            data: {
-              stock_qty: { decrement: fromOwn },
-              distributor_stock_qty: { decrement: fromDist },
-            },
-          });
+        if (item.is_preorder) continue;
+        // ⚠️ 原本 findUnique → update 是 read-then-write，沒有樂觀鎖：
+        //    兩張採購單同時扣同一個零件會都通過「庫存檢查」→ 庫存變負（超賣）。
+        //    改用 updateMany + 目前值比對（count===1 才算成功）。
+        const gp = await tx.part.findUnique({
+          where: { id: item.part_id },
+          select: { stock_qty: true, distributor_stock_qty: true },
+        });
+        if (!gp) {
+          throw Object.assign(new Error('商品不存在'), { code: 'PART_NOT_FOUND' });
+        }
+        const fromOwn = Math.min(gp.stock_qty || 0, item.qty);
+        const fromDist = item.qty - fromOwn;
+        const deducted = await tx.part.updateMany({
+          where: {
+            id: item.part_id,
+            stock_qty: gp.stock_qty || 0,
+            distributor_stock_qty: gp.distributor_stock_qty || 0,
+          },
+          data: {
+            stock_qty: { decrement: fromOwn },
+            distributor_stock_qty: { decrement: fromDist },
+          },
+        });
+        if (deducted.count !== 1) {
+          throw Object.assign(
+            new Error(`庫存已被其他訂單變動，請重新送出（${item.part_id}）`),
+            { code: 'STOCK_RACE' },
+          );
         }
       }
 
-      const created = await tx.purchaseOrder.create({
-        data: {
-          po_number: await generatePoNumber(tx),
-          workshop_id: req.workshopId,
-          status: 'SUBMITTED',
-          total_amount: total,
-          note: note || null,
-          contact_name: contact_name || null,
-          contact_phone: contact_phone || null,
-          shipping_address: shipping_address || null,
-        },
-      });
+      // po_number 是 @unique：即使改成毫秒+隨機，仍保留 3 次碰撞重試
+      let created = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          created = await tx.purchaseOrder.create({
+            data: {
+              po_number: attempt === 0
+                ? generatePoNumber()
+                : `${generatePoNumber()}${Math.floor(Math.random() * 100).toString().padStart(2, '0')}`,
+              workshop_id: req.workshopId,
+              status: 'SUBMITTED',
+              total_amount: total,
+              note: note || null,
+              contact_name: contact_name || null,
+              contact_phone: contact_phone || null,
+              shipping_address: shipping_address || null,
+            },
+          });
+          break;
+        } catch (e) {
+          if (e?.code === 'P2002' && attempt < 2) continue;
+          throw e;
+        }
+      }
+      if (!created) {
+        throw Object.assign(new Error('無法產生採購單號'), { code: 'PO_NUMBER_GENERATION_FAILED' });
+      }
 
       const createdItems = [];
       for (const it of orderItems) {
@@ -191,6 +222,15 @@ router.post('/', async (req, res) => {
     });
   } catch (error) {
     console.error('建立採購單失敗:', error);
+    if (error.code === 'STOCK_RACE') {
+      return res.status(409).json({ error: '庫存剛剛被其他訂單變動，請重新送出' });
+    }
+    if (error.code === 'PO_NUMBER_GENERATION_FAILED') {
+      return res.status(503).json({ error: '系統繁忙，請再試一次' });
+    }
+    if (error.code === 'PART_NOT_FOUND') {
+      return res.status(409).json({ error: '部分商品已下架' });
+    }
     res.status(500).json({ error: '伺服器內部錯誤，請稍後再試' });
   }
 });
