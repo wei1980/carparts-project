@@ -711,9 +711,13 @@ app.use('/api/garage/appointments', garageAppointmentRoutes);
 // garageSchedule 已移除：整檔依賴不存在的 prisma.user / technician relation /
 // Appointment.technician_id、duration_minutes、bay_id，且 /bays 重複定義、掛載多一層。
 // 前端零引用。排程/工位需求改由 garageWorkOrders + garageAppointments 提供。
-// ⚠️ 這個 router 內部路由本身就以 /work-orders 開頭（/work-orders、/work-orders/:id…），
-//    所以必須掛在 /api/garage，否則實際路徑會變成 /api/garage/work-orders/work-orders。
-app.use('/api/garage', require('./routes/garageWorkOrders')); // 🆕 車廠工單管理
+// ⚠️ garageWorkOrders 已移除（2026-11 收斂）：
+//    它實作完整（9 端點、報價、狀態機、照片、工資明細），但前端 GarageWorkOrders
+//    頁面實際用的是 /garage/service-records（ServiceRecord），兩套資料不通、
+//    work_orders 三張表永遠是空的。保留只會有兩份要維護的流程與兩份報表口徑。
+//    工單流程統一走 garageServiceRecords（ServiceRecord + items）。
+//    work_orders / work_order_items / work_order_status_history 表本身保留不動，
+//    避免動到既有資料與 FK（目前三張表皆 0 筆）。
 app.use('/api/garage/settings', garageSettingsRoutes); // 🆕 車廠門店設定（店面照/工資表）
 app.use('/api/garage/customers', garageCustomersRoutes); // 🆕 車廠客戶管理
 app.use('/', seoRoutes); // 🆕 sitemap.xml（掛根路徑）

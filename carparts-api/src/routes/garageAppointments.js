@@ -14,6 +14,22 @@ const APPOINTMENT_STATUSES = ['PENDING', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS', 
 
 router.use(garageAuth);
 
+// ⚠️ Appointment 沒有「施工照片」欄位，原本的做法是把 JSON 塞進 note：
+//     第一次上傳時 appointment.note 是純文字（客戶備註）→ JSON.parse 失敗
+//     → photos 被視為 [] → 直接寫入 {"workPhotos":[...]}，客戶原本的備註
+//     永久消失；之後每次上傳再重寫整筆。
+//     fix：photo 存在独立的 media 目錄，並把「原始備註」保留在 note 的 text 欄位。
+function parseNoteWithPhotos(note) {
+  if (!note) return { text: '', photos: [] };
+  try {
+    const parsed = JSON.parse(note);
+    if (parsed && typeof parsed === 'object' && Array.isArray(parsed.workPhotos)) {
+      return { text: parsed.text || '', photos: parsed.photos || parsed.workPhotos };
+    }
+  } catch { /* 純文字備註 */ }
+  return { text: String(note), photos: [] };
+}
+
 // 設定施工照上傳目錄
 const workDir = path.join(__dirname, '../../media/work_photos');
 if (!fs.existsSync(workDir)) fs.mkdirSync(workDir, { recursive: true });
@@ -257,19 +273,13 @@ router.post('/:id/work-photo', workUpload.single('photo'), async (req, res) => {
 
     const photoUrl = `/media/work_photos/${req.file.filename}`;
 
-    // 將照片路徑加入 note 或 garage_slots（使用 note 欄位儲存 JSON）
-    let photos = [];
-    if (appointment.note) {
-      try {
-        const parsed = JSON.parse(appointment.note);
-        photos = parsed.workPhotos || [];
-      } catch {}
-    }
+    // 保留客戶原始備註（放 text），照片放 photos；不再直接覆蓋 note
+    const { text: originalNote, photos } = parseNoteWithPhotos(appointment.note);
     photos.push({ url: photoUrl, time: new Date().toISOString() });
 
     await prisma.appointment.update({
       where: { id: parseInt(req.params.id) },
-      data: { note: JSON.stringify({ workPhotos: photos }) },
+      data: { note: JSON.stringify({ text: originalNote, photos }) },
     });
 
     res.json({ success: true, photoUrl, photos });

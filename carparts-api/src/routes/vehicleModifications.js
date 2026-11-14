@@ -257,14 +257,14 @@ router.post('/:id/sync-from-garage', async (req, res) => {
       return res.status(400).json({ error: 'workOrderId 和 items 為必填' });
     }
 
-    // 驗證工單存在且屬於此車輛且已完工
-    const workOrder = await prisma.workOrder.findFirst({
-      where: { 
-        id: Number(workOrderId), 
+    // ⚠️ 工單存在 ServiceRecord（不是 WorkOrder，那張表永遠是 0 筆）
+    const workOrder = await prisma.serviceRecord.findFirst({
+      where: {
+        id: Number(workOrderId),
         vehicle_id: vehicle.id,
-        status: { in: ['COMPLETED', 'DELIVERED'] }
+        status: { in: ['COMPLETED'] },
       },
-      include: { items: true, laborItems: true }
+      include: { items: true },
     });
     if (!workOrder) return res.status(404).json({ error: '找不到對應的完工工單' });
 
@@ -340,129 +340,53 @@ router.get('/:id/completed-work-orders', async (req, res) => {
     });
     if (!vehicle) return res.status(404).json({ error: '車輛不存在' });
 
-    const orders = await prisma.workOrder.findMany({
+    // ⚠️ 工單實際存在 ServiceRecord（車廠 GarageWorkOrders 頁面就是用它開單），
+    //    WorkOrder 那張表因為前端從未接它、永遠是 0 筆。
+    //    原本讀 work_orders → 車主端「車廠同步」永遠顯示沒有完工紀錄。
+    //    改讀 service_records（含 items），並沿用原本的回應形狀。
+    const records = await prisma.serviceRecord.findMany({
       where: {
         vehicle_id: vehicle.id,
-        status: { in: ['COMPLETED', 'DELIVERED'] }
+        status: { in: ['COMPLETED'] },
       },
+      include: { items: true },
       orderBy: { completed_at: 'desc' },
-      take: 20
+      take: 20,
     });
 
-    // schema 的 WorkOrder 沒有關聯欄位，改以 id 批次查詢後組裝
-    const orderIds = orders.map(o => o.id);
-    const garageIds = [...new Set(orders.map(o => o.garage_id).filter(Boolean))];
-    const techIds = [...new Set(orders.map(o => o.technician_id).filter(Boolean))];
-
-    const [garages, techs, orderItems, laborItems] = await Promise.all([
-      garageIds.length
-        ? prisma.workshop.findMany({ where: { id: { in: garageIds } }, select: { id: true, garage_name: true, company_name: true } })
-        : [],
-      techIds.length
-        ? prisma.endUser.findMany({ where: { id: { in: techIds } }, select: { id: true, name: true } })
-        : [],
-      orderIds.length
-        ? prisma.workOrderItem.findMany({ where: { work_order_id: { in: orderIds } } })
-        : [],
-      orderIds.length
-        ? prisma.workOrderLaborItem.findMany({ where: { work_order_id: { in: orderIds } } })
-        : [],
-    ]);
-
-    const partIds = [...new Set(orderItems.map(i => i.part_id).filter(Boolean))];
-    const feeIds = [...new Set(laborItems.map(i => i.labor_fee_id).filter(Boolean))];
-    const [parts, fees] = await Promise.all([
-      partIds.length
-        ? prisma.part.findMany({ where: { id: { in: partIds } }, select: { id: true, name: true, brand: true, sku: true } })
-        : [],
-      feeIds.length
-        ? prisma.garageLaborFee.findMany({ where: { id: { in: feeIds } }, select: { id: true, name: true, price: true } })
-        : [],
-    ]);
-
+    const garageIds = [...new Set(records.map(r => r.garage_id).filter(Boolean))];
+    const garages = garageIds.length
+      ? await prisma.workshop.findMany({
+          where: { id: { in: garageIds } },
+          select: { id: true, garage_name: true, company_name: true },
+        })
+      : [];
     const gMap = Object.fromEntries(garages.map(g => [g.id, g]));
-    const tMap = Object.fromEntries(techs.map(t => [t.id, t]));
-    const pMap = Object.fromEntries(parts.map(p => [p.id, p]));
-    const fMap = Object.fromEntries(fees.map(f => [f.id, f]));
-    const itemsByOrder = {};
-    for (const i of orderItems) (itemsByOrder[i.work_order_id] ||= []).push(i);
-    const laborByOrder = {};
-    for (const i of laborItems) (laborByOrder[i.work_order_id] ||= []).push(i);
 
-    const parsePhotos = (value) => {
-      if (Array.isArray(value)) return value;
-      if (typeof value !== 'string') return [];
-      try { return JSON.parse(value); } catch { return []; }
-    };
-
-    const result = orders.map(o => {
-      const garage = gMap[o.garage_id];
-      const items = itemsByOrder[o.id] || [];
-      const labors = laborByOrder[o.id] || [];
-      const photos = parsePhotos(o.photos);
-      return {
-        id: o.id,
-        garage_id: o.garage_id,
-        garage_name: garage?.garage_name,
-        garage_company_name: garage?.company_name,
-        technician: tMap[o.technician_id]?.name || null,
-        completed_at: o.completed_at,
-        mileage_km: o.mileage_km ?? null,
-        summary: o.initial_notes || null,
-        items: [
-          ...items.map(i => ({
-            id: `part-${i.id}`,
-            kind: 'PART',
-            name: pMap[i.part_id]?.name || i.name,
-            brand: pMap[i.part_id]?.brand || null,
-            quantity: i.quantity,
-            unit_price: Number(i.unit_price)
-          })),
-          ...labors.map(i => ({
-            id: `labor-${i.id}`,
-            kind: 'LABOR',
-            name: fMap[i.labor_fee_id]?.name || i.name,
-            brand: null,
-            quantity: 1,
-            unit_price: Number(i.amount)
-          }))
-        ],
-        before_photos: photos.filter(p => p.type === 'before').map(p => p.url),
-        after_photos: photos.filter(p => p.type === 'after').map(p => p.url)
-      };
-    });
+    const result = records.map(r => ({
+      id: r.id,
+      garage_id: r.garage_id,
+      garage_name: gMap[r.garage_id]?.garage_name || null,
+      garage_company_name: gMap[r.garage_id]?.company_name || null,
+      technician: null,
+      completed_at: r.completed_at,
+      mileage_km: r.mileage_km ?? null,
+      summary: r.summary || null,
+      items: (r.items || []).map(i => ({
+        id: `${i.kind === 'PART' ? 'part' : 'labor'}-${i.id}`,
+        kind: i.kind,
+        name: i.name,
+        brand: i.part_brand || null,
+        quantity: i.quantity,
+        unit_price: Number(i.unit_price),
+      })),
+      before_photos: [],
+      after_photos: [],
+    }));
 
     res.json(result);
   } catch (error) {
     console.error('取得完工工單失敗:', error);
-    res.status(500).json({ error: '伺服器內部錯誤' });
-  }
-});
-
-/**
- * 上傳改裝照片（前/後照片）
- * POST /api/vehicles/:id/modification-photos
- * body: multipart/form-data
- * fields: beforePhotos[], afterPhotos[]
- */
-router.post('/:id/modification-photos', uploadFields([
-  { name: 'beforePhotos', maxCount: 5 },
-  { name: 'afterPhotos', maxCount: 5 }
-]), handleUploadError, processUploadedFiles, async (req, res) => {
-  try {
-    const vehicle = await prisma.vehicleProfile.findFirst({
-      where: { id: req.params.id, userId: req.userId }
-    });
-    if (!vehicle) return res.status(404).json({ error: '車輛不存在' });
-
-    // 這裡應將檔案上傳至 S3/雲端，回傳 URL
-    // 暫時回傳 base64 data URL 供前端預覽
-    const beforePhotos = (req.files?.beforePhotos || []).map(f => `data:${f.mimetype};base64,${f.buffer.toString('base64')}`);
-    const afterPhotos = (req.files?.afterPhotos || []).map(f => `data:${f.mimetype};base64,${f.buffer.toString('base64')}`);
-
-    res.json({ beforePhotos, afterPhotos });
-  } catch (error) {
-    console.error('上傳改裝照片失敗:', error);
     res.status(500).json({ error: '伺服器內部錯誤' });
   }
 });
