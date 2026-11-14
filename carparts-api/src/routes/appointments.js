@@ -242,6 +242,109 @@ router.post('/', async (req, res) => {
   }
 });
 
+// 🆕 POST /api/appointments/:id/accept-quote — 客戶接受車廠報價（→ CONFIRMED）
+//    原本車主只能「同意時間」或「取消整筆預約」：報價太貴時沒有地方回話，
+//    只能取消重約，車廠就流失這筆生意。加上接受 / 還價兩個出口。
+router.post('/:id/accept-quote', async (req, res) => {
+  try {
+    const appointment = await prisma.appointment.findFirst({
+      where: { id: parseInt(req.params.id), user_id: req.userId },
+      include: {
+        vehicle: { select: { make: true, model: true, licensePlate: true } },
+        garage: { select: { garage_name: true, phone: true, line_id: true } },
+      },
+    });
+    if (!appointment) return res.status(404).json({ error: '預約不存在' });
+    if (appointment.quote_amount == null) {
+      return res.status(400).json({ error: '車廠尚未提供報價' });
+    }
+    if (!['PENDING', 'CONFIRMED'].includes(appointment.status)) {
+      return res.status(400).json({ error: `目前狀態 ${appointment.status}，無法回覆報價` });
+    }
+
+    const updated = await prisma.appointment.update({
+      where: { id: appointment.id },
+      data: {
+        quote_accepted: true,
+        status: 'CONFIRMED',
+        ...(appointment.proposed_at
+          ? { scheduled_at: appointment.proposed_at, proposed_at: null }
+          : {}),
+      },
+    });
+
+    try {
+      if (appointment.garage?.line_id) {
+        await pushMessage(
+          appointment.garage.line_id,
+          `✅ 客戶已接受報價\n` +
+          `NT$ ${Number(appointment.quote_amount).toLocaleString()}\n` +
+          `🚗 ${appointment.vehicle?.make || ''} ${appointment.vehicle?.model || ''}`
+        );
+      }
+    } catch (err) { console.error('通知車廠失敗:', err.message); }
+
+    res.json(updated);
+  } catch (error) {
+    console.error('接受報價失敗:', error);
+    res.status(500).json({ error: '伺服器內部錯誤，請稍後再試' });
+  }
+});
+
+// 🆕 POST /api/appointments/:id/counter-quote — 客戶還價（→ 回 PENDING，通知車廠）
+//    body: { counterAmount, message? }
+router.post('/:id/counter-quote', async (req, res) => {
+  try {
+    const appointment = await prisma.appointment.findFirst({
+      where: { id: parseInt(req.params.id), user_id: req.userId },
+      include: {
+        vehicle: { select: { make: true, model: true, licensePlate: true } },
+        garage: { select: { garage_name: true, line_id: true } },
+      },
+    });
+    if (!appointment) return res.status(404).json({ error: '預約不存在' });
+    if (appointment.quote_amount == null) {
+      return res.status(400).json({ error: '車廠尚未提供報價' });
+    }
+
+    const counterAmount = parseInt(req.body.counterAmount, 10);
+    if (!Number.isFinite(counterAmount) || counterAmount <= 0) {
+      return res.status(400).json({ error: '請填寫有效的還價金額' });
+    }
+    if (counterAmount > appointment.quote_amount) {
+      return res.status(400).json({ error: '還價金額不可高於車廠報價' });
+    }
+
+    const message = req.body.message ? String(req.body.message).slice(0, 500) : null;
+    const updated = await prisma.appointment.update({
+      where: { id: appointment.id },
+      data: {
+        counter_amount: counterAmount,
+        counter_note: message,
+        countered_at: new Date(),
+        status: 'PENDING', // 回到待確認，等車廠回覆
+      },
+    });
+
+    try {
+      if (appointment.garage?.line_id) {
+        await pushMessage(
+          appointment.garage.line_id,
+          `💰 客戶還價：NT$ ${counterAmount.toLocaleString()}\n` +
+          `📋 車廠報價：NT$ ${Number(appointment.quote_amount).toLocaleString()}\n` +
+          `🚗 ${appointment.vehicle?.make || ''} ${appointment.vehicle?.model || ''}` +
+          (message ? `\n📝 ${message}` : '')
+        );
+      }
+    } catch (err) { console.error('通知車廠失敗:', err.message); }
+
+    res.json(updated);
+  } catch (error) {
+    console.error('還價失敗:', error);
+    res.status(500).json({ error: '伺服器內部錯誤，請稍後再試' });
+  }
+});
+
 // 🆕 POST /api/appointments/:id/accept-proposal — 客戶同意車廠提議的新時間（→ CONFIRMED）
 router.post('/:id/accept-proposal', async (req, res) => {
   try {

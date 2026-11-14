@@ -533,12 +533,17 @@ app.get('/api/parts/recommended', optionalGarageAuth, async (req, res) => {
     // 🆕 零件品牌精確篩選
     if (brand) whereClause.brand = brand;
 
-    if (search && search.trim() !== '') {
+    const keyword = (search || '').trim();
+    // ⚠️ 單字搜尋會回傳數千筆（實測 search=a → 3,599 筆 / 12,922 總數），
+    //    對使用者沒有意義，對 DB 也是 ILIKE '%a%' 全表掃描。
+    //    少於 2 字時不套用關鍵字條件（回完整清單，由分類/車型篩選接手）。
+    const MIN_SEARCH_LEN = 2;
+    if (keyword.length >= MIN_SEARCH_LEN) {
       // 與上方 AND 組合成 (車型/通用件) AND (關鍵字) 語意
       whereClause.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { brand: { contains: search, mode: 'insensitive' } },
-        { sku: { contains: search, mode: 'insensitive' } }
+        { name: { contains: keyword, mode: 'insensitive' } },
+        { brand: { contains: keyword, mode: 'insensitive' } },
+        { sku: { contains: keyword, mode: 'insensitive' } }
       ];
     }
 

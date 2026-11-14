@@ -258,6 +258,13 @@ export default function GarageDashboard() {
       if (selectedVariant) params.variantId = selectedVariant;
       if (selectedCategory) params.category = selectedCategory;
       if (selectedSubcategory) params.subcategory = selectedSubcategory;
+      // 後端對少於 2 字的關鍵字不套用篩選（避免回傳數千筆），
+      // 這裡先提示，別讓使用者以為搜尋生效了。
+      if (search && search.trim().length === 1) {
+        toast.error('關鍵字請輸入 2 字以上（例：brembo、煞車）');
+        setLoading(false);
+        return;
+      }
       if (search) params.search = search;
 
       const res = await api.get('/parts/recommended', { params });
@@ -419,7 +426,7 @@ export default function GarageDashboard() {
               <input
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder="🔍 輸入零件名稱、SKU 或品牌..."
+                placeholder="🔍 輸入零件名稱、SKU 或品牌（2 字以上）"
                 className="flex-1 h-11 min-w-0 px-4 bg-surface-700 border border-surface-600 rounded-xl text-white placeholder-surface-400 focus:ring-2 focus:ring-blue-500 transition"
                 onKeyDown={e => e.key === 'Enter' && handleGarageSearch()}
               />

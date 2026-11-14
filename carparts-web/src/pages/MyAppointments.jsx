@@ -14,6 +14,43 @@ export default function MyAppointments() {
   const [cancellingId, setCancellingId] = useState(null);
   const [loadError, setLoadError] = useState(false);
   const [acceptingId, setAcceptingId] = useState(null);
+  const [counterOpen, setCounterOpen] = useState(null);   // 正在還價的預約 id
+  const [counterAmount, setCounterAmount] = useState('');
+  const [counterMsg, setCounterMsg] = useState('');
+
+  // 🆕 報價議價：接受 / 還價
+  const acceptQuote = async (id) => {
+    if (!(await confirmDialog({ message: '確定接受這個報價嗎？' }))) return;
+    setAcceptingId(id);
+    try {
+      await api.post(`/appointments/${id}/accept-quote`, {});
+      toast.success('已接受報價，等待車廠安排');
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.error || '操作失敗，請重試');
+    } finally {
+      setAcceptingId(null);
+    }
+  };
+
+  const counterQuote = async (id, amount, message) => {
+    const amt = parseInt(amount, 10);
+    if (!Number.isFinite(amt) || amt <= 0) {
+      toast.error('請填寫有效的還價金額');
+      return;
+    }
+    setAcceptingId(id);
+    try {
+      await api.post(`/appointments/${id}/counter-quote`, { counterAmount: amt, message: message || undefined });
+      toast.success(`已送出還價 NT$ ${amt.toLocaleString()}，等待車廠回覆`);
+      setCounterOpen(null);
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.error || '還價失敗，請重試');
+    } finally {
+      setAcceptingId(null);
+    }
+  };
 
   // 🆕 客戶同意車廠提議的時間
   const acceptProposal = async (id) => {
@@ -106,12 +143,70 @@ export default function MyAppointments() {
                   </div>
                 )}
 
-                {/* 🆕 車廠報價卡 */}
+                {/* 🆕 車廠報價卡（可 接受 / 還價 / 婉拒） */}
                 {a.quote_amount != null && a.status === 'PENDING' && (
                   <div className="mt-3 bg-amber-900/20 border border-amber-600/30 rounded-lg p-3">
                     <p className="text-sm text-amber-300 font-bold mb-1">💰 車廠工資報價</p>
                     <p className="text-lg font-black text-white">NT$ {Number(a.quote_amount).toLocaleString()}</p>
                     {a.quote_note && <p className="text-xs text-amber-200/70 mt-0.5">{a.quote_note}</p>}
+                    {a.counter_amount != null && (
+                      <p className="mt-2 text-xs text-orange-300">
+                        你的還價：NT$ {Number(a.counter_amount).toLocaleString()}（等待車廠回覆）
+                      </p>
+                    )}
+
+                    {counterOpen === a.id ? (
+                      <div className="mt-3 space-y-2">
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          value={counterAmount}
+                          onChange={e => setCounterAmount(e.target.value)}
+                          placeholder={`還價金額（不超過 ${Number(a.quote_amount).toLocaleString()}）`}
+                          aria-label="還價金額"
+                          className="w-full rounded-lg border border-surface-600 bg-surface-800 px-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none"
+                        />
+                        <textarea
+                          value={counterMsg}
+                          onChange={e => setCounterMsg(e.target.value)}
+                          placeholder="給車廠的訊息（選填）"
+                          aria-label="給車廠的訊息"
+                          rows={2}
+                          className="w-full rounded-lg border border-surface-600 bg-surface-800 px-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => counterQuote(a.id, counterAmount, counterMsg)}
+                            disabled={acceptingId === a.id}
+                            className="flex-1 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 py-2 rounded-lg text-sm font-bold text-white transition"
+                          >
+                            {acceptingId === a.id ? '送出中…' : '送出還價'}
+                          </button>
+                          <button
+                            onClick={() => { setCounterOpen(null); setCounterAmount(''); setCounterMsg(''); }}
+                            className="px-3 py-2 rounded-lg text-sm text-surface-300 bg-surface-700 hover:bg-surface-600"
+                          >
+                            取消
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-3 flex gap-2">
+                        <button
+                          onClick={() => acceptQuote(a.id)}
+                          disabled={acceptingId === a.id}
+                          className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 py-2 rounded-lg text-sm font-bold text-white transition"
+                        >
+                          ✓ 接受報價
+                        </button>
+                        <button
+                          onClick={() => { setCounterOpen(a.id); setCounterAmount(String(a.quote_amount || '')); setCounterMsg(''); }}
+                          className="flex-1 bg-amber-700 hover:bg-amber-600 py-2 rounded-lg text-sm font-bold text-white transition"
+                        >
+                          💬 我要還價
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 

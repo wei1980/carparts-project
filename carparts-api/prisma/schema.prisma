@@ -188,6 +188,12 @@ model Appointment {
   quote_amount  Int?
   quote_note    String?
 
+  // 🆕 報價議價（客戶接受 / 還價）
+  quote_accepted Boolean   @default(false)
+  counter_amount Int?
+  counter_note   String?
+  countered_at   DateTime?
+
   @@index([garage_id])
   @@index([garage_id, scheduled_at])
   @@index([garage_id, status])
