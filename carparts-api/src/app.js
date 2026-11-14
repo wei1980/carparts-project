@@ -506,8 +506,15 @@ app.get('/api/parts/brands', async (req, res) => {
 app.get('/api/parts/recommended', optionalGarageAuth, async (req, res) => {
   try {
     const { variantId, search, category, subcategory, brand, page = 1, pageSize = 12, sort = 'hot' } = req.query;
-    const pageNum = Math.max(1, parseInt(page));
-    const limit = Math.min(50, parseInt(pageSize));
+    // ⚠️ 必須防禦非數字輸入：parseInt('[object Object]') → NaN，
+    //    Math.max(1, NaN) → NaN，skip 變 NaN → Prisma 拋錯 → 整個搜尋 500。
+    //    前端曾因 onClick={handleGarageSearch} 把 click event 當 page 傳入而觸發。
+    const toInt = (v, fallback) => {
+      const n = Number.parseInt(v, 10);
+      return Number.isFinite(n) && n > 0 ? n : fallback;
+    };
+    const pageNum = toInt(page, 1);
+    const limit = Math.min(50, toInt(pageSize, 12));
     const skip = (pageNum - 1) * limit;
 
     let whereClause = { is_active: true };

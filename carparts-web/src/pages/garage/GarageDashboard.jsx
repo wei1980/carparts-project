@@ -417,7 +417,7 @@ export default function GarageDashboard() {
                 onKeyDown={e => e.key === 'Enter' && handleGarageSearch()}
               />
               <button
-                onClick={handleGarageSearch}
+                onClick={() => handleGarageSearch()}
                 disabled={loading}
                 className="h-11 w-24 shrink-0 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 rounded-xl font-medium transition"
               >

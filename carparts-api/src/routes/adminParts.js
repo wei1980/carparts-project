@@ -12,8 +12,10 @@ router.use(adminAuth);
 router.get('/', async (req, res) => {
   try {
     const { page = 1, limit = 20, search, category, subcategory, brand } = req.query;
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-    const take = parseInt(limit);
+    // 防 NaN：非數字輸入會讓 skip/take 變 NaN → Prisma 拋錯 → 500
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const take = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
+    const skip = (pageNum - 1) * take;
     const where = {};
     if (search) {
       where.OR = [
@@ -39,7 +41,7 @@ router.get('/', async (req, res) => {
       }),
       prisma.part.count({ where }),
     ]);
-    res.json({ data: parts, pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / limit) } });
+    res.json({ data: parts, pagination: { page: pageNum, limit: take, total, pages: Math.ceil(total / take) } });
   } catch (error) {
     console.error('取得商品列表失敗:', error);
     res.status(500).json({ error: '伺服器內部錯誤，請稍後再試' });

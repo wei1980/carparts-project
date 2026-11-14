@@ -55,6 +55,45 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /api/garage/appointments/:id — 單一預約詳情（車廠端）
+// 前端 GarageAppointmentDetail 呼叫此端點；先前只有 PATCH /:id，導致詳情頁一律 404。
+router.get('/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: '預約 ID 不正確' });
+
+    const appointment = await prisma.appointment.findFirst({
+      where: { id, garage_id: req.workshopId }, // 🔒 只看本廠
+      include: {
+        vehicle: true,
+        user: { select: { id: true, name: true, phone: true } },
+      },
+    });
+    if (!appointment) return res.status(404).json({ error: '預約不存在' });
+
+    // 本廠工資表（報價時帶價用）
+    const laborFees = await prisma.garageLaborFee.findMany({
+      where: { workshop_id: req.workshopId, is_active: true },
+      orderBy: [{ sort_order: 'asc' }, { id: 'asc' }],
+    });
+
+    // 關聯工單（WorkOrder 無 relation，改用 appointment_id 查）
+    const workOrders = await prisma.workOrder.findMany({
+      where: { appointment_id: id },
+      orderBy: { created_at: 'desc' },
+    });
+
+    res.json({
+      ...appointment,
+      labor_fees: laborFees,
+      work_orders: workOrders,
+    });
+  } catch (error) {
+    console.error('取得預約詳情失敗:', error);
+    res.status(500).json({ error: '伺服器內部錯誤，請稍後再試' });
+  }
+});
+
 // PATCH /api/garage/appointments/:id — 車廠更新預約狀態
 router.patch('/:id', async (req, res) => {
   try {

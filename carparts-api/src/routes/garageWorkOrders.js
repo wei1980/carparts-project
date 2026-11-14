@@ -100,21 +100,27 @@ router.use(garageAuth);
 router.get('/work-orders', async (req, res) => {
   try {
     const { status, technicianId, page = 1, limit = 20 } = req.query;
+    // 防 NaN：非數字 page/limit 會讓 skip/take 變 NaN → Prisma 拋錯 → 500
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
     const where = { garage_id: req.workshopId };
     if (status) where.status = status.toUpperCase();
-    if (technicianId) where.technician_id = parseInt(technicianId);
+    if (technicianId) {
+      const techId = parseInt(technicianId, 10);
+      if (Number.isFinite(techId)) where.technician_id = techId;
+    }
 
     const [workOrders, total] = await Promise.all([
       prisma.workOrder.findMany({
         where,
         orderBy: { created_at: 'desc' },
-        skip: (parseInt(page) - 1) * parseInt(limit),
-        take: parseInt(limit)
+        skip: (pageNum - 1) * limitNum,
+        take: limitNum
       }),
       prisma.workOrder.count({ where })
     ]);
 
-    res.json({ workOrders: await hydrateWorkOrders(workOrders), total, page: parseInt(page), limit: parseInt(limit) });
+    res.json({ workOrders: await hydrateWorkOrders(workOrders), total, page: pageNum, limit: limitNum });
   } catch (error) {
     console.error('取得工單列表失敗:', error);
     res.status(500).json({ error: '伺服器內部錯誤' });
