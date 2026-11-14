@@ -143,60 +143,88 @@ router.post('/', async (req, res) => {
       }
     }
 
-    // 同車廠同時段容量檢查（每廠可設定 1–20 台）→ 409
-    const capacity = getBookingCapacity(garage.garage_slots);
-    const slotStart = new Date(apptDate.getTime() - 60 * 1000);
-    const slotEnd = new Date(apptDate.getTime() + 60 * 1000);
-    const existingCount = await prisma.appointment.count({
-      where: {
-        garage_id: parseInt(garageId),
-        scheduled_at: { gte: slotStart, lte: slotEnd },
-        status: { in: ['PENDING', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'] },
-      },
-    });
-    if (existingCount >= capacity) {
-      return res.status(409).json({
-        code: 'SLOT_TAKEN',
-        error: `這個時段已滿（同時可接 ${capacity} 台），請選擇其他時間。`,
-      });
-    }
-
     // 里程只往前寫：比目前紀錄新才更新，避免把車廠/較新的資料蓋回去
     const shouldUpdateMileage = parsedMileage != null
       && (vehicle.current_mileage == null || parsedMileage > vehicle.current_mileage);
 
-    const appointment = await prisma.$transaction(async (tx) => {
-      const created = await tx.appointment.create({
-        data: {
-          vehicle_id: vehicleId,
-          garage_id: parseInt(garageId),
-          user_id: req.userId,
-          service_type: serviceType || (installItems?.length ? '安裝訂單零件' : '保養'),
-          scheduled_at: new Date(scheduledAt),
-          note: note || '',
-          part_ids: partIds || [],
-          install_items: Array.isArray(installItems) && installItems.length > 0 ? installItems : null,
-        },
-        include: {
-          vehicle: { select: { make: true, model: true, licensePlate: true } },
-          user: { select: { name: true, phone: true, lineId: true } },
-        },
-      });
+    // ⚠️ 容量檢查必須在交易「內」做，且用 Serializable 隔離等級。
+    //    原本 count 在交易外、create 在交易內 → 10 個並發請求全部通過檢查，
+    //    容量設 1 仍寫入 10 筆（實測 10/10 都 201）。
+    //    這裡把 count + create 放進同一個 Serializable 交易；
+    //    若並發造成序列化衝突（P2034），回 409 讓使用者重送。
+    const capacity = getBookingCapacity(garage.garage_slots);
+    const slotStart = new Date(apptDate.getTime() - 60 * 1000);
+    const slotEnd = new Date(apptDate.getTime() + 60 * 1000);
 
-      if (shouldUpdateMileage) {
-        await tx.vehicleProfile.update({
-          where: { id: vehicleId },
-          data: {
-            current_mileage: parsedMileage,
-            mileage_updated_at: new Date(),
-            mileage_source: 'customer',
-            mileage_source_note: '線上預約填寫',
+    let appointment;
+    try {
+      appointment = await prisma.$transaction(async (tx) => {
+        // 🔒 用 PostgreSQL advisory lock 序列化「同一車廠的預約寫入」。
+        //    只靠 Serializable 會把「容量 3、10 筆並發」誤判成只准 1 筆
+        //    （其餘 9 筆全被 P2034 打回，使用者看到「被搶先預約」但明明還有位）。
+        //    鎖 garage 層級 → 同廠預約排隊進來、逐一檢查容量，
+        //    容量 3 就能真的寫入 3 筆；跨廠互不影響。
+        const lockKey = parseInt(garageId, 10) || 0;
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(${lockKey})`;
+
+        const existingCount = await tx.appointment.count({
+          where: {
+            garage_id: parseInt(garageId),
+            scheduled_at: { gte: slotStart, lte: slotEnd },
+            status: { in: ['PENDING', 'CONFIRMED', 'ARRIVED', 'IN_PROGRESS'] },
           },
         });
-      }
+        if (existingCount >= capacity) {
+          throw Object.assign(
+            new Error(`這個時段已滿（同時可接 ${capacity} 台），請選擇其他時間。`),
+            { code: 'SLOT_TAKEN' },
+          );
+        }
 
-      return created;
-    });
+        const created = await tx.appointment.create({
+          data: {
+            vehicle_id: vehicleId,
+            garage_id: parseInt(garageId),
+            user_id: req.userId,
+            service_type: serviceType || (installItems?.length ? '安裝訂單零件' : '保養'),
+            scheduled_at: new Date(scheduledAt),
+            note: note || '',
+            part_ids: partIds || [],
+            install_items: Array.isArray(installItems) && installItems.length > 0 ? installItems : null,
+          },
+          include: {
+            vehicle: { select: { make: true, model: true, licensePlate: true } },
+            user: { select: { name: true, phone: true, lineId: true } },
+          },
+        });
+
+        if (shouldUpdateMileage) {
+          await tx.vehicleProfile.update({
+            where: { id: vehicleId },
+            data: {
+              current_mileage: parsedMileage,
+              mileage_updated_at: new Date(),
+              mileage_source: 'customer',
+              mileage_source_note: '線上預約填寫',
+            },
+          });
+        }
+
+        return created;
+      });
+    } catch (e) {
+      if (e?.code === 'SLOT_TAKEN') {
+        return res.status(409).json({ code: 'SLOT_TAKEN', error: e.message });
+      }
+      // P2034 = 寫入衝突/死結（Serializable 下兩筆同時搶同一時段）
+      if (e?.code === 'P2034' || e?.code === 'P2028') {
+        return res.status(409).json({
+          code: 'SLOT_RACE',
+          error: '這個時段剛好被搶先預約，請重新選擇時間。',
+        });
+      }
+      throw e;
+    }
 
     // 🆕 LINE 通知車廠（失敗不擋流程）
     notifyGarageNewAppointment(appointment);
