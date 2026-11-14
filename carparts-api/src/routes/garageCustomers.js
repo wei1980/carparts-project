@@ -4,6 +4,15 @@ const router = express.Router();
 const garageAuth = require('../middleware/garageAuth');
 
 const prisma = require('../lib/prisma');
+
+// 前端可能送 'VIP,常客'（字串）或 ['VIP','常客']（陣列）；兩者都要接受。
+// 直接 tags.split(',') 會在陣列輸入時丟 TypeError → 整個新增/更新 500。
+function normalizeTags(tags) {
+  if (tags == null) return [];
+  const raw = Array.isArray(tags) ? tags : String(tags).split(',');
+  return raw.map((t) => String(t).trim()).filter(Boolean);
+}
+
 router.use(garageAuth);
 
 // GET /api/garage/customers — 客戶列表（支援搜尋、標籤篩選、分頁）
@@ -128,7 +137,7 @@ router.post('/', async (req, res) => {
         name: name.trim(),
         phone: phone.trim(),
         line_id: lineId?.trim() || null,
-        tags: tags?.split(',').map(t => t.trim()).filter(Boolean) || [],
+        tags: normalizeTags(tags),
         note: note?.trim() || null,
         visit_count: 0,
       },
@@ -166,7 +175,7 @@ router.patch('/:id', async (req, res) => {
         name: name?.trim() || customer.name,
         phone: phone?.trim() || customer.phone,
         line_id: lineId?.trim() || null,
-        tags: tags?.split(',').map(t => t.trim()).filter(Boolean) || [],
+        tags: normalizeTags(tags),
         note: note?.trim() || null,
       },
     });
