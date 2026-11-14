@@ -223,8 +223,12 @@ router.post('/', createOrderLimiter, async (req, res) => {
     // ========== 5. 產生訂單編號 (修正為本地時間 ISO 字串避免時區跨日問題) ==========
     const offset = new Date().getTimezoneOffset() * 60000;
     const localDateStr = new Date(Date.now() - offset).toISOString().slice(0, 10).replace(/-/g, '');
-    const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-    const orderNumber = `C${localDateStr}-${random}`;
+    // ⚠️ order_number 有 unique 約束。原本用 Math.random() 4 位數（10000 種）＋
+    //    create 沒有碰撞重試 → 單日第 ~12 筆起就有 >50% 機率碰撞（生日問題），
+    //    碰撞會讓 create 拋 P2002，整筆下單變 500（使用者看到「建立訂單失敗」）。
+    //    改：時間戳毫秒後 6 位 + 4 位隨機，並在 createOrderWithInventory 內做碰撞重試。
+    const uniquePart = `${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+    const orderNumber = `C${localDateStr}-${uniquePart}`;
 
     // ========== 6. 建立訂單（使用統一 Transaction Service） ==========
     const orderData = {
@@ -290,6 +294,10 @@ router.post('/', createOrderLimiter, async (req, res) => {
     }
     if (error.code === 'INSUFFICIENT_STOCK' || error.code === 'PART_NOT_FOUND' || error.code === 'PART_INACTIVE') {
       return res.status(409).json({ code: error.code, error: errorMessage(error.code), requestId: req.requestId });
+    }
+    // 訂單編號連重試 3 次仍碰撞：讓使用者重試，不要只丟 500
+    if (error.code === 'ORDER_NUMBER_GENERATION_FAILED') {
+      return res.status(503).json({ code: error.code, error: '系統繁忙，請再試一次', requestId: req.requestId });
     }
     res.status(500).json({ code: 'ORDER_CREATE_FAILED', error: '建立訂單失敗，請稍後再試', requestId: req.requestId });
   }

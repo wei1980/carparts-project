@@ -276,14 +276,30 @@ async function createOrderWithInventory(params) {
     }
   }
 
+  // order_number 是 unique。即使主幹已加長隨機碼，仍保留碰撞重試：
+  // 連續大量下單或時鐘回撥時，唯一鍵仍可能撞。碰撞時換號重試，不要讓使用者看到 500。
+  const MAX_ORDER_NO_RETRY = 3;
   const result = await prisma.$transaction(async (tx) => {
-    // 1. 建立訂單主檔
-    const order = await tx.consumerOrder.create({
-      data: {
-        ...orderData,
-        idempotency_key: idempotencyKey || null,
-      },
-    });
+    // 1. 建立訂單主檔（碰撞時重新產生後 4 碼）
+    let order = null;
+    for (let attempt = 0; attempt < MAX_ORDER_NO_RETRY; attempt++) {
+      try {
+        order = await tx.consumerOrder.create({
+          data: {
+            ...orderData,
+            order_number: attempt === 0
+              ? orderData.order_number
+              : `${orderData.order_number}${Math.floor(Math.random() * 100).toString().padStart(2, '0')}`,
+            idempotency_key: idempotencyKey || null,
+          },
+        });
+        break;
+      } catch (e) {
+        if (e?.code === 'P2002' && attempt < MAX_ORDER_NO_RETRY - 1) continue;
+        throw e;
+      }
+    }
+    if (!order) throw Object.assign(new Error('無法產生訂單編號'), { code: 'ORDER_NUMBER_GENERATION_FAILED' });
 
     // 2. 建立訂單明細
     const orderItems = [];
