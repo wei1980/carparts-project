@@ -15,13 +15,20 @@ export default function GarageCalendar() {
   const [stats, setStats] = useState(null);
   const [viewMode, setViewMode] = useState('calendar'); // 'calendar' | 'stats'
 
+  // ⚠️ 載入失敗必須回饋使用者：否則行事曆只顯示空白，
+  //    使用者會以為「這幾天沒預約」，實際上是 API 掛了。
+  const [loadError, setLoadError] = useState('');
+  const [retrying, setRetrying] = useState(false);
+
   // 載入預約資料
   const loadAppointments = useCallback(async () => {
+    setLoadError('');
     try {
       const res = await api.get('/garage/appointments');
       setAppointments(res.data || []);
     } catch (err) {
-      console.warn('載入預約失敗:', err?.message || err);
+      console.error('載入預約失敗:', err);
+      setLoadError(err?.response?.data?.error || err?.friendlyMessage || '預約資料載入失敗，請稍後再試');
     }
   }, []);
 
@@ -31,9 +38,16 @@ export default function GarageCalendar() {
       const res = await api.get('/garage/reports/stats');
       setStats(res.data);
     } catch (err) {
-      console.warn('載入統計失敗:', err?.message || err);
+      // 統計失敗不影響行事曆本身，只記錄（下方已有預約錯誤提示）
+      console.error('載入統計失敗:', err);
     }
   }, []);
+
+  const reloadAll = useCallback(async () => {
+    setRetrying(true);
+    await Promise.all([loadAppointments(), loadStats()]);
+    setRetrying(false);
+  }, [loadAppointments, loadStats]);
 
   useEffect(() => { loadAppointments(); loadStats(); }, [loadAppointments, loadStats]);
 
@@ -161,6 +175,21 @@ export default function GarageCalendar() {
               </div>
               <button onClick={today} className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-sm">回到今天</button>
             </div>
+
+            {/* 載入失敗提示：不顯示的話，空白行事曆會被誤解成「這幾天沒預約」 */}
+            {loadError && (
+              <div role="alert" className="mb-4 rounded-xl border border-red-800 bg-red-950/40 p-4">
+                <p className="text-sm text-red-300">{loadError}</p>
+                <button
+                  type="button"
+                  onClick={reloadAll}
+                  disabled={retrying}
+                  className="mt-3 rounded-lg bg-red-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-600 disabled:opacity-50"
+                >
+                  {retrying ? '重試中…' : '重新載入'}
+                </button>
+              </div>
+            )}
 
             {/* 手機版：本月議程（月曆在 <md 會壓縮成 45px 格子，改條列） */}
             <div className="space-y-2 md:hidden">

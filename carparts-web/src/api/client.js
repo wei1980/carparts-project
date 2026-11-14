@@ -49,11 +49,17 @@ export function notifyAuthExpired(tokenStorageKey) {
   window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT, { detail: { tokenStorageKey } }));
 }
 
+// axios 預設 timeout 為 0（永不逾時）。若 API 掛了或網路中斷，
+// 請求會永久 pending → 畫面卡在「載入中…」，使用者只能手動重新整理。
+// 這裡設 15 秒：超過就拋錯，讓各頁的 catch 顯示錯誤態（已補上「重新載入」）。
+const REQUEST_TIMEOUT_MS = 15000;
+
 function createClient(baseURL, tokenStorageKey) {
   const client = axios.create({
     baseURL,
     headers: { 'Content-Type': 'application/json' },
     withCredentials: true, // 重要：允許攜帶 cookie (CSRF cookie)
+    timeout: REQUEST_TIMEOUT_MS,
   });
 
   client.interceptors.request.use(async (config) => {
@@ -96,6 +102,10 @@ function createClient(baseURL, tokenStorageKey) {
           error.config._csrfRetried = true;
           return client.request(error.config);
         }
+      }
+      // 逾時：給使用者看得懂的訊息，而不是 "timeout of 15000ms exceeded"
+      if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+        error.friendlyMessage = '連線逾時，請確認網路後再試';
       }
       return Promise.reject(error);
     },

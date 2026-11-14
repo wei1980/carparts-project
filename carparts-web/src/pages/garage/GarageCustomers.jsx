@@ -13,6 +13,7 @@ export default function GarageCustomers() {
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [formData, setFormData] = useState({ name: '', phone: '', lineId: '', tags: '', note: '' });
@@ -20,6 +21,7 @@ export default function GarageCustomers() {
 
   const load = useCallback(async (targetPage = page) => {
     setLoading(true);
+    setError('');
     try {
       const params = { page: targetPage, pageSize: 20 };
       if (search) params.search = search;
@@ -30,7 +32,9 @@ export default function GarageCustomers() {
       setPagination(res.data.pagination || null);
       setAllTags(res.data.all_tags || []);
     } catch (err) {
-      console.warn('載入失敗:', err?.message || err);
+      // ⚠️ 載入失敗要讓使用者看到，不然「暫無客戶資料」會被誤解成真的沒客戶
+      console.error('載入客戶失敗:', err);
+      setError(err?.response?.data?.error || err?.friendlyMessage || '客戶資料載入失敗，請稍後再試');
     } finally {
       setLoading(false);
     }
@@ -126,6 +130,18 @@ export default function GarageCustomers() {
         <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
           {loading ? (
             <div className="p-8 text-center text-slate-500">載入中...</div>
+          ) : error ? (
+            /* ⚠️ 載入失敗不能顯示「暫無客戶資料」——那會讓車廠以為沒客戶 */
+            <div role="alert" className="p-8 text-center">
+              <p className="text-sm text-red-300">{error}</p>
+              <button
+                type="button"
+                onClick={() => load(page)}
+                className="mt-3 rounded-lg bg-red-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-600"
+              >
+                重新載入
+              </button>
+            </div>
           ) : customers.length === 0 ? (
             <div className="p-8 text-center text-slate-500">暫無客戶資料，點擊「＋ 新增客戶」開始建立</div>
           ) : (

@@ -9,11 +9,19 @@ export default function GarageReports() {
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const load = useCallback(() => {
     setLoading(true);
+    setError('');
     api.get(`/garage/reports/monthly?month=${month}`).then(res => setData(res.data))
-      .catch(err => console.warn('載入報表失敗:', err?.message || err))
+      // ⚠️ 載入失敗必須讓使用者看到：否則畫面只顯示「無資料」，
+      //    無法分辨「這個月真的沒營收」與「API 掛了」。
+      .catch(err => {
+        console.error('載入報表失敗:', err);
+        setData(null);
+        setError(err?.response?.data?.error || err?.friendlyMessage || '報表載入失敗，請稍後再試');
+      })
       .finally(() => setLoading(false));
   }, [month]);
 
@@ -41,7 +49,19 @@ export default function GarageReports() {
       <main className="max-w-3xl mx-auto p-4 space-y-5 pb-24">
         <h1 className="text-2xl font-bold">月報表</h1>
         {loading && <div className="text-slate-400 p-6">載入中…</div>}
-        {!loading && !data && <div className="text-slate-500 p-6">無資料</div>}
+        {!loading && error && (
+          <div role="alert" className="m-4 rounded-xl border border-red-800 bg-red-950/40 p-4">
+            <p className="text-sm text-red-300">{error}</p>
+            <button
+              type="button"
+              onClick={load}
+              className="mt-3 rounded-lg bg-red-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-600"
+            >
+              重新載入
+            </button>
+          </div>
+        )}
+        {!loading && !error && !data && <div className="text-slate-500 p-6">無資料</div>}
 
         {!loading && data && (
           <>
