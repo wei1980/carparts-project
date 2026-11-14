@@ -188,7 +188,9 @@ const runReconcile = async () => {
         status: { in: ['PENDING_PAYMENT', 'PAYMENT_REVIEW', 'DEPOSIT_PAID', 'AWAITING_BALANCE'] },
         bankLastFiveDigits: { not: null },
       },
-      include: { user: { select: { name: true, phone: true } } },
+      // ⚠️ 必須帶 lineId：autoClaim 會把這個 user 傳給 notifyOrderUpdate，
+      //    沒 lineId 就永遠推播不到（pushMessage 直接 return，且不會報錯）。
+      include: { user: { select: { name: true, phone: true, lineId: true } } },
     });
 
     const results = { matched: [], manual_review: [], unmatched_transactions: [] };
