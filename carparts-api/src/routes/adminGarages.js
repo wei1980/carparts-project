@@ -116,20 +116,44 @@ router.delete('/:id', async (req, res) => {
       return res.status(403).json({ error: '不可刪除管理員帳號' });
     }
 
-    // 檢查是否有關聯預約
-    const appointmentCount = await prisma.appointment.count({
-      where: { garage_id: id },
-    });
+    // ⚠️ 原本只檢查 Appointment，但車廠同時被多張表引用：
+    //    Appointment / ConsumerOrder(garage_id?) / ServiceRecord / WorkOrder /
+    //    GarageReview / Order(供應商) … → 直接 delete 會被 FK 擋下 → 500
+    const [appointmentCount, orderCount, recordCount, workOrderCount, reviewCount, bayCount] = await Promise.all([
+      prisma.appointment.count({ where: { garage_id: id } }),
+      prisma.order.count({ where: { workshop_id: id } }).catch(() => 0),
+      prisma.bay.count({ where: { garage_id: id } }).catch(() => 0),
+      prisma.serviceRecord.count({ where: { garage_id: id } }).catch(() => 0),
+      prisma.workOrder.count({ where: { garage_id: id } }).catch(() => 0),
+      prisma.garageReview.count({ where: { garage_id: id } }).catch(() => 0),
+    ]);
 
-    if (appointmentCount > 0) {
-      return res.status(400).json({
-        error: `此車廠有 ${appointmentCount} 筆預約記錄，無法刪除。請先停用帳號（is_active: false）。`,
+    const total = appointmentCount + orderCount + recordCount + workOrderCount + reviewCount + bayCount;
+    if (total > 0) {
+      const detail = [
+        appointmentCount ? `${appointmentCount} 筆預約` : '',
+        orderCount ? `${orderCount} 筆訂單` : '',
+        recordCount ? `${recordCount} 筆維修紀錄` : '',
+        workOrderCount ? `${workOrderCount} 筆工單` : '',
+        reviewCount ? `${reviewCount} 筆評價` : '',
+        bayCount ? `${bayCount} 個工位` : '',
+      ].filter(Boolean).join('、');
+      return res.status(409).json({
+        code: 'GARAGE_IN_USE',
+        error: `此車廠有 ${detail}，為保留交易紀錄無法刪除。請改用停用（is_active: false）。`,
       });
     }
 
     await prisma.workshop.delete({ where: { id } });
     res.json({ success: true, message: '車廠已刪除' });
   } catch (error) {
+    console.error('刪除車廠失敗:', error);
+    if (error.code === 'P2003') {
+      return res.status(409).json({
+        code: 'GARAGE_IN_USE',
+        error: '此車廠仍被其他紀錄引用，無法刪除。請改用停用。',
+      });
+    }
     res.status(500).json({ error: '伺服器內部錯誤，請稍後再試' });
   }
 });

@@ -104,25 +104,57 @@ router.patch('/:id', async (req, res) => {
 });
 
 // DELETE /api/admin/users/:id — 刪除會員（含關聯資料）
+// ⚠️ EndUser 被 11 張表引用，多數「沒有」onDelete: Cascade。
+//    原本只清 5 張（vehicle/appointment/order/orderItem/wishItem/recognitionLog），
+//    漏掉 ServiceRecord / MaintenanceReminder / WorkOrder / InsurancePolicy /
+//    GarageReview → 直接 delete 會被 FK 擋下 → 500，而且前面的 deleteMany
+//    已經先清掉一部分資料（部分刪除，DB 處於中間狀態）。
+//    這裡補齊全部，並包進單一交易：任何一步失敗就整批 rollback。
 router.delete('/:id', async (req, res) => {
   try {
     const user = await prisma.endUser.findUnique({ where: { id: req.params.id } });
     if (!user) return res.status(404).json({ error: '會員不存在' });
 
-    await prisma.vehicleProfile.deleteMany({ where: { userId: req.params.id } });
-    await prisma.appointment.deleteMany({ where: { user_id: req.params.id } });
+    const uid = req.params.id;
 
-    const orders = await prisma.consumerOrder.findMany({ where: { userId: req.params.id }, select: { id: true } });
-    const orderIds = orders.map(o => o.id);
-    await prisma.consumerOrderItem.deleteMany({ where: { order_id: { in: orderIds } } });
-    await prisma.consumerOrder.deleteMany({ where: { userId: req.params.id } });
+    // 有交易紀錄的會員：保留訂單供對帳，改為匿名化（與 /auth/account 一致）
+    const orderCount = await prisma.consumerOrder.count({ where: { userId: uid } });
+    if (orderCount > 0) {
+      return res.status(409).json({
+        code: 'USER_HAS_ORDERS',
+        error: `此會員有 ${orderCount} 筆訂單，為保留交易與對帳紀錄無法刪除。`
+          + '請改用「停用帳號」；如需匿名化請走會員刪號流程（DELETE /api/auth/account）。',
+      });
+    }
 
-    await prisma.wishItem.deleteMany({ where: { userId: req.params.id } });
-    await prisma.partImageRecognitionLog.deleteMany({ where: { userId: req.params.id } });
-    await prisma.endUser.delete({ where: { id: req.params.id } });
+    await prisma.$transaction(async (tx) => {
+      // 子表（順序：先子後父）
+      await tx.garageReview.deleteMany({ where: { user_id: uid } });
+      await tx.insurancePolicy.deleteMany({ where: { user_id: uid } });
+      await tx.maintenanceReminder.deleteMany({ where: { user_id: uid } });
+      await tx.workOrder.deleteMany({ where: { user_id: uid } });
+      await tx.serviceRecord.deleteMany({ where: { user_id: uid } });
+      await tx.appointment.deleteMany({ where: { user_id: uid } });
+      await tx.consumerOrderItem.deleteMany({
+        where: { order: { userId: uid } },
+      });
+      await tx.consumerOrder.deleteMany({ where: { userId: uid } });
+      await tx.wishItem.deleteMany({ where: { userId: uid } });
+      await tx.partImageRecognitionLog.deleteMany({ where: { userId: uid } });
+      await tx.aiPartDraft.deleteMany({ where: { userId: uid } });
+      await tx.vehicleProfile.deleteMany({ where: { userId: uid } });
+      await tx.endUser.delete({ where: { id: uid } });
+    });
 
     res.json({ success: true });
   } catch (error) {
+    console.error('刪除會員失敗:', error);
+    if (error.code === 'P2003') {
+      return res.status(409).json({
+        code: 'USER_IN_USE',
+        error: '此會員仍被其他紀錄引用，無法刪除。',
+      });
+    }
     res.status(500).json({ error: '伺服器內部錯誤，請稍後再試' });
   }
 });
