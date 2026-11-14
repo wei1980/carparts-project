@@ -30,6 +30,7 @@ export default function GarageDashboard() {
   const [showCart, setShowCart] = useState(false);
   const [showOrders, setShowOrders] = useState(false);
   const [poOrders, setPoOrders] = useState([]);
+  const [poError, setPoError] = useState('');
   const [poPagination, setPoPagination] = useState(null);
   const [poPage, setPoPage] = useState(1);
   const [submitting, setSubmitting] = useState(false);
@@ -95,12 +96,18 @@ export default function GarageDashboard() {
 
   // 🆕 載入我的採購單
   const loadPoOrders = (p = poPage) => {
+    setPoError('');
     api.get('/garage/purchase-orders', {
       params: { page: p, pageSize: 10 },
     }).then(res => {
       setPoOrders(res.data.orders || []);
       setPoPagination(res.data.pagination || null);
-    }).catch(err => console.warn('載入採購單失敗:', err?.message || err));
+    }).catch(err => {
+      // ⚠️ 載入失敗要讓車廠看到，否則「尚無採購記錄」會被誤解成真的沒下過單
+      console.error('載入採購單失敗:', err);
+      setPoOrders([]);
+      setPoError(err?.response?.data?.error || err?.friendlyMessage || '採購單載入失敗，請稍後再試');
+    });
   };
 
   // 🆕 取消採購單
@@ -786,7 +793,19 @@ export default function GarageDashboard() {
               <button onClick={() => setShowOrders(false)} className="w-9 h-9 bg-surface-700 hover:bg-surface-600 rounded-full">✕</button>
             </div>
 
-            {poOrders.length === 0 ? (
+            {poError ? (
+              /* ⚠️ 載入失敗不能顯示「尚無採購記錄」——會讓車廠以為沒下過單 */
+              <div role="alert" className="py-8 text-center">
+                <p className="text-sm text-red-300">{poError}</p>
+                <button
+                  type="button"
+                  onClick={() => loadPoOrders(1)}
+                  className="mt-3 rounded-lg bg-red-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-600"
+                >
+                  重新載入
+                </button>
+              </div>
+            ) : poOrders.length === 0 ? (
               <p className="text-center text-surface-500 py-10">尚無採購記錄</p>
             ) : (
               <div className="space-y-4">
