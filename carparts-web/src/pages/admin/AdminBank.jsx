@@ -13,6 +13,10 @@ export default function AdminBank() {
   const [reviewed, setReviewed] = useState({});
   const [confirming, setConfirming] = useState(false);
   const [importing, setImporting] = useState(false);
+  // ⚠️ 一次可回 6000+ 筆交易，全量渲染會讓 DOM 節點爆量（實測 190K 字元、凍結數秒）。
+  //    加搜尋 + 顯示上限，預設只畫前 300 筆。
+  const [txSearch, setTxSearch] = useState('');
+  const TX_PREVIEW_LIMIT = 300;
 
   const importExcel = async () => {
     setImporting(true);
@@ -104,6 +108,15 @@ export default function AdminBank() {
       }
     } finally { setConfirming(false); }
   };
+
+  // 交易搜尋：金額 / 匯款人 / 備註（不分大小寫）
+  const txKeyword = txSearch.trim().toLowerCase();
+  const filteredTx = (data?.transactions || []).filter(t => {
+    if (!txKeyword) return true;
+    return [t.amount, t.remitter, t.memo]
+      .some(v => String(v ?? '').toLowerCase().includes(txKeyword));
+  });
+
 
   return (
     <div className="p-8">
@@ -285,9 +298,19 @@ export default function AdminBank() {
           <div className="bg-surface-800 rounded-xl border border-surface-700 p-5">
             <h3 className="font-bold text-white mb-3">📄 Excel 存款交易</h3>
             <div className="max-h-80 overflow-y-auto space-y-1.5">
+              {/* 搜尋：6000+ 筆無法用眼睛找，且全量渲染會卡住 */}
+              <input
+                type="text"
+                value={txSearch}
+                onChange={e => setTxSearch(e.target.value)}
+                placeholder="🔍 搜尋金額 / 匯款人 / 備註（例：9000、王小明）"
+                className="mb-2 w-full rounded-lg border border-surface-700 bg-surface-900 px-3 py-2 text-sm text-white placeholder:text-surface-500 focus:border-blue-500 focus:outline-none"
+              />
               {data.transactions.length === 0 && <p className="text-surface-500 text-sm">無交易資料</p>}
-              {data.transactions
-                .slice()
+              {data.transactions.length > 0 && filteredTx.length === 0 && (
+                <p className="text-surface-500 text-sm">找不到符合「{txSearch}」的交易</p>
+              )}
+              {filteredTx.slice(0, TX_PREVIEW_LIMIT)
                 .sort((a, b) => new Date(b.date) - new Date(a.date))
                 .map(t => (
                 <div key={t.row} className="bg-surface-900/60 rounded-lg px-3 py-2 text-sm grid grid-cols-[6rem_minmax(9rem,1fr)] sm:grid-cols-[6rem_9rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1">
@@ -296,6 +319,12 @@ export default function AdminBank() {
                   <span className="text-surface-500 truncate min-w-0 col-span-2 sm:col-span-1">{t.memo || t.remitter}</span>
                 </div>
               ))}
+              {filteredTx.length > TX_PREVIEW_LIMIT && (
+                <p className="pt-2 text-center text-xs text-surface-500">
+                  僅顯示前 {TX_PREVIEW_LIMIT} 筆（共 {filteredTx.length.toLocaleString()} 筆符合），
+                  請用上方搜尋縮小範圍
+                </p>
+              )}
             </div>
           </div>
 
