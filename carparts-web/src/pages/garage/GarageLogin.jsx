@@ -29,8 +29,22 @@ export default function GarageLogin() {
       localStorage.setItem('garageToken', data.token);
       localStorage.setItem('garageUser', JSON.stringify(data.user));
       navigate('/garage/dashboard');
-    } catch {
-      toast.error('登入失敗，請確認手機號碼或密碼');
+    } catch (err) {
+      // ⚠️ 不能一律顯示「請確認手機號碼或密碼」：
+      //    429（嘗試過多）/ 403（帳號未審核、已停用）會被誤導成密碼錯誤，
+      //    使用者會一直重試，反而更容易被鎖。
+      const status = err?.response?.status;
+      const serverMsg = err?.response?.data?.error;
+      if (status === 429) {
+        toast.error(serverMsg || '嘗試次數過多，請 15 分鐘後再試');
+      } else if (status === 403) {
+        // 後端會帶明確原因（未通過審核 / 已停用 / 非車廠帳號）
+        toast.error(serverMsg || '此帳號無法登入車廠後台');
+      } else if (status === 401) {
+        toast.error('手機號碼或密碼不正確');
+      } else {
+        toast.error(serverMsg || '登入失敗，請稍後再試');
+      }
     } finally {
       setLoading(false);
     }
