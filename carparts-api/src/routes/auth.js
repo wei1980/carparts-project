@@ -355,7 +355,8 @@ router.post('/garage/login', garageLoginLimiter, async (req, res) => {
 });
 
 // ==================== 車廠註冊 ====================
-router.post('/garage/register', cardUpload.single('business_card'), async (req, res) => {
+// 車廠註冊會真的建帳號 + 寫入名片檔：與 /register 共用註冊額度（每 IP 每小時 5 筆）
+router.post('/garage/register', registerLimiter, cardUpload.single('business_card'), async (req, res) => {
   try {
     const { phone, password, company_name, contact_person, address, garage_name, line_id } = req.body;
     if (!phone || !password || !company_name) return res.status(400).json({ error: '手機號碼、密碼和公司名稱為必填' });

@@ -12,6 +12,22 @@ const prisma = require('../lib/prisma');
 const AI_BASE_URL = process.env.AI_BASE_URL || 'http://127.0.0.1:8080/v1';
 const AI_MODEL = process.env.AI_MODEL || 'Qwen3.6-35B-A3B-Uncensored';
 
+// ============================================================
+// 🔒 行照辨識限流：這個端點每次呼叫都會打一次 AI（真實成本），
+//    先前完全沒有 auth 也沒有節流 → 任何人可匿名無限灌，把 AI 額度燒完。
+//    以 IP 為 key，每 10 分鐘 10 次。
+// ============================================================
+const rateLimit = require('express-rate-limit');
+const { ipKeyGenerator } = require('express-rate-limit');
+const aiRecognizeLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => `ai-recognize:${ipKeyGenerator(req.ip)}`,
+  message: { status: 429, error: '辨識次數過多，請稍後再試' },
+});
+
 // ==========================================
 // 📷 記憶體上傳（辨識用，不落地）
 // ==========================================
@@ -71,7 +87,10 @@ router.post('/recognize-part', auth, upload.single('image'), async (req, res) =>
       }),
     });
     const data = await response.json();
-    if (!response.ok) return res.status(500).json({ error: 'AI 服務暫時無法使用', detail: data });
+    if (!response.ok) {
+      console.error('AI 服務錯誤:', response.status, JSON.stringify(data).slice(0, 300));
+      return res.status(502).json({ error: 'AI 服務暫時無法使用' });
+    }
     const content = data.choices?.[0]?.message?.content || '';
     let result;
     try {
@@ -90,7 +109,8 @@ router.post('/recognize-part', auth, upload.single('image'), async (req, res) =>
   }
 });
 
-router.post('/recognize-registration', upload.single('image'), async (req, res) => {
+// ⚠️ 這個端點會呼叫 AI（有實際成本）：必須同時有 auth 與限流。
+router.post('/recognize-registration', auth, aiRecognizeLimiter, upload.single('image'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: '請上傳行照圖片' });
     const base64 = req.file.buffer.toString('base64');
@@ -115,7 +135,10 @@ router.post('/recognize-registration', upload.single('image'), async (req, res) 
       }),
     });
     const data = await response.json();
-    if (!response.ok) return res.status(500).json({ error: 'AI 服務暫時無法使用', detail: data });
+    if (!response.ok) {
+      console.error('AI 服務錯誤:', response.status, JSON.stringify(data).slice(0, 300));
+      return res.status(502).json({ error: 'AI 服務暫時無法使用' });
+    }
     let content = data.choices?.[0]?.message?.content || '';
     const reasoning = data.choices?.[0]?.message?.reasoning_content || '';
     if (!content.trim() && reasoning.trim()) content = reasoning;
@@ -193,7 +216,10 @@ router.post('/recognize-modification', auth, modPhotoUpload.single('image'), asy
     });
 
     const data = await response.json();
-    if (!response.ok) return res.status(500).json({ error: 'AI 服務暫時無法使用', detail: data });
+    if (!response.ok) {
+      console.error('AI 服務錯誤:', response.status, JSON.stringify(data).slice(0, 300));
+      return res.status(502).json({ error: 'AI 服務暫時無法使用' });
+    }
 
     let content = data.choices?.[0]?.message?.content || '';
     const reasoning = data.choices?.[0]?.message?.reasoning_content || '';

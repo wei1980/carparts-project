@@ -449,11 +449,15 @@ router.post('/work-orders/:id/photos', async (req, res) => {
     const workDir = path.join(__dirname, '../../media/work_photos');
     if (!fs.existsSync(workDir)) fs.mkdirSync(workDir, { recursive: true });
 
+    // ⚠️ 副檔名必須由 mimetype 白名單導出，不能直接用 path.extname(originalname)：
+    //    原始檔名完全由 client 控制，否則可上傳 .html / .svg / .php 等到 /media 下
+    //    （/media 是靜態目錄，會被瀏覽器直譯執行 → stored XSS）。
+    const safeExt = (m) => (m === 'image/png' ? '.png' : m === 'image/webp' ? '.webp' : '.jpg');
     const upload = multer({
       storage: multer.diskStorage({
         destination: workDir,
         filename: (req, file, cb) => {
-          cb(null, `wo_${req.params.id}_${Date.now()}${path.extname(file.originalname)}`);
+          cb(null, `wo_${req.params.id}_${Date.now()}${safeExt(file.mimetype)}`);
         }
       }),
       limits: { fileSize: 5 * 1024 * 1024 },
