@@ -115,40 +115,50 @@ function localName(imageUrl, sku) {
 
   fs.mkdirSync(OUT_DIR, { recursive: true });
 
-  let ok = 0, fail = 0, skip = 0;
+  let ok = 0, fail = 0, skip = 0, done = 0;
   const failures = [];
   const t0 = Date.now();
 
-  for (let i = 0; i < list.length; i++) {
-    const r = list[i];
+  // 單筆處理（獨立 try/catch：任何一筆異常不該中斷整批）
+  async function processOne(r) {
     const name = localName(r.image_url, r.sku);
     const dest = path.join(OUT_DIR, name);
     const relUrl = `/media/parts/Brand/Brembo/${name}`;
-
-    if (fs.existsSync(dest) && fs.statSync(dest).size > 1024) {
-      // 檔案已在 → 只更新 DB 指向
-      await prisma.part.update({ where: { id: r.id }, data: { image_url: relUrl } });
-      skip++;
-      continue;
-    }
-
-    const remote = CDN_BASE + r.image_url;
-    const res = await fetchTo(remote, dest);
-    if (res.ok) {
-      await prisma.part.update({ where: { id: r.id }, data: { image_url: relUrl } });
-      ok++;
-    } else {
+    try {
+      if (fs.existsSync(dest) && fs.statSync(dest).size > 1024) {
+        await prisma.part.update({ where: { id: r.id }, data: { image_url: relUrl } });
+        skip++;
+        return;
+      }
+      const res = await fetchTo(CDN_BASE + r.image_url, dest);
+      if (res.ok) {
+        await prisma.part.update({ where: { id: r.id }, data: { image_url: relUrl } });
+        ok++;
+      } else {
+        fail++;
+        if (failures.length < 10) failures.push({ id: r.id, sku: r.sku, reason: res.reason });
+      }
+    } catch (e) {
       fail++;
-      if (failures.length < 10) failures.push({ id: r.id, sku: r.sku, reason: res.reason });
-    }
-
-    if ((i + 1) % 250 === 0) {
-      const el = ((Date.now() - t0) / 1000).toFixed(0);
-      console.log(`  ... ${i + 1}/${list.length}  ok=${ok} skip=${skip} fail=${fail}  ${el}s`);
+      if (failures.length < 10) failures.push({ id: r.id, sku: r.sku, reason: 'EXC ' + e.message });
     }
   }
 
-  const mb = (list.length ? require('child_process') : null, 0);
+  // 併發 8：循序要 1.5 小時，併發後約 12 分鐘
+  const CONCURRENCY = 8;
+  let cursor = 0;
+  async function worker() {
+    while (cursor < list.length) {
+      const idx = cursor++;
+      await processOne(list[idx]);
+      done++;
+      if (done % 100 === 0) {
+        console.log(`  ... ${done}/${list.length}  ok=${ok} skip=${skip} fail=${fail}  ${((Date.now() - t0) / 1000).toFixed(0)}s`);
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
+
   console.log(`\n=== 完成 ===`);
   console.log(`  下載成功: ${ok}`);
   console.log(`  檔案已存在（只更新 DB）: ${skip}`);
