@@ -122,6 +122,9 @@ router.get('/dashboard', async (req, res) => {
         vin: vehicle.vin,
         licensePlate: vehicle.licensePlate,
         plate_photo_url: vehicle.regPhotoUrl,
+        // ⚠️ variantId 不可漏：前端 CurrentVehicleContext 用它組 selectedVariantId，
+        //    Shop 首頁沒有 variantId 就完全不載入商品（顯示「選擇你的愛車」）。
+        variantId: vehicle.variantId,
         variant: vehicle.variant,
       },
       current_mileage_km: currentMileageKm,
