@@ -95,6 +95,30 @@ export default function ServiceRecords() {
                         ))}
                       </tbody>
                     </table>
+                    {/* 🆕 施工照片（車廠上傳，車主可看） */}
+                    {Array.isArray(r.work_photos) && r.work_photos.length > 0 && (
+                      <div className="mt-4">
+                        <p className="text-sm font-medium text-surface-300 mb-2">📷 施工照片</p>
+                        <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
+                          {r.work_photos.map((p, i) => (
+                            <a
+                              key={p.url || i}
+                              href={p.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="block aspect-square overflow-hidden rounded-lg border border-surface-700 bg-surface-900"
+                            >
+                              <img src={p.url} alt={`施工照 ${i + 1}`} loading="lazy" className="h-full w-full object-cover" />
+                            </a>
+                          ))}
+                        </div>
+                        {r.work_photos[0]?.time && (
+                          <p className="text-xs text-surface-500 mt-1">
+                            拍攝時間：{new Date(r.work_photos[0].time).toLocaleString('zh-TW')}
+                          </p>
+                        )}
+                      </div>
+                    )}
                     {r.garage?.garage_phone && (
                       <p className="text-surface-500 text-xs mt-4">施工車廠電話：{r.garage.garage_phone}</p>
                     )}

@@ -72,7 +72,22 @@ export default defineConfig({
           });
         },
       },
-      '/media': 'http://localhost:3000',
+      // ⚠️ /media 也要完整 proxy 設定（不是字串簡寫）：
+      //    字串簡寫不會做 changeOrigin / cookie 網域改寫，
+      //    導致 <img src="/media/work_photos/..."> 因 cookie 網域不符而 403
+      //    （API 端設的 Set-Cookie 是 Domain= 空值，需改寫才能帶到 5173）。
+      '/media': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        secure: false,
+        cookieDomainRewrite: { 'localhost': '' },
+      },
+      '/uploads': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        secure: false,
+        cookieDomainRewrite: { 'localhost': '' },
+      },
       '/health': 'http://localhost:3000',
     }
   }

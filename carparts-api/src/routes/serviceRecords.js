@@ -6,6 +6,39 @@ const auth = require('../middleware/authMiddleware');
 const prisma = require('../lib/prisma');
 router.use(auth);
 
+// 施工照存在 Appointment.note 的 JSON（{ text, photos:[{url,time}] }）。
+// ServiceRecord 有 appointment_id 欄位，可跨表取回來給車主看。
+function parseWorkPhotos(note) {
+  if (!note) return [];
+  try {
+    const parsed = JSON.parse(note);
+    if (parsed && typeof parsed === 'object') {
+      const arr = Array.isArray(parsed.photos) ? parsed.photos : (parsed.workPhotos || []);
+      return arr.filter(p => p && p.url);
+    }
+  } catch { /* 純文字備註，沒有照片 */ }
+  return [];
+}
+
+async function attachWorkPhotos(records) {
+  const list = Array.isArray(records) ? records : [records];
+  const apptIds = [...new Set(list.map(r => r.appointment_id).filter(Boolean))];
+  if (apptIds.length === 0) {
+    const empty = list.map(r => ({ ...r, work_photos: [] }));
+    return Array.isArray(records) ? empty : empty[0];
+  }
+  const appts = await prisma.appointment.findMany({
+    where: { id: { in: apptIds } },
+    select: { id: true, note: true },
+  });
+  const photoMap = new Map(appts.map(a => [a.id, parseWorkPhotos(a.note)]));
+  const withPhotos = list.map(r => ({
+    ...r,
+    work_photos: r.appointment_id ? (photoMap.get(r.appointment_id) || []) : [],
+  }));
+  return Array.isArray(records) ? withPhotos : withPhotos[0];
+}
+
 // schema 的 ServiceRecord 只定義了 items 關聯；vehicle / garage 以獨立查詢補上，
 // 避免 include 不存在的關聯造成 Prisma 500。
 async function attachRefs(records) {
@@ -51,7 +84,7 @@ router.get('/', async (req, res) => {
       include: { items: true },
       orderBy: { created_at: 'desc' },
     });
-    res.json(await attachRefs(records));
+    res.json(await attachWorkPhotos(await attachRefs(records)));
   } catch (error) {
     console.error('取得維修紀錄失敗:', error);
     res.status(500).json({ error: '伺服器內部錯誤，請稍後再試' });
@@ -66,7 +99,7 @@ router.get('/:id', async (req, res) => {
       include: { items: true },
     });
     if (!record) return res.status(404).json({ error: '維修紀錄不存在' });
-    res.json(await attachRefs(record));
+    res.json(await attachWorkPhotos(await attachRefs(record)));
   } catch (error) {
     console.error('取得維修紀錄明細失敗:', error);
     res.status(500).json({ error: '伺服器內部錯誤，請稍後再試' });

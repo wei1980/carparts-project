@@ -40,12 +40,41 @@ export default function GarageAppointmentDetail() {
   const [laborFees, setLaborFees] = useState([]);
   const [selectedFeeIds, setSelectedFeeIds] = useState([]);
 
+  // 🆕 施工照片：車廠上傳，車主可在保養紀錄看到（透明度）
+  const [photos, setPhotos] = useState([]);
+  const [uploading, setUploading] = useState(false);
+
+  const uploadWorkPhoto = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('photo', file);
+      const res = await api.post(`/garage/appointments/${id}/work-photo`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setPhotos(res.data.photos || []);
+      toast.success('施工照已上傳');
+    } catch (err) {
+      toast.error(err.response?.data?.error || '上傳失敗');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const res = await api.get(`/garage/appointments/${id}`);
       setAppt(res.data);
       if (res.data.labor_fees) setLaborFees(res.data.labor_fees || []);
+      // 施工照存在 note 的 JSON（{ text, photos }）
+      try {
+        const parsed = res.data.note ? JSON.parse(res.data.note) : null;
+        setPhotos(parsed && Array.isArray(parsed.photos) ? parsed.photos : []);
+      } catch { setPhotos([]); }
     } catch (err) {
       toast.error('載入失敗：' + (err.response?.data?.error || err.message));
       navigate('/garage/calendar');
@@ -218,6 +247,43 @@ export default function GarageAppointmentDetail() {
                 )}
               </div>
             )}
+
+            {/* 🆕 施工照片（車廠上傳 → 車主在保養紀錄可見） */}
+            <div className="mt-6 bg-surface-800 rounded-2xl p-6 border border-surface-700/50">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-bold text-lg">📷 施工照片</h2>
+                <label className="cursor-pointer rounded-lg bg-surface-700 hover:bg-surface-600 px-3 py-1.5 text-sm font-medium">
+                  {uploading ? '上傳中…' : '＋ 上傳'}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={uploadWorkPhoto}
+                    disabled={uploading}
+                  />
+                </label>
+              </div>
+              {photos.length === 0 ? (
+                <p className="text-sm text-surface-500">尚未上傳施工照片。上傳後車主可在「保養紀錄」看到施工前後對比。</p>
+              ) : (
+                <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
+                  {photos.map((p, i) => (
+                    <a
+                      key={p.url || i}
+                      href={p.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block aspect-square overflow-hidden rounded-lg border border-surface-700 bg-surface-900"
+                    >
+                      <img src={p.url} alt={`施工照 ${i + 1}`} loading="lazy" className="h-full w-full object-cover" />
+                    </a>
+                  ))}
+                </div>
+              )}
+              <p className="mt-3 text-xs text-surface-500">
+                照片僅限本車廠、平台管理員，以及該車輛的車主可見。
+              </p>
+            </div>
 
             {/* 報價/提議時間 Modal 觸發 */}
             {canQuote && (

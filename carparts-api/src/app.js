@@ -234,11 +234,14 @@ const MEDIA_PUBLIC_PREFIXES = ["/parts/", "/Logo/", "/garage_photos/"];
 const MEDIA_ADMIN_ONLY_PREFIXES = [
   "/business_cards/",
   "/regphotos/",
-  "/work_photos/",
   "/ai_uploads/",
   "/modifications/",
   "/avatars/",
 ];
+// 施工照：車廠 / 管理員可看全部，車主只能看「與自己預約相關」的那些。
+// 檔名格式 work_{appointmentId}_{timestamp}.jpg → 從檔名取 appointmentId，
+// 再確認該預約的 user_id 就是自己（否則即使猜到檔名也拿不到）。
+const MEDIA_GARAGE_OWNER_PREFIX = "/work_photos/";
 // 完全不走 HTTP 的目錄（匯入素材、原始圖、後台資料）
 const MEDIA_BLOCKED_PREFIXES = ["/Data/", "/_originals_parts/"];
 
@@ -272,7 +275,7 @@ function hasValidMediaSession(req) {
   return Boolean(mediaSession(req));
 }
 
-app.use("/media", (req, res, next) => {
+app.use("/media", async (req, res, next) => {
   const requestPath = req.path;
 
   if (MEDIA_BLOCKED_PREFIXES.some((p) => requestPath.startsWith(p))) {
@@ -287,15 +290,33 @@ app.use("/media", (req, res, next) => {
     return res.status(401).json({ error: "需要登入才能存取此檔案" });
   }
 
+  const session = mediaSession(req) || {};
+  const isGarage = Boolean(session.workshopId);
+  const isAdmin = session.role === "ADMIN";
+
+  // 施工照：車廠/管理員看全部；車主只能看自己預約的
+  if (requestPath.startsWith(MEDIA_GARAGE_OWNER_PREFIX)) {
+    if (isAdmin || isGarage) return next();
+    // 車主：檔名 work_{appointmentId}_{ts}.ext → 查該預約是否屬於自己
+    const m = /^work_(\d+)_/.exec(path.basename(requestPath));
+    if (!m || !session.userId) {
+      return res.status(403).json({ error: "權限不足" });
+    }
+    const apptId = parseInt(m[1], 10);
+    const owned = await prisma.appointment.findFirst({
+      where: { id: apptId, user_id: session.userId },
+      select: { id: true },
+    });
+    if (!owned) return res.status(403).json({ error: "權限不足" });
+    return next();
+  }
+
   // 有登入身分後，管理/PII 目錄仍限 ADMIN 或車廠
   // ⚠️ 車廠 token 的 role 實際是 TRIAL / VERIFIED（不是字串 'GARAGE'），
   //    所以判斷要用「有 workshopId」而不是比對 role 字面值。
   if (MEDIA_ADMIN_ONLY_PREFIXES.some((p) => requestPath.startsWith(p))) {
     // ⚠️ 身分可能來自 cookie（<img> 的情況），不能只讀 Authorization header，
     //    否則管理端「車廠名片」「客戶大頭照」等圖片會全部 403。
-    const session = mediaSession(req) || {};
-    const isGarage = Boolean(session.workshopId);
-    const isAdmin = session.role === "ADMIN";
     if (!isAdmin && !isGarage) {
       return res.status(403).json({ error: "權限不足" });
     }
