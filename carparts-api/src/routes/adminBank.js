@@ -158,9 +158,35 @@ router.get(['/bank/transactions', '/transactions'], async (req, res) => {
     const enriched = transactions.map(t => {
       try { return { ...t, fingerprint: fingerprintTransaction(t) }; } catch { return { ...t, fingerprint: null }; }
     });
+    // 重複指紋統計必須在「篩選前」算，否則 ambiguous 會因篩選而失真
     const counts = new Map();
     for (const t of enriched) counts.set(t.fingerprint, (counts.get(t.fingerprint) || 0) + 1);
-    res.json({ excel_path: WORKBOOK_PATH, transactions: enriched.map(t => ({ ...t, claimed: claimed.has(t.fingerprint), ambiguous: counts.get(t.fingerprint) > 1 })), pending_orders: pendingOrdersWithClaims });
+    const withFlags = enriched.map(t => ({ ...t, claimed: claimed.has(t.fingerprint), ambiguous: counts.get(t.fingerprint) > 1 }));
+
+    // ⚠️ 銀行明細動輒數千筆（實測 6,052 筆 / 1 MB）。
+    //    原本一次全回，前端只能在已載入的資料裡搜尋，換頁與大量資料時浪費頻寬。
+    //    這裡加伺服器端搜尋 + 分頁；不傳 q/page 時維持原本行為（回全部），
+    //    但前端已改為只抓第一頁。
+    const q = String(req.query.q || '').trim().toLowerCase();
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const pageSize = Math.min(500, Math.max(1, parseInt(req.query.pageSize, 10) || 300));
+
+    const filtered = q
+      ? withFlags.filter(t => [t.amount, t.memo, t.remitter, t.date]
+          .some(v => String(v ?? '').toLowerCase().includes(q)))
+      : withFlags;
+
+    const total = filtered.length;
+    const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+    res.json({
+      excel_path: WORKBOOK_PATH,
+      transactions: paged,
+      total,
+      // 前端若要看「有幾筆符合」而不需要全部資料
+      pagination: { page, pageSize, total, pages: Math.max(1, Math.ceil(total / pageSize)) },
+      pending_orders: pendingOrdersWithClaims,
+    });
   } catch (error) {
     res.status(500).json({ error: '伺服器內部錯誤，請稍後再試' });
   }

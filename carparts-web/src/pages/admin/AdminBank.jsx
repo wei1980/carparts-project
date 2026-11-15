@@ -16,7 +16,8 @@ export default function AdminBank() {
   // ⚠️ 一次可回 6000+ 筆交易，全量渲染會讓 DOM 節點爆量（實測 190K 字元、凍結數秒）。
   //    加搜尋 + 顯示上限，預設只畫前 300 筆。
   const [txSearch, setTxSearch] = useState('');
-  const TX_PREVIEW_LIMIT = 300;
+  const [txPage, setTxPage] = useState(1);
+  const TX_PAGE_SIZE = 300;
 
   const importExcel = async () => {
     setImporting(true);
@@ -24,21 +25,32 @@ export default function AdminBank() {
       const res = await adminClient.post('/bank/import-excel');
       toast.success(res.data.message);
       setData(null);
-      loadTransactions();
+      setTxPage(1);
+      loadTransactions(1);
     } catch (err) {
       toast.error(err.response?.data?.error || err.message);
     } finally { setImporting(false); }
   };
 
-  const loadTransactions = () => {
+  const loadTransactions = (targetPage = txPage) => {
     setLoading(true);
-    adminClient.get('/bank/transactions')
+    setError('');
+    // 伺服器端分頁：銀行明細動輒數千筆（6,052 筆 / 1MB），
+    // 一次全抓會讓頁面初始化變慢，且搜尋只能在前端已載入的資料裡找。
+    adminClient.get('/bank/transactions', {
+      params: { page: targetPage, pageSize: TX_PAGE_SIZE, q: txSearch.trim() || undefined },
+    })
       .then(res => setData(res.data))
-      .catch(err => setError(err.response?.data?.error || err.message))
+      .catch(err => { setData(null); setError(err.response?.data?.error || err.friendlyMessage || '交易資料載入失敗'); })
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { loadTransactions(); }, []);
+  // 搜尋或換頁時重新抓（伺服器端篩選）
+  // 搜尋（伺服器端篩選，350ms debounce）或換頁時重新抓
+  useEffect(() => {
+    const h = setTimeout(() => loadTransactions(txPage), txSearch ? 350 : 0);
+    return () => clearTimeout(h);
+  }, [txSearch, txPage]);
 
   // 🆕 自動同步預選的銀行交易到 state，避免「手動確認」按鈕因狀態未同步而無法點擊
   useEffect(() => {
@@ -110,12 +122,8 @@ export default function AdminBank() {
   };
 
   // 交易搜尋：金額 / 匯款人 / 備註（不分大小寫）
-  const txKeyword = txSearch.trim().toLowerCase();
-  const filteredTx = (data?.transactions || []).filter(t => {
-    if (!txKeyword) return true;
-    return [t.amount, t.remitter, t.memo]
-      .some(v => String(v ?? '').toLowerCase().includes(txKeyword));
-  });
+  // 伺服器已做搜尋 + 分頁，直接用回傳的這一頁資料
+  const filteredTx = data?.transactions || [];
 
 
   return (
@@ -310,7 +318,7 @@ export default function AdminBank() {
               {data.transactions.length > 0 && filteredTx.length === 0 && (
                 <p className="text-surface-500 text-sm">找不到符合「{txSearch}」的交易</p>
               )}
-              {filteredTx.slice(0, TX_PREVIEW_LIMIT)
+              {filteredTx
                 .sort((a, b) => new Date(b.date) - new Date(a.date))
                 .map(t => (
                 <div key={t.row} className="bg-surface-900/60 rounded-lg px-3 py-2 text-sm grid grid-cols-[6rem_minmax(9rem,1fr)] sm:grid-cols-[6rem_9rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1">
@@ -319,11 +327,27 @@ export default function AdminBank() {
                   <span className="text-surface-500 truncate min-w-0 col-span-2 sm:col-span-1">{t.memo || t.remitter}</span>
                 </div>
               ))}
-              {filteredTx.length > TX_PREVIEW_LIMIT && (
-                <p className="pt-2 text-center text-xs text-surface-500">
-                  僅顯示前 {TX_PREVIEW_LIMIT} 筆（共 {filteredTx.length.toLocaleString()} 筆符合），
-                  請用上方搜尋縮小範圍
-                </p>
+              {data?.pagination && data.pagination.pages > 1 && (
+                <div className="mt-3 flex items-center justify-center gap-2 text-xs text-surface-400">
+                  <button
+                    onClick={() => setTxPage(Math.max(1, (data.pagination.page || 1) - 1))}
+                    disabled={(data.pagination.page || 1) <= 1}
+                    className="rounded bg-surface-800 px-2 py-1 disabled:opacity-40"
+                  >
+                    上一頁
+                  </button>
+                  <span>
+                    {data.pagination.page} / {data.pagination.pages}
+                    （共 {Number(data.pagination.total || 0).toLocaleString()} 筆）
+                  </span>
+                  <button
+                    onClick={() => setTxPage(Math.min(data.pagination.pages, (data.pagination.page || 1) + 1))}
+                    disabled={(data.pagination.page || 1) >= data.pagination.pages}
+                    className="rounded bg-surface-800 px-2 py-1 disabled:opacity-40"
+                  >
+                    下一頁
+                  </button>
+                </div>
               )}
             </div>
           </div>

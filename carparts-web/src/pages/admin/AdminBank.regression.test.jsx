@@ -8,7 +8,10 @@ it('uses admin-relative routes and requires explicit bank transaction/history co
  adminClient.get.mockResolvedValue({data:{transactions:[{row:2,date:'2026-09-17',amount:1000,memo:'fixture',fingerprint,claimed:false,ambiguous:false}],pending_orders:[]}});
  adminClient.post.mockResolvedValue({data:{summary:{matched:0,manual_review:1,unmatched_transactions:1,total_transactions:1},matched:[],manual_review:[{order_id:1,order_number:'fixture',stage:'full',expected_amount:1000,reason:'review'}],unmatched_transactions:[]}});
  render(<AdminBank/>);
- await waitFor(()=>expect(adminClient.get).toHaveBeenCalledWith('/bank/transactions'));
+ // 伺服器端分頁：端點需帶 page / pageSize / q（q 為選填，故只斷言前兩者）
+ await waitFor(()=>expect(adminClient.get).toHaveBeenCalledWith('/bank/transactions', {
+   params: expect.objectContaining({ page: expect.any(Number), pageSize: expect.any(Number) }),
+ }));
  fireEvent.click(await screen.findByRole('button',{name:/執行.*比對/}));
  const confirm=await screen.findByRole('button',{name:'手動確認'});
  expect(confirm).toBeDisabled();
