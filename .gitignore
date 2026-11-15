@@ -39,6 +39,9 @@ verify_*.js
 check*.js
 restore_*.js
 backup_*.js
+# 例外：這兩支是正式的維運工具（不是一次性腳本），要納入版控
+!carparts-api/scripts/restore_backup.js
+!carparts-api/scripts/fix_part_image_urls.js
 export_*.js
 /import_*.js
 *_check.js
