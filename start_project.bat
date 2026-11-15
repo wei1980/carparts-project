@@ -1,118 +1,139 @@
 @echo off
-chcp 65001 >NUL
-setlocal enabledelayedexpansion
+setlocal EnableDelayedExpansion
+chcp 65001 >nul
+title 車大師服務啟動器 (Hermes Agent 版)
 
-title Carparts 系統啟動器 (穩定版)
+echo ==========================================
+echo    車大師平台 - 啟動前後端服務
+echo    AI 由 Hermes Agent 提供
+echo ==========================================
+echo.
 
-:: ================= 路徑設定 =================
 set "CURRENT_DIR=%~dp0"
-:: 移除最後的反斜線
 if "%CURRENT_DIR:~-1%"=="\" set "CURRENT_DIR=%CURRENT_DIR:~0,-1%"
-
 set "API_DIR=%CURRENT_DIR%\carparts-api"
-set "WEB_DIR=%CURRENT_DIR%\carparts-admin"
-set "WEB_URL=http://localhost:5173"
-:: ===========================================
+set "WEB_DIR=%CURRENT_DIR%\carparts-web"
 
-echo.
-echo ========================================================
-echo   🚗 Carparts B2B Platform - 系統啟動
-echo   目前目錄: "%CURRENT_DIR%"
-echo ========================================================
-echo.
-
-:: 1. 檢查 Node.js
-echo [檢查 1/3] 正在確認 Node.js...
-where node >NUL 2>&1
-if %errorlevel% neq 0 goto ERROR_NODE
-echo   -> Node.js 已安裝。
-
-:: 2. 檢查後端目錄
-echo [檢查 2/3] 正在確認後端目錄...
-if not exist "%API_DIR%" goto ERROR_API
-echo   -> 後端目錄確認: %API_DIR%
-
-:: 3. 檢查前端目錄
-echo [檢查 3/3] 正在確認前端目錄...
-if not exist "%WEB_DIR%" goto ERROR_WEB
-echo   -> 前端目錄確認: %WEB_DIR%
-
-:: 4. 強制清理舊程序
-echo.
-echo [步驟 1/4] 清理舊程序...
-taskkill /F /IM node.exe >NUL 2>&1
-echo   -> 清理完成。
-
-:: 5. 啟動後端
-echo.
-echo [步驟 2/4] 準備後端伺服器...
-cd /d "%API_DIR%"
-
-if not exist "node_modules" (
-    echo   -> [API] 初次執行，安裝套件中...
-    call npm install
+if not exist "%API_DIR%" (
+    echo [錯誤] 找不到後端目錄 %API_DIR%
+    pause ^& exit /b 1
+)
+if not exist "%WEB_DIR%" (
+    echo [錯誤] 找不到前端目錄 %WEB_DIR%
+    pause ^& exit /b 1
 )
 
-if not exist "node_modules\.prisma" (
-    echo   -> [API] 產生資料庫客戶端...
-    call npx prisma generate
+:: Step 0: 確保 Redis 啟動（排程 / 快取用）
+echo [0/5] 檢查 Redis (WSL: Ubuntu-24.04)...
+wsl -d Ubuntu-24.04 -- redis-cli ping >nul 2>&1
+if errorlevel 1 (
+    echo    啟動 Redis 服務中...
+    wsl -d Ubuntu-24.04 -- sudo service redis-server start >nul 2>&1
+    if errorlevel 1 wsl -d Ubuntu-24.04 -- redis-server --daemonize yes >nul 2>&1
+    timeout /t 2 >nul
+)
+wsl -d Ubuntu-24.04 -- redis-cli ping >nul 2>&1
+if errorlevel 1 (
+    echo    [警告] Redis 未啟動，排程將降級為直接呼叫
+) else (
+    echo    OK Redis 運作正常 ^(PONG^)
 )
 
-echo   -> 啟動後端視窗...
-start "Carparts Backend (API)" cmd /k "color 0A && echo [後端 API] 啟動中... && npm run dev"
-
-:: 6. 啟動前端
+:: Step 1: 檢查 Hermes Agent（AI 大腦）
 echo.
-echo [步驟 3/4] 準備前端網頁...
-cd /d "%WEB_DIR%"
-
-if not exist "node_modules" (
-    echo   -> [Web] 初次執行，安裝套件中...
-    call npm install
+echo [1/5] 檢查 Hermes Agent（llama-server）...
+set "HERMES_BASE=http://127.0.0.1:18434"
+curl -sf %HERMES_BASE%/v1/models >nul 2>&1
+if errorlevel 1 (
+    echo    [警告] 未偵測到 Hermes llama-server ^(18434^)
+    echo           AI 功能（ai-recognise / ai-ask）會暫時無法使用
+    echo           請確認 Hermes 桌面程式已啟動
+) else (
+    echo    OK Hermes Agent 運作正常 ^(%HERMES_BASE%/v1^)
 )
 
-echo   -> 啟動前端視窗...
-start "Carparts Frontend (Web)" cmd /k "color 0B && echo [前端網頁] 啟動中... && npm run dev"
+:: Step 2: 後端 API
+echo.
+echo [2/5] 檢查後端 API (port 3000)...
+curl -sf http://localhost:3000/health >nul 2>&1
+if errorlevel 1 (
+    echo    後端未回應，準備啟動...
+    for /f "tokens=5" %%a in ('netstat -aon ^| findstr :3000 ^| findstr LISTENING') do (
+        echo    [清理] 釋放 Port 3000 ^(PID: %%a^)
+        taskkill /F /PID %%a >nul 2>&1
+        timeout /t 1 >nul
+    )
+    start "車大師後端 API" cmd /k "cd /d %API_DIR% && npm run dev"
+    echo [3/5] 等待後端就緒...
+    call :wait_backend
+) else (
+    echo    後端已在運行中 ^(http://localhost:3000^)
+)
 
-:: 7. 開啟瀏覽器
+:: Step 3: 前端網頁
 echo.
-echo [步驟 4/4] 等待服務啟動 (5秒)...
-timeout /t 5 >NUL
-start "" "%WEB_URL%"
+echo [4/5] 檢查前端網頁 (port 5173)...
+curl -sf http://localhost:5173/ >nul 2>&1
+if errorlevel 1 (
+    echo    前端未運行，正在啟動...
+    for /f "tokens=5" %%a in ('netstat -aon ^| findstr :5173 ^| findstr LISTENING') do (
+        echo    [清理] 釋放 Port 5173 ^(PID: %%a^)
+        taskkill /F /PID %%a >nul 2>&1
+        timeout /t 1 >nul
+    )
+    start "車大師前端網頁" cmd /k "cd /d %WEB_DIR% && npm run dev"
+    echo [5/5] 等待前端就緒...
+    call :wait_frontend
+) else (
+    echo    前端已在運行中 ^(http://localhost:5173^)
+)
 
 echo.
-echo ========================================================
-echo   ✅ 啟動成功！
-echo      - 請勿關閉跳出的兩個黑底視窗
-echo ========================================================
+echo ==========================================
+echo 所有服務啟動流程結束！
+echo   後端 API      http://localhost:3000
+echo   前端網頁      http://localhost:5173
+echo   API 健康檢查  http://localhost:3000/health
+echo   Hermes AI     %HERMES_BASE%/v1
+echo   Swagger UI    http://localhost:3000/api-docs/
+echo ==========================================
 echo.
-pause
-exit /b
+echo 按任意鍵開啟前端網頁...
+pause >nul
+start "" http://localhost:5173
+exit /b 0
 
-:: ====== 錯誤處理區 ======
+:: ==========================================
+:: 副程式
+:: ==========================================
+:wait_backend
+set retry_backend=0
+:loop_backend
+timeout /t 2 >nul
+curl -sf http://localhost:3000/health >nul 2>&1
+if not errorlevel 1 (
+    echo    OK 後端已就緒 ^(http://localhost:3000^)
+    exit /b 0
+)
+set /a retry_backend+=1
+if !retry_backend! GEQ 30 (
+    echo    [警告] 後端啟動超時 ^(60秒^)，請檢查跳出的視窗
+    exit /b 0
+)
+goto loop_backend
 
-:ERROR_NODE
-echo.
-echo [❌ 錯誤] 找不到 Node.js！
-echo 請先安裝 Node.js: https://nodejs.org/
-echo.
-pause
-exit /b
-
-:ERROR_API
-echo.
-echo [❌ 錯誤] 找不到後端資料夾！
-echo 預期路徑: "%API_DIR%"
-echo 請確認資料夾名稱是否為 "carparts-api"
-echo.
-pause
-exit /b
-
-:ERROR_WEB
-echo.
-echo [❌ 錯誤] 找不到前端資料夾！
-echo 預期路徑: "%WEB_DIR%"
-echo 請確認資料夾名稱是否為 "carparts-admin"
-echo.
-pause
-exit /b
+:wait_frontend
+set retry_frontend=0
+:loop_frontend
+timeout /t 2 >nul
+curl -sf http://localhost:5173/ >nul 2>&1
+if not errorlevel 1 (
+    echo    OK 前端已就緒 ^(http://localhost:5173^)
+    exit /b 0
+)
+set /a retry_frontend+=1
+if !retry_frontend! GEQ 30 (
+    echo    [警告] 前端啟動超時 ^(60秒^)，請檢查跳出的視窗
+    exit /b 0
+)
+goto loop_frontend

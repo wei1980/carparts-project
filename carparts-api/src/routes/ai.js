@@ -11,6 +11,13 @@ const prisma = require('../lib/prisma');
 
 const AI_BASE_URL = process.env.AI_BASE_URL || 'http://127.0.0.1:8080/v1';
 const AI_MODEL = process.env.AI_MODEL || 'Qwen3.6-35B-A3B-Uncensored';
+// Hermes 的本地 llama-server（以及多數 OpenAI 相容端點）需要 Bearer token，
+// 少了這個 header 一律回 401 Invalid API Key。
+const AI_API_KEY = process.env.AI_API_KEY || '';
+const AI_AUTH_HEADERS = {
+  'Content-Type': 'application/json',
+  ...(AI_API_KEY ? { Authorization: `Bearer ${AI_API_KEY}` } : {}),
+};
 
 // ============================================================
 // 🔒 行照辨識限流：這個端點每次呼叫都會打一次 AI（真實成本），
@@ -70,7 +77,7 @@ router.post('/recognize-part', auth, upload.single('image'), async (req, res) =>
     const imageUrl = `data:${req.file.mimetype};base64,${base64}`;
     const response = await fetch(`${AI_BASE_URL}/chat/completions`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: AI_AUTH_HEADERS,
       body: JSON.stringify({
         model: AI_MODEL,
         messages: [
@@ -118,7 +125,7 @@ router.post('/recognize-registration', auth, aiRecognizeLimiter, upload.single('
     const prompt = `直接輸出 JSON，不要任何思考過程、不要 markdown 標記。你是一位專業的汽車監理資料辨識專家。請從這張行車執照（行照）圖片中，精確擷取以下欄位，並以嚴格的 JSON 格式回覆。若無法辨識某個欄位，請將該值設為 null。請務必回傳以下 JSON 結構：{ "licensePlate": "車牌號碼", "vin": "車身號碼 (VIN)", "make": "廠牌", "model": "車型", "year": 出廠年份, "engineNo": "引擎號碼" }`;
     const response = await fetch(`${AI_BASE_URL}/chat/completions`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: AI_AUTH_HEADERS,
       body: JSON.stringify({
         model: AI_MODEL,
         messages: [
@@ -198,7 +205,7 @@ router.post('/recognize-modification', auth, modPhotoUpload.single('image'), asy
 
     const response = await fetch(`${AI_BASE_URL}/chat/completions`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: AI_AUTH_HEADERS,
       body: JSON.stringify({
         model: AI_MODEL,
         messages: [
@@ -309,7 +316,7 @@ router.post('/search-and-import', auth, async (req, res) => {
 
     const aiResponse = await fetch(`${AI_BASE_URL}/chat/completions`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: AI_AUTH_HEADERS,
       body: JSON.stringify({
         model: AI_MODEL,
         messages: [{ role: 'user', content: prompt }],
