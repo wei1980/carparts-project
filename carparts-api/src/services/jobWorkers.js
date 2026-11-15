@@ -18,44 +18,56 @@ async function processMaintenanceReminder(job) {
   if (!reminderId) return { success: true, skipped: true, reason: 'NO_REMINDER_ID' };
 
   try {
-    const reminder = await prisma.maintenanceReminder.findUnique({
-      where: { id: reminderId },
-      include: {
-        user: { select: { id: true, name: true, lineId: true } },
-        vehicle: { select: { id: true, make: true, model: true, licensePlate: true } },
-      },
-    });
+    // ⚠️ MaintenanceReminder 沒有 relation（user_id / vehicle_id 都是純欄位），
+    //    原本 include { user, vehicle } 會讓 Prisma 拋驗證錯誤 → 每天 08:00
+    //    的保養提醒排程必 500，客戶永遠收不到提醒。
+    //    改為獨立批次查詢後併入。
+    const reminder = await prisma.maintenanceReminder.findUnique({ where: { id: reminderId } });
 
     if (!reminder || !reminder.enabled) {
       console.log(`Reminder ${reminderId} not found or disabled`);
       return { success: true, skipped: true };
     }
 
-    if (!reminder.user?.lineId) {
-      console.log(`User ${reminder.userId} has no LINE ID`);
+    const [userRow, vehicleRow] = await Promise.all([
+      prisma.endUser.findUnique({ where: { id: reminder.user_id }, select: { id: true, name: true, lineId: true } }),
+      prisma.vehicleProfile.findUnique({ where: { id: reminder.vehicle_id }, select: { id: true, make: true, model: true, licensePlate: true } }),
+    ]);
+    const reminderWithRefs = { ...reminder, user: userRow, vehicle: vehicleRow };
+
+    if (!userRow?.lineId) {
+      console.log(`User ${reminder.user_id} has no LINE ID`);
       return { success: true, skipped: true };
     }
 
     // 計算剩餘天數/里程
+    // ⚠️ MaintenanceReminder 沒有 km_to_go 欄位（schema 只有 interval_km /
+    //    base_mileage / due_date），原本讀 reminder.km_to_go 永遠是 undefined，
+    //    導致「已到期」以外的情況全部走到 else 直接 skip → 提醒永遠不發。
+    //    改為用目前車輛里程與 base_mileage + interval_km 自行計算。
     let message = '';
     const today = new Date();
-    
-    if (reminder.due_date && reminder.due_date <= today) {
+    const currentKm = vehicleRow?.current_mileage ?? reminder.base_mileage ?? null;
+    const kmToGo = (currentKm != null && reminder.base_mileage != null && reminder.interval_km != null)
+      ? (reminder.base_mileage + reminder.interval_km) - currentKm
+      : null;
+
+    if (reminder.due_date && new Date(reminder.due_date) <= today) {
       message = `🔔 保養提醒：${reminder.title} 已到期！`;
     } else if (reminder.due_date) {
-      const daysLeft = Math.ceil((reminder.due_date - today) / (1000 * 60 * 60 * 24));
+      const daysLeft = Math.ceil((new Date(reminder.due_date) - today) / (1000 * 60 * 60 * 24));
       message = `🔔 保養提醒：${reminder.title} 將在 ${daysLeft} 天后到期`;
-    } else if (reminder.km_to_go !== null && reminder.km_to_go <= 0) {
+    } else if (kmToGo != null && kmToGo <= 0) {
       message = `🔔 保養提醒：${reminder.title} 里程已達標！`;
-    } else if (reminder.km_to_go !== null) {
-      message = `🔔 保養提醒：${reminder.title} 還有 ${reminder.km_to_go} 公里到期`;
+    } else if (kmToGo != null) {
+      message = `🔔 保養提醒：${reminder.title} 還有 ${kmToGo} 公里到期`;
     } else {
-      return { success: true, skipped: true };
+      return { success: true, skipped: true, reason: 'NO_DUE_INFO' };
     }
 
     // 發送 LINE 通知
-    const vehicleInfo = reminder.vehicle 
-      ? `${reminder.vehicle.make} ${reminder.vehicle.model} (${reminder.vehicle.licensePlate || '無車牌'})`
+    const vehicleInfo = reminderWithRefs.vehicle 
+      ? `${reminderWithRefs.vehicle.make} ${reminderWithRefs.vehicle.model} (${reminderWithRefs.vehicle.licensePlate || '無車牌'})`
       : '您的愛車';
 
     const lines = [
@@ -68,7 +80,7 @@ async function processMaintenanceReminder(job) {
       '請至 App「我的愛車」查看詳情並預約保養',
     ].filter(Boolean).join('\n');
 
-    await pushMessage(reminder.user.lineId, lines);
+    await pushMessage(reminderWithRefs.user.lineId, lines);
 
     // 更新最後通知時間
     await prisma.maintenanceReminder.update({
