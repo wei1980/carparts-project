@@ -154,6 +154,41 @@ function findBestVariantMatch(variants, make, rawModel, year) {
   return bestMatch;
 }
 
+// 記錄「註冊時車型庫找不到」的請求（方案 A 的後勤配套）。
+// 同一 phone + make + model 未解決時只累加次數，避免同一人不斷重試塞滿表。
+async function recordVariantRequest({ phone, vehicle }) {
+  const mk = String(vehicle?.make || '').trim().slice(0, 60);
+  const md = String(vehicle?.model || '').trim().slice(0, 80);
+  if (!mk || !md) return;
+  try {
+    const existing = await prisma.vehicleVariantRequest.findFirst({
+      where: { phone, make: mk, model: md, status: 'PENDING' },
+      select: { id: true },
+    });
+    if (existing) {
+      await prisma.vehicleVariantRequest.update({
+        where: { id: existing.id },
+        data: { request_count: { increment: 1 }, updated_at: new Date() },
+      });
+    } else {
+      await prisma.vehicleVariantRequest.create({
+        data: {
+          phone,
+          make: mk,
+          model: md,
+          year: vehicle?.year ? parseInt(vehicle.year, 10) : null,
+          generation: String(vehicle?.generation || '').slice(0, 80) || null,
+          engine_code: String(vehicle?.engineCode || '').slice(0, 60) || null,
+          note: '註冊時車型庫無對應資料',
+        },
+      });
+    }
+  } catch (e) {
+    // 記錄失敗不得影響註冊流程的回應
+    console.error('記錄被擋車型失敗:', String(e.message).split(String.fromCharCode(10))[0]);
+  }
+}
+
 // ==================== 車主註冊 ====================
 router.post('/register', userLoginLimiter, async (req, res) => {
   try {
@@ -161,6 +196,12 @@ router.post('/register', userLoginLimiter, async (req, res) => {
     if (!phone || !password) return res.status(400).json({ error: '手機號碼和密碼為必填' });
     if (String(password).length < 8) return res.status(400).json({ error: '密碼至少 8 碼' });
     if (!lineId) return res.status(400).json({ error: 'LINE 帳號為必填' });
+    // 🔒 平台定位是「車廠與車主之間的橋樑」，沒有車就無法判斷零件是否裝得上，
+    //    所以註冊一定要帶車型（前端 Login.jsx 已要求 make/model/VIN，這裡是後端閘門，
+    //    避免直接打 API 繞過）。缺 make/model 一律擋下。
+    if (!vehicle || !String(vehicle.make || '').trim() || !String(vehicle.model || '').trim()) {
+      return res.status(400).json({ error: '註冊需提供車型（廠牌與車型）' });
+    }
 
     const existingUser = await prisma.endUser.findUnique({ where: { phone } });
 
@@ -230,24 +271,27 @@ router.post('/register', userLoginLimiter, async (req, res) => {
           finalMake = matched.make;
           finalModel = matched.model;
         } else {
-          const newVariant = await prisma.vehicleVariant.create({
-            data: {
-              make: finalMake,
-              model: finalModel,
-              year_start: year ? parseInt(year) : new Date().getFullYear(),
-              year_end: year ? parseInt(year) : new Date().getFullYear(),
-              engine_code: engineCode || '',
-              variant_name: `${finalMake} ${finalModel}`.trim(),
-              generation: '',
-              specs: {
-                source: 'user_registration',
-                fuel_type: '汽油',
-              },
-            },
-          });
-          finalVariantId = newVariant.id;
+          // 🔒 不再自動建立車型：註冊是對外入口，若允許任意廠牌/車型，
+        //    任何人都可灌入假 variant 污染車型庫（實測 NOSUCHBRAND/NOSUCHMODEL
+//    會被建成真實 variantId，之後所有車型選單都會出現這個假車型）。
+//    要求使用者從既有車型清單中選擇；選不到就擋下，並記錄下來。
+          await recordVariantRequest({ phone, vehicle });
+          throw Object.assign(
+            new Error('找不到對應的車型，請從車型清單中重新選擇廠牌／車型／年份'),
+            { code: 'VEHICLE_NOT_FOUND' },
+          );
         }
       }
+    }
+
+    // 🔒 車型必須能對應到 vehicle_variants 的 variantId，
+    //    否則首頁「熱門零件」永遠是空的（hasVariant=false），等於註冊沒完成。
+    if (!finalVariantId) {
+      await recordVariantRequest({ phone, vehicle });
+      return res.status(400).json({
+        error: '找不到對應的車型，請重新選擇廠牌／車型／年份'
+          + '（若您的車型較新或較冷門，請來電或加 LINE 告知我們，我們會補進車型庫）',
+      });
     }
 
     const user = await prisma.endUser.create({
@@ -293,6 +337,9 @@ router.post('/register', userLoginLimiter, async (req, res) => {
     });
   } catch (error) {
     console.error('註冊失敗:', error);
+    if (error.code === 'VEHICLE_NOT_FOUND') {
+      return res.status(400).json({ error: '找不到對應的車型，請從車型清單中重新選擇' });
+    }
     res.status(500).json({ error: '伺服器內部錯誤' });
   }
 });

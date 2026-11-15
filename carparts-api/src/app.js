@@ -763,6 +763,7 @@ app.use('/api/admin/users', adminUserRoutes);
 app.use('/api/admin/vehicles', adminVehicleRoutes);
 app.use('/api/admin', adminBackupRoutes);
 app.use('/api/admin/variants', adminVehicleVariantsRoutes);
+app.use('/api/admin/variant-requests', require('./routes/adminVariantRequests')); // 🆕 註冊被擋的車型（方案 A 配套）
 app.use('/api/admin/ai-drafts', adminAiDraftRoutes);
 app.use('/api/admin/parts', adminPartsRouter); // 🆕 商品管理路由
 app.use('/api/admin/media', require('./routes/adminMedia')); // 🆕 媒體檔案瀏覽

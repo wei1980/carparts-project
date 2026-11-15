@@ -14,6 +14,7 @@ const menuItems = [
   { path: '/admin/categories', label: '商品目錄', icon: '🗂️' },
   { path: '/admin/users', label: '會員管理', icon: '👤' },
   { path: '/admin/vehicle-approval', label: '車型審核', icon: '🚙' },
+  { path: '/admin/variant-requests', label: '待補車型', icon: '🚗' },
   { path: '/admin/ai-drafts', label: 'AI 草稿審核', icon: '🤖' },
   { path: '/admin/settings', label: '系統設定', icon: '⚙️' },
 ];

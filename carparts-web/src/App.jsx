@@ -43,6 +43,7 @@ const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'));
 const AdminSettings = lazy(() => import('./pages/admin/AdminSettings'));
 const AdminInventory = lazy(() => import('./pages/admin/AdminInventory'));
 const AdminVehicleApproval = lazy(() => import('./pages/admin/AdminVehicleApproval'));
+const AdminVariantRequests = lazy(() => import('./pages/admin/AdminVariantRequests'));
 const AdminAiDrafts = lazy(() => import('./pages/admin/AdminAiDrafts'));
 const AdminParts = lazy(() => import('./pages/admin/AdminParts'));
 const AdminCategories = lazy(() => import('./pages/admin/AdminCategories'));
@@ -183,6 +184,7 @@ export default function App() {
                   <Route path="users" element={<AdminUsers />} />
                   <Route path="inventory" element={<AdminInventory />} />
                   <Route path="vehicle-approval" element={<AdminVehicleApproval />} />
+                  <Route path="variant-requests" element={<AdminVariantRequests />} />
                   <Route path="ai-drafts" element={<AdminAiDrafts />} />
                   <Route path="parts" element={<AdminParts />} />   {/* ✅ 商品管理已移入巢狀路由 */}
                   <Route path="settings" element={<AdminSettings />} />

@@ -149,6 +149,28 @@ model VehicleProfile {
   @@index([userId, variantId])
 }
 
+/// 註冊時車型庫找不到對應車型的紀錄（方案 A 配套）
+/// 讓管理者知道哪些車型需要補進車型庫，補完可標記 RESOLVED。
+model VehicleVariantRequest {
+  @@map("vehicle_variant_requests")
+  id            Int       @id @default(autoincrement())
+  phone         String    @db.VarChar(20)
+  make          String    @db.VarChar(60)
+  model         String    @db.VarChar(80)
+  year          Int?
+  generation    String?   @db.VarChar(80)
+  engine_code   String?   @db.VarChar(60)
+  note          String?
+  status        String    @default("PENDING") // PENDING | RESOLVED | DISMISSED
+  request_count Int       @default(1)
+  resolved_at   DateTime?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @default(now())
+
+  @@index([status, created_at])
+  @@index([make, model])
+}
+
 model WishItem {
   id              String     @id @default(uuid())
   userId          String
