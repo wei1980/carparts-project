@@ -13,8 +13,8 @@ export default function Footer() {
           <div>
             <h4 className="text-white font-bold mb-3">客服與購物</h4>
             <ul className="text-sm text-slate-400 space-y-2">
-              <li>客服專線：02-1234-5678</li>
-              <li>LINE：@carparts-tw</li>
+              <li><a href="tel:+886988613188" className="hover:text-blue-400 transition">客服專線：0988-613-188</a></li>
+              <li><a href="https://line.me/R/ti/p/%40bpd6939f" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 transition">LINE：@bpd6939f</a></li>
               <li><a href="/wishlist" className="hover:text-blue-400 transition">我的願望清單</a></li>
               <li><a href="/appointments" className="hover:text-blue-400 transition">我的預約</a></li>
             </ul>
