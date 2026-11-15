@@ -21,10 +21,26 @@ function executeBackup() {
     const dbCmd = `"${PG_DUMP}" -U postgres -h localhost carparts > "${path.join(backupDir, 'database.sql')}"`;
 
     exec(dbCmd, { shell: 'cmd.exe', env: { ...process.env, PGPASSWORD: DB_PASSWORD } }, (dbError) => {
-      if (dbError) {
-        reject(dbError);
-        return;
+      // ⚠️ cmd 的 `>` 重導向會在 pg_dump 失敗時「仍然建立檔案」（可能是 0 或 1 行），
+      //    所以 exit code 為 0 不代表備份有效。必須檢查檔案本身。
+      const dumpPath = path.join(backupDir, 'database.sql');
+      const size = fs.existsSync(dumpPath) ? fs.statSync(dumpPath).size : 0;
+      const head = size > 0 ? fs.readFileSync(dumpPath, 'utf8').slice(0, 400) : '';
+      const tail = size > 0 ? fs.readFileSync(dumpPath, 'utf8').slice(-400) : '';
+
+      const isPgDumpError = /pg_dump: (?:error|warning|fatal)/i.test(head);
+      const looksComplete = /PostgreSQL database dump complete/i.test(tail);
+      const hasTables = /^CREATE TABLE/im.test(fs.existsSync(dumpPath) ? fs.readFileSync(dumpPath, 'utf8').slice(0, 200000) : '');
+
+      if (dbError || size === 0 || isPgDumpError || !looksComplete || !hasTables) {
+        // 刪掉不完整的備份，避免之後誤用（以為是好的備份）
+        try { fs.rmSync(backupDir, { recursive: true, force: true }); } catch {}
+        return reject(new Error(
+          `資料庫備份失敗：size=${size}, pgDumpError=${isPgDumpError}, complete=${looksComplete}, hasTables=${hasTables}`
+        ));
       }
+
+      console.log(`✅ 資料庫備份完成：${(size / 1024 / 1024).toFixed(1)} MB`);
 
       // 2. 備份後端程式
       // 🔒 不要把 .env 放進備份：裡面有 JWT_SECRET 與 DATABASE_URL。備份會在本機留 7 天，
