@@ -8,6 +8,8 @@ import { getUserFriendlyError } from '../../utils/userFriendlyErrors';
 export default function AdminParts() {
   const [parts, setParts] = useState([]);
   const [loading, setLoading] = useState(false);
+  // 載入失敗必須讓使用者看到（原本只 console.error → 顯示「沒有符合的商品」＝誤導）
+  const [loadError, setLoadError] = useState('');
   const [saving, setSaving] = useState(false);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, pages: 0 });
   const [search, setSearch] = useState('');
@@ -83,6 +85,7 @@ export default function AdminParts() {
   const loadParts = useCallback(async (page = 1, limit = 20, searchTerm = '') => {
     setLoading(true);
     try {
+      setLoadError('');
       if (missingOnly) {
         const res = await adminClient.get('/parts/missing', { params: { page: page.toString(), limit: limit.toString() } });
         setParts(res.data.data || []);
@@ -101,6 +104,9 @@ export default function AdminParts() {
       }
     } catch (err) {
       console.error('載入商品失敗:', err);
+      // 讓使用者看到錯誤，而不是誤以為「沒有商品」
+      setLoadError(err?.response?.data?.error || err?.friendlyMessage || '載入商品失敗，請稍後再試');
+      setParts([]);
     } finally {
       setLoading(false);
     }
@@ -427,7 +433,16 @@ export default function AdminParts() {
         </div>
       </form>
 
-      {loading ? (
+      {loadError ? (
+        <div role="alert" style={{ padding: '12px 16px', backgroundColor: '#2d1b1b', border: '1px solid #7f1d1d', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span style={{ color: '#fca5a5', fontSize: '14px' }}>{loadError}</span>
+          <button
+            type="button"
+            onClick={() => loadParts(1, pagination.limit, '')}
+            style={{ marginLeft: 'auto', backgroundColor: '#b91c1c', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px 12px', cursor: 'pointer', fontSize: '13px' }}
+          >重新載入</button>
+        </div>
+      ) : loading ? (
         <div style={{ color: '#9ca3af' }}>載入中...</div>
       ) : parts.length === 0 ? (
         <p style={{ color: '#9ca3af' }}>沒有符合的商品</p>

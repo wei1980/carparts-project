@@ -27,15 +27,22 @@ export default function AdminUsers() {
 
   const [viewingOrders, setViewingOrders] = useState(null);
   const [orders, setOrders] = useState([]);
+  // 載入失敗必須顯示（原本只 console.warn → 使用者看到「沒有會員資料」＝誤導）
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => { loadUsers(); }, [filter]);
 
   const loadUsers = () => {
     setLoading(true);
     const params = filter !== 'all' ? `?status=${filter}` : '';
+    setLoadError('');
     adminClient.get(`/users${params}`)
       .then(res => setUsers(res.data))
-      .catch(err => console.warn('載入失敗:', err?.message || err))
+      .catch(err => {
+        console.warn('載入失敗:', err?.message || err);
+        setLoadError(err?.response?.data?.error || err?.friendlyMessage || '載入會員資料失敗，請稍後再試');
+        setUsers([]);
+      })
       .finally(() => setLoading(false));
   };
 
@@ -148,6 +155,16 @@ export default function AdminUsers() {
           </button>
         ))}
       </div>
+
+      {loadError ? (
+        <div role="alert" className="mb-4 p-4 rounded-lg border border-red-800 bg-red-950/40 flex items-center gap-3">
+          <span className="text-red-300 text-sm">{loadError}</span>
+          <button
+            onClick={() => loadUsers()}
+            className="ml-auto bg-red-700 hover:bg-red-600 text-white text-sm px-3 py-1.5 rounded"
+          >重新載入</button>
+        </div>
+      ) : null}
 
       {users.length === 0 ? (
         <p className="text-surface-400">沒有會員資料</p>

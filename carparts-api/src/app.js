@@ -349,7 +349,25 @@ app.use("/media", (req, res, next) => {
 
   next();
 });
-app.use("/media", express.static(mediaDir));
+// 靜態檔快取：
+// - /parts/ 商品圖（15,786 檔 / 875MB，檔名即型號、內容不變）→ 30 天 + immutable
+// - /Logo/  品牌 Logo（同樣不變）→ 30 天
+// - 其餘（PII 上傳：名片、行照、施工照）→ 私有短快取，避免代理/CDN 快取個資
+//   原本 express.static 預設 max-age=0，每張圖都要回伺服器確認（304），
+//   列表頁 24 張圖就是 24 次來回；商品圖設長快取後二次瀏覽幾乎零流量。
+app.use(
+  "/media",
+  express.static(mediaDir, {
+    setHeaders: (res, filePath) => {
+      const normalized = filePath.split(path.sep).join("/");
+      if (normalized.includes("/media/parts/") || normalized.includes("/media/Logo/")) {
+        res.setHeader("Cache-Control", "public, max-age=2592000, immutable");
+      } else {
+        res.setHeader("Cache-Control", "private, max-age=300");
+      }
+    },
+  })
+);
 
 // ============================================================
 // 🆕 售後問題附件（order_issues）上傳檔案

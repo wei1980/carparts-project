@@ -7,12 +7,21 @@ export default function AdminAppointments() {
   const [appointments, setAppointments] = useState([]);
   const [filter, setFilter] = useState('PENDING');
   const navigate = useNavigate();
+  // 載入失敗必須可見（原本只 console.warn → 顯示「目前沒有預約」＝誤導）
+  const [loadError, setLoadError] = useState('');
 
-  useEffect(() => {
-      adminClient.get(`/appointments?status=${filter}`)
-        .then((res) => setAppointments(res.data))
-        .catch(err => console.warn('載入失敗:', err?.message || err));
-    }, [filter]);
+  const loadAppointments = (status) => {
+    setLoadError('');
+    return adminClient.get(`/appointments?status=${status}`)
+      .then((res) => setAppointments(res.data))
+      .catch((err) => {
+        console.warn('載入失敗:', err?.message || err);
+        setLoadError(err?.response?.data?.error || err?.friendlyMessage || '載入預約失敗，請稍後再試');
+        setAppointments([]);
+      });
+  };
+
+  useEffect(() => { loadAppointments(filter); }, [filter]);
 
     const updateStatus = async (id, status) => {
       await adminClient.patch(
@@ -61,7 +70,16 @@ export default function AdminAppointments() {
 
       {/* 預約列表 */}
       <div className="space-y-4">
-        {appointments.length === 0 && (
+        {loadError && (
+          <div role="alert" className="p-4 rounded-lg border border-red-800 bg-red-950/40 flex items-center gap-3">
+            <span className="text-red-300 text-sm">{loadError}</span>
+            <button
+              onClick={() => loadAppointments(filter)}
+              className="ml-auto bg-red-700 hover:bg-red-600 text-white text-sm px-3 py-1.5 rounded"
+            >重新載入</button>
+          </div>
+        )}
+        {appointments.length === 0 && !loadError && (
           <p className="text-surface-400">目前沒有 {statusMap[filter]} 的預約</p>
         )}
         {appointments.map((a) => (
