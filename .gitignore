@@ -153,6 +153,9 @@ carparts-api/db_parts.json
 # 未使用的截圖素材（logo.png 仍被 Navbar 使用，必須保留）
 carparts-web/public/*.png
 !carparts-web/public/logo.png
+# 已移出 public/ 的設計稿（原在 public/ 會被 Vite 整包複製進 dist，
+# 6 張 1964x528 未壓縮 PNG 就佔了 14MB；移至此處保留原始素材）
+carparts-web/_screenshots/
 
 # 備份與暫存檔
 *.bak

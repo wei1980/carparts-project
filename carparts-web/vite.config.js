@@ -14,6 +14,28 @@ export default defineConfig({
     drop: ['debugger'],
     pure: ['console.log', 'console.info', 'console.debug'],
   },
+  build: {
+    // 把第三方套件拆成獨立 chunk：
+    // 1) 對外共用的 vendor chunk 內容不會因業務程式碼變動而失效，
+    //    使用者二次訪問可命中快取。
+    // 2) ⚠️ recharts 不要抽出來：它被 lazy 的 DashboardCharts 引用，
+    //    一旦 manualChunks 把它變成獨立 chunk，Vite 會為了這個 async chunk
+    //    的靜態依賴在 index.html 加 modulepreload → 首屏被迫下載 375KB 圖表庫。
+    //    留在 DashboardCharts chunk 內才能真正延遲載入。
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+          if (id.includes('react-dom') || id.includes('scheduler')) return 'vendor-react-dom';
+          if (id.includes('react-router')) return 'vendor-router';
+          if (id.includes('axios')) return 'vendor-axios';
+          if (id.includes('react-hot-toast')) return 'vendor-toast';
+          if (id.includes('/react/')) return 'vendor-react';
+          return undefined; // 其餘（含 recharts/d3）交給 importer 的 chunk
+        },
+      },
+    },
+  },
   server: {
     port: 5173,
     strictPort: true,
