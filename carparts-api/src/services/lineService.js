@@ -15,16 +15,29 @@ const {
 const LINE_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN;
 
 // 🆕 取得系統設定
+// 通知設定（全域開關）每則訊息都會讀一次。
+// 群發（例如 100 筆訂單狀態變更）時會對 DB 產生 100 次相同查詢，
+// 加 30 秒記憶體快取即可；管理員改設定後最多 30 秒生效，可接受。
+let settingsCache = { data: {}, at: 0 };
+const SETTINGS_TTL_MS = 30 * 1000;
+
 async function getSettings() {
+  if (Date.now() - settingsCache.at < SETTINGS_TTL_MS) return settingsCache.data;
   try {
     const admin = await prisma.workshop.findFirst({
       where: { role: 'ADMIN' },
       select: { garage_slots: true },
     });
-    return admin?.garage_slots?.system || {};
+    settingsCache = { data: admin?.garage_slots?.system || {}, at: Date.now() };
+    return settingsCache.data;
   } catch {
     return {};
   }
+}
+
+/** 設定變更後主動失效快取（adminSettings 更新時可呼叫） */
+function invalidateSettingsCache() {
+  settingsCache = { data: {}, at: 0 };
 }
 
 // 🆕 檢查是否啟用推播
@@ -164,4 +177,4 @@ async function notifyOrderUpdate(order) {
   await pushMessage(order.user?.lineId, flexMessage);
 }
 
-module.exports = { pushMessage, notifyAppointmentUpdate, notifyOrderUpdate, buildOrderNotifyMessage, statusMap, orderStatusMap };
+module.exports = { pushMessage, notifyAppointmentUpdate, notifyOrderUpdate, buildOrderNotifyMessage, statusMap, orderStatusMap, getSettings, invalidateSettingsCache };

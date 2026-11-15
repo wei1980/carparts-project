@@ -69,6 +69,9 @@ router.patch('/', async (req, res) => {
       data: { garage_slots: currentSlots },
     });
 
+    // 通知設定改了 → 讓 lineService 的快取立即失效（不然要等 30 秒）
+    try { require('../services/lineService').invalidateSettingsCache(); } catch {}
+
     res.json({ success: true, settings: currentSlots.system });
   } catch (error) {
     res.status(500).json({ error: '伺服器內部錯誤，請稍後再試' });
