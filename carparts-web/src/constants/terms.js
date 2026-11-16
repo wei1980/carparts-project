@@ -183,11 +183,14 @@ export const formatPrice = (price, currency = 'NT$') => {
 };
 
 // 格式化庫存顯示
+// ⚠️ 刻意「不」輸出數量：庫存量是內部資訊，對外只給狀態（現貨／預訂／缺貨）。
+//    有數量才有「庫存 3 件」這種對比效果，會讓客戶以比價心態挑庫存多的；
+//    平台定位是服務品質，不是拚庫存量。
 export const formatStock = (qty) => {
   if (qty === null || qty === undefined) return TERMS.OUT_OF_STOCK_LABEL;
   const num = Number(qty);
   if (isNaN(num)) return TERMS.OUT_OF_STOCK_LABEL;
-  if (num > 0) return `${TERMS.IN_STOCK} ${num}${TERMS.UNITS.PIECE}`;
+  if (num > 0) return TERMS.IN_STOCK;
   return TERMS.PREORDER_LABEL;
 };
 

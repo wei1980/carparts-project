@@ -117,7 +117,7 @@ export const buildStockBadge = (qty) => {
         contents: [
           {
             type: 'text',
-            text: inStock ? `${TERMS.IN_STOCK_LABEL} ${qty}${TERMS.UNITS.PIECE}` : TERMS.PREORDER_LABEL,
+            text: inStock ? TERMS.IN_STOCK_LABEL : TERMS.PREORDER_LABEL,
             color: inStock ? '#27ae60' : '#f39c12',
             size: 'sm',
             weight: 'bold'

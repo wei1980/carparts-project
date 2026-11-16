@@ -653,7 +653,7 @@ export const PartCard = memo(function PartCard({ part, onAdd, onOpen, mileageBad
               {formatPrice(part.msrp_price)}
             </span>
             <span className={`px-2 py-1 text-[11px] font-bold rounded-md ${stockBadgeClass}`}>
-              {totalStock > 0 ? `${TERMS.IN_STOCK} ${totalStock}` : (part.is_official ? TERMS.OFFICIAL : TERMS.PREORDER)}
+              {totalStock > 0 ? TERMS.IN_STOCK : (part.is_official ? TERMS.OFFICIAL : TERMS.PREORDER)}
             </span>
           </div>
           {/* 🆕 點擊回饋：按鈕變綠「✓ 已加入」1.5 秒 */}

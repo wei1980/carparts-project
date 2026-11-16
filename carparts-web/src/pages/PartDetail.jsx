@@ -217,7 +217,7 @@ export default function PartDetail() {
                         <div className="flex items-center gap-2.5 flex-wrap mb-3">
                           <span className="text-xs font-black text-blue-300 bg-blue-500/10 px-3 py-1.5 rounded-lg border border-blue-500/25 uppercase tracking-widest">{part.brand}</span>
                           <span className={`px-3 py-1.5 text-xs font-bold rounded-lg text-white shadow ${inStock ? 'bg-emerald-500' : (isOfficialPart ? 'bg-orange-500' : 'bg-amber-500')}`}>
-                            {inStock ? `${TERMS.IN_STOCK_LABEL} ${totalStock}${TERMS.UNITS.PIECE}` : (isOfficialPart ? TERMS.OFFICIAL_LABEL : TERMS.PREORDER_LABEL)}
+                            {inStock ? TERMS.IN_STOCK_LABEL : (isOfficialPart ? TERMS.OFFICIAL_LABEL : TERMS.PREORDER_LABEL)}
                           </span>
                         </div>
 
