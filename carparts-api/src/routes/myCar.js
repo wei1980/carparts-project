@@ -15,15 +15,30 @@ router.get('/dashboard', async (req, res) => {
       where: { id: req.userId },
       select: { currentVehicleId: true },
     });
-    const vehicle = await prisma.vehicleProfile.findFirst({
-      where: {
-        userId: req.userId,
-        ...(user?.currentVehicleId ? { id: user.currentVehicleId } : {}),
-      },
-      include: {
-        variant: { select: { id: true, make: true, model: true, generation: true, engine_code: true } },
-      },
-    });
+    // 先照 currentVehicleId 找；找不到（例如指向已刪車輛的舊資料）就退回該user第一台，
+    // 並把指標修回來。否則 dashboard.vehicle 會一直是 null，
+    // 前端「我的車輛列表」整塊被隱藏（看起來像所有車都不見了）。
+    let vehicle = user?.currentVehicleId
+      ? await prisma.vehicleProfile.findFirst({
+          where: { userId: req.userId, id: user.currentVehicleId },
+          include: { variant: { select: { id: true, make: true, model: true, generation: true, engine_code: true } } },
+        })
+      : null;
+
+    if (!vehicle) {
+      const fallback = await prisma.vehicleProfile.findFirst({
+        where: { userId: req.userId },
+        orderBy: { createdAt: 'desc' },
+        include: { variant: { select: { id: true, make: true, model: true, generation: true, engine_code: true } } },
+      });
+      if (fallback) {
+        vehicle = fallback;
+        prisma.endUser.update({
+          where: { id: req.userId },
+          data: { currentVehicleId: fallback.id },
+        }).catch(() => {}); // 非同步修指標，不影響本次回應
+      }
+    }
 
     if (!vehicle) {
       return res.json({ vehicle: null, history: [], reminders: [], suggestions: [] });

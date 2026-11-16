@@ -143,10 +143,30 @@ router.delete('/:id', async (req, res) => {
     }
 
     // 無交易紀錄 → 連同預約與提醒一起清掉，避免孤兒資料
+    // ⚠️ 若刪的是「當前車輛」，必須把 currentVehicleId 改指向剩餘車輛（或清空）。
+    //    否則 currentVehicleId 會變成指向已刪車輛的孤兒指標，
+    //    之後 /api/my-car/dashboard 的 vehicle 一律回 null
+    //    → 前端車輛列表整塊被隱藏（使用者以為所有車都不見了）。
+    const nextVehicle = await prisma.vehicleProfile.findFirst({
+      where: { userId: req.userId, NOT: { id: vehicle.id } },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true },
+    });
+
     await prisma.$transaction(async (tx) => {
       await tx.appointment.deleteMany({ where: { vehicle_id: vehicle.id } });
       await tx.maintenanceReminder.deleteMany({ where: { vehicle_id: vehicle.id } });
       await tx.vehicleProfile.delete({ where: { id: vehicle.id } });
+
+      const me = await tx.endUser.findUnique({
+        where: { id: req.userId }, select: { currentVehicleId: true },
+      });
+      if (me?.currentVehicleId === vehicle.id) {
+        await tx.endUser.update({
+          where: { id: req.userId },
+          data: { currentVehicleId: nextVehicle?.id ?? null },
+        });
+      }
     });
 
     res.json({ success: true, message: '車輛已刪除' });

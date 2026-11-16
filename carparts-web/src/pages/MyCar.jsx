@@ -702,7 +702,10 @@ function MyCar() {
                   )}
 
                   {/* 車輛列表 */}
-                  {data.vehicle && (
+                  {/* ⚠️ 條件是 vehicles.length，不是 data.vehicle：
+                      data.vehicle 是「當前車輛」，若 currentVehicleId 指向已刪車輛會是 null，
+                      用它當條件會讓整個列表消失（看起來像所有車都不見）。 */}
+                  {vehicles.length > 0 && (
                   <div className="border-t border-surface-600 pt-4">
                     <h4 className="font-medium text-slate-300 mb-3">我的車輛列表</h4>
                     {loadingVehicles ? (
