@@ -1,4 +1,5 @@
 const express = require('express');
+const bodyParser = require('body-parser');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
@@ -92,6 +93,21 @@ app.use(cors({
 // 🔒 body 上限 1mb：JSON API 的 payload 都很小（表單、id、清單）。
 //    10mb 對全站開放等於留一個記憶體型 DoS 面；檔案上傳另由 multer 各自限制
 //    （ CSV 20mb、售後附件 20mb、行照/大頭照 5mb），不受此上限影響。
+// LINE webhook 需要用「原始 bytes」驗簽（HMAC-SHA256 + Base64）。
+// express.json 解析後就沒有原始 bytes 了，所以用 verify 先把 Buffer 存進 req.rawBody，
+// 路由再拿它去驗 X-Line-Signature。
+// 用 bodyParser.raw 而非 express.raw：express.json() 在本專案是 express 4 的
+// 包裝（測試的 stub 也沒有 .raw），用 bodyParser 較穩。
+app.use('/api/line/webhook', bodyParser.raw({ type: 'application/json', limit: '1mb' }), (req, _res, next) => {
+  req.rawBody = req.body;
+  // 之後改用 express.json 重新解析成物件
+  try {
+    req.body = req.body && req.body.length ? JSON.parse(req.body.toString('utf8')) : {};
+  } catch {
+    req.body = {};
+  }
+  next();
+});
 app.use(express.json({ limit: "1mb" }));
 app.use(compression());
 
@@ -134,6 +150,7 @@ app.use((req, res, next) => {
     '/health',
     '/api/parts/recommended',
     '/api/support/replies', // 內部：Hermes adapter 轉送客服回覆（自帶 X-Internal-Secret 驗證）
+    '/api/line/webhook', // LINE 平台推送：無 CSRF token、無使用者登入，靠 X-Line-Signature 驗證
   ];
   
   const path = req.path;
@@ -793,6 +810,7 @@ app.use('/api/admin/dashboard-insights', adminDashboardInsightsRoutes); // 🆕 
 app.use('/api/admin/procurement', adminProcurementRoutes); // 🆕 進貨成本管理
 app.use('/api/admin', adminBankRoutes); // 🆕 管理端銀行對帳與訂單操作
 app.use('/api/support', require('./routes/support')); // 🆕 即時客服訊息轉發（Hermes webhook → Telegram）
+app.use('/api/line', require('./routes/lineWebhook')); // 🆕 LINE webhook：帳號綁定 + 尾款通知
 
 app.get("/health", (req, res) => res.json({ ok: true }));
 app.get("/api/health", (req, res) => res.json({ ok: true })); // 與 /health 同義，供 LB／檢查清單使用

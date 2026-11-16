@@ -148,7 +148,7 @@ function buildHeader(title, subtitle, color) {
         text: subtitle,
         color: '#ffffffcc',
         size: 'sm',
-        marginTop: '4px',
+        margin: '4px',
         wrap: true
       }] : [])
     ]
@@ -210,7 +210,7 @@ function buildPriceComparison(wholesalePrice, msrpPrice) {
       {
         type: 'box',
         layout: 'horizontal',
-        marginTop: '4px',
+        margin: '4px',
         contents: [
           {
             type: 'text',
@@ -495,7 +495,7 @@ function buildSearchSummary(total, fallbackVehicle) {
         ...(fallbackVehicle ? [{
           type: 'box',
           layout: 'vertical',
-          marginTop: 'md',
+          margin: 'md',
           paddingAll: '12px',
           backgroundColor: '#ebf5fb',
           cornerRadius: '8px',
@@ -534,7 +534,7 @@ function buildAiDraftNotification(draftId, itemsFound, query) {
         {
           type: 'box',
           layout: 'horizontal',
-          marginTop: 'md',
+          margin: 'md',
           contents: [
             {
               type: 'text',
@@ -557,7 +557,7 @@ function buildAiDraftNotification(draftId, itemsFound, query) {
           text: '\u7BA1\u7406\u54E1\u5BE9\u6838\u901A\u904E\u5F8C\u5C07\u81EA\u52D5\u4E0A\u67B6\u4E26\u901A\u77E5\u60A8',
           color: '#999999',
           size: 'xs',
-          marginTop: 'md',
+          margin: 'md',
           wrap: true
         }
       ]
@@ -580,10 +580,16 @@ function buildAiDraftNotification(draftId, itemsFound, query) {
 }
 
 function buildOrderStatusNotification(order) {
-  const orderNumber = order.orderNumber;
-  const status = order.status;
-  const totalAmount = order.totalAmount;
-  const items = order.items;
+  // ⚠️ 呼叫端傳的是 Prisma 原始列（snake_case：order_number / total_amount），
+  //    這函式原本只讀 camelCase（orderNumber / totalAmount）→ 永遠是 undefined，
+  //    LINE 通知會顯示「訂單編號：undefined」。
+  //    另外 items 多半沒被 include 進來，原本直接 items.map() 會拋
+  //    "Cannot read properties of undefined (reading 'map')"，
+  //    而呼叫端全用 try/catch 包著 → 通知靜默失敗，沒人發現。
+  const orderNumber = order.orderNumber ?? order.order_number ?? '（未知）';
+  const status = order.status ?? 'UNKNOWN';
+  const totalAmount = order.totalAmount ?? order.total_amount ?? 0;
+  const items = Array.isArray(order.items) ? order.items : [];
   
   const statusColors = {
     PENDING_PAYMENT: '#f39c12',
@@ -658,7 +664,7 @@ function buildOrderStatusNotification(order) {
           return {
             type: 'box',
             layout: 'horizontal',
-            marginTop: 'xs',
+            margin: 'xs',
             contents: [
               {
                 type: 'text',
@@ -781,7 +787,7 @@ function buildMaintenanceReminder(reminder) {
           return {
             type: 'box',
             layout: 'horizontal',
-            marginTop: 'xs',
+            margin: 'xs',
             contents: [
               {
                 type: 'text',
@@ -843,7 +849,7 @@ function buildMenuTemplate(title, options) {
             displayText: opt.label
           },
           style: 'secondary',
-          marginTop: index === 0 ? 'none' : 'sm',
+          margin: index === 0 ? 'none' : 'sm',
           height: 'sm'
         };
       })

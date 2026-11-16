@@ -1,5 +1,5 @@
 // src/pages/Profile.jsx 會員中心（暗色跑車風格 · 三區塊布局）
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
@@ -13,10 +13,28 @@ export default function Profile() {
   const navigate = useNavigate();
   const [uploading, setUploading] = useState(false);
   const [modal, setModal] = useState(null); // password
+  // LINE 綁定：向後端拿一次性 6 碼，使用者加入官方帳號後把碼送給 bot
+  const [lineBinding, setLineBinding] = useState(null); // { linked, code?, phone? }
+  const [lineLoading, setLineLoading] = useState(false);
   const [profileError, setProfileError] = useState('');
   const fileInputRef = useRef(null);
 
   useEffect(() => { fetchUserProfile(); }, []);
+
+  // 載入 LINE 綁定狀態
+  const loadLineBinding = useCallback(async () => {
+    setLineLoading(true);
+    try {
+      const res = await api.get('/auth/line-binding');
+      setLineBinding(res.data);
+    } catch {
+      setLineBinding({ linked: !!user?.lineId });
+    } finally {
+      setLineLoading(false);
+    }
+  }, [user?.lineId]);
+
+  useEffect(() => { loadLineBinding(); }, [loadLineBinding]);
 
   const fetchUserProfile = async () => {
     try {
@@ -242,17 +260,33 @@ export default function Profile() {
 
               <div className="border-t border-slate-700/60 pt-4">
                 <p className="text-sm font-medium text-slate-200 mb-2">第三方帳號連動</p>
-                <div className="flex flex-wrap gap-2">
-                  {user?.lineId ? (
-                    <span className="text-[11px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-lg px-2.5 py-1">
-                      💬 LINE: {user.lineId}（已綁定）
-                    </span>
-                  ) : (
-                    <span className="text-[11px] bg-slate-700/50 border border-slate-600/60 rounded-lg px-2.5 py-1 text-slate-500">
-                      💬 LINE: 未連動
-                    </span>
-                  )}
-                </div>
+                {lineBinding?.linked ? (
+                  <span className="text-[11px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-lg px-2.5 py-1">
+                    💬 LINE 已綁定（訂單與保養通知會送到 LINE）
+                  </span>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      綁定 LINE 後，訂單狀態與保養提醒會直接送達，不必一直開網站。
+                    </p>
+                    <ol className="text-[11px] text-slate-400 space-y-1 list-decimal list-inside">
+                      <li>先加入官方帳號：
+                        <a href="https://line.me/R/ti/p/%40bpd6939f" target="_blank" rel="noopener noreferrer"
+                           className="text-emerald-400 underline underline-offset-2 ml-1">點此加入 @bpd6939f</a>
+                      </li>
+                      <li>把下面的綁定碼與手機號碼傳給 bot：
+                        <span className="text-slate-200">「綁定碼 {lineBinding?.code || '------'} {lineBinding?.phone || '09xxxxxxxx'}」</span>
+                      </li>
+                      <li>收到「LINE 綁定成功」即完成</li>
+                    </ol>
+                    <button
+                      type="button"
+                      onClick={loadLineBinding}
+                      disabled={lineLoading}
+                      className="text-[11px] px-2.5 py-1 rounded-lg border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 transition disabled:opacity-50"
+                    >{lineLoading ? '產生中…' : '重新產生綁定碼'}</button>
+                  </div>
+                )}
               </div>
             </div>
           </section>

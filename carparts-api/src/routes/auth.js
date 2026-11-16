@@ -500,14 +500,63 @@ router.post('/reset-password', resetPasswordLimiter, async (req, res) => {
 });
 
 // ==================== LINE 綁定 ====================
+// 舊做法：直接接受前端傳來的 lineId。問題是前端拿不到真正的 LINE userId
+//（U + 32 位十六進位，只有 webhook 的 follow/message 事件才會帶），
+// 使用者手打「@帳號」一律無效 → 通知永遠發不出去。
+// 保留此端點以便向後相容，但加上格式檢查：非合法 LINE userId 直接拒絕。
 router.patch('/bind-line', authMiddleware, async (req, res) => {
   try {
     const { lineId } = req.body;
     if (!lineId) return res.status(400).json({ error: '請提供 LINE User ID' });
+    if (!/^U[0-9a-f]{32}$/.test(String(lineId))) {
+      return res.status(400).json({
+        code: 'INVALID_LINE_USER_ID',
+        error: 'LINE 使用者 ID 格式不正確。請改用「綁定碼」流程：加入官方帳號後把 6 位綁定碼與手機號碼傳給 bot。',
+      });
+    }
     await prisma.endUser.update({ where: { id: req.userId }, data: { lineId } });
     res.json({ success: true, message: 'LINE 已綁定' });
   } catch (error) {
-    res.status(500).json({ error: '綁定失敗',  });
+    console.error('LINE 綁定失敗:', error.message);
+    res.status(500).json({ error: '綁定失敗' });
+  }
+});
+
+// 🆕 GET /api/auth/line-binding — 取得綁定碼（使用者加入官方帳號後，把碼送給 bot）
+// 碼 30 分鐘內有效；重複請求會沿用未過期的碼，避免 bot 那邊對不上。
+router.get('/line-binding', authMiddleware, async (req, res) => {
+  try {
+    const user = await prisma.endUser.findUnique({
+      where: { id: req.userId },
+      select: { id: true, phone: true, lineId: true },
+    });
+    if (!user) return res.status(404).json({ error: '找不到使用者' });
+    // 只認真正的 LINE userId（U + 32 位十六進位）。
+    // 舊資料裡可能有「@帳號」「testline456」這類手打字串 → 視同未綁定，
+    // 讓使用者可以重新走綁定流程，否則他會永遠收不到通知。
+    const validLineId = (v) => typeof v === 'string' && /^U[0-9a-f]{32}$/.test(v);
+    if (validLineId(user.lineId)) {
+      return res.json({ linked: true, lineId: user.lineId });
+    }
+
+    // 找 30 分鐘內未使用的綁定碼（同一 user 唯一）
+    const since = new Date(Date.now() - 30 * 60 * 1000);
+    const existing = await prisma.lineBinding.findFirst({
+      where: { userId: user.id, status: { not: 'LINKED' }, createdAt: { gte: since } },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (existing) return res.json({ linked: false, code: existing.code, phone: user.phone, expiresIn: 1800 });
+
+    const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) code += ALPHABET[crypto.randomInt(ALPHABET.length)];
+    await prisma.lineBinding.create({
+      data: { id: crypto.randomUUID(), code, userId: user.id, phone: user.phone, status: 'PENDING' },
+    });
+    res.json({ linked: false, code, phone: user.phone, expiresIn: 1800 });
+  } catch (error) {
+    console.error('產生綁定碼失敗:', error.message);
+    res.status(500).json({ error: '產生綁定碼失敗' });
   }
 });
 

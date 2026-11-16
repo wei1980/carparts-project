@@ -80,6 +80,24 @@ model EndUser {
   wishItems        WishItem[]
 }
 
+// LINE 帳號綁定：LINE webhook 收到使用者的 Uxxxx userId 後寫入，
+// 再用「手機後 4 碼」或一次性 code 對應回 EndUser。
+// 沒有這層對應就無法把 LINE 通知送到正確的人。
+model LineBinding {
+  @@map("line_bindings")
+  id          String   @id @default(uuid())
+  lineUserId  String?  @unique @map("line_user_id") // 官網產生綁定碼時尚未知，使用者傳給 bot 後才回填
+  userId      String?  @map("user_id") // 對應到 EndUser；未對應時為 null（等使用者輸入手機）
+  phone       String? // webhook 難以直接拿到手機，保留供人工對照
+  code        String? // 綁定用一次性碼（官網產生，使用者送給 bot）
+  status      String   @default("PENDING") // PENDING | LINKED | REJECTED
+  createdAt   DateTime @default(now()) @map("created_at")
+  linkedAt    DateTime? @map("linked_at")
+
+  @@index([userId])
+  @@index([code])
+}
+
 model PartImageRecognitionLog {
   id              String   @id
   userId          String?
