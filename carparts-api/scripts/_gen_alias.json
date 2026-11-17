@@ -1,0 +1,391 @@
+{
+ "Ford|Mk2 (C520)": [
+  "DM2"
+ ],
+ "Ford|Mk2 LCI (C520)": [
+  "DM2"
+ ],
+ "Ford|Mk3 (CX482)": [
+  "DFK"
+ ],
+ "Ford|Mk3 LCI (CX482)": [
+  "DFK"
+ ],
+ "Ford|Mk4 (CD345)": [
+  "BA7"
+ ],
+ "Ford|Mk4 LCI (CD345)": [
+  "BA7"
+ ],
+ "Ford|Mk5 (CD391)": [
+  "CD",
+  "CE",
+  "CF"
+ ],
+ "Ford|Mk5 LCI (CD391)": [
+  "CD",
+  "CE",
+  "CF"
+ ],
+ "Ford|Mk6 (B299)": [
+  "CB1",
+  "CCN"
+ ],
+ "Ford|Mk6 LCI (B299)": [
+  "CB1",
+  "CCN"
+ ],
+ "Ford|Mk2 (C307)": [
+  "DA",
+  "DB",
+  "DH",
+  "DP",
+  "DS",
+  "FCH",
+  "FFS",
+  "HCP"
+ ],
+ "Ford|Mk2 LCI (C307)": [
+  "DA",
+  "DB",
+  "DH",
+  "DP",
+  "DS",
+  "FCH",
+  "FFS",
+  "HCP"
+ ],
+ "Ford|Mk4 (C519)": [
+  "HP"
+ ],
+ "Ford|Mk4 LCI (C519)": [
+  "HP"
+ ],
+ "Mitsubishi|Mk2 (CW)": [
+  "CW"
+ ],
+ "Mitsubishi|Mk3 (GF/ZK)": [
+  "GF",
+  "GG",
+  "ZJ",
+  "ZK",
+  "ZL"
+ ],
+ "Mitsubishi|Mk3 (GG)": [
+  "GF",
+  "GG",
+  "ZJ",
+  "ZK",
+  "ZL"
+ ],
+ "Volkswagen|Mk3 FL": [
+  "2CA",
+  "2CB",
+  "2CH",
+  "2CJ",
+  "2KA",
+  "2KB",
+  "2KH",
+  "2KJ"
+ ],
+ "Volkswagen|Mk3": [
+  "137",
+  "138",
+  "2CA",
+  "2CB",
+  "2CH",
+  "2CJ",
+  "2KA",
+  "2KB",
+  "2KH",
+  "2KJ"
+ ],
+ "Volkswagen|Mk4": [
+  "SAA",
+  "SAB",
+  "SAH",
+  "SAJ"
+ ],
+ "Volkswagen|Mk5 (SBB)": [
+  "SBA",
+  "SBB",
+  "SBH",
+  "SBJ",
+  "SDA",
+  "SDB",
+  "SDH",
+  "SDJ"
+ ],
+ "Volkswagen|Mk5 (SB)": [
+  "SBA",
+  "SBB",
+  "SBH",
+  "SBJ",
+  "SDA",
+  "SDB",
+  "SDH",
+  "SDJ"
+ ],
+ "Volkswagen|Mk4 (9N)": [
+  "9A",
+  "9A2",
+  "9A4",
+  "9A6",
+  "9N",
+  "9N2",
+  "9N4"
+ ],
+ "Volkswagen|Mk4.5 (9N3)": [
+  "9A",
+  "9A2",
+  "9A4",
+  "9A6",
+  "9N",
+  "9N2",
+  "9N4"
+ ],
+ "Volkswagen|Mk5": [
+  "1K1",
+  "1K5",
+  "602",
+  "604",
+  "612",
+  "614",
+  "6C1",
+  "6R1"
+ ],
+ "Volkswagen|Mk5 FL": [
+  "602",
+  "604",
+  "612",
+  "614",
+  "6C1",
+  "6R1"
+ ],
+ "Volkswagen|Mk6": [
+  "517",
+  "5K1",
+  "AE1",
+  "AJ5",
+  "AW1",
+  "BZ1",
+  "BZ3"
+ ],
+ "Volkswagen|Mk6 (AW1)": [
+  "AE1",
+  "AW1",
+  "BZ1",
+  "BZ3"
+ ],
+ "Volkswagen|Mk6 FL (AE1)": [
+  "AE1",
+  "AW1",
+  "BZ1",
+  "BZ3"
+ ],
+ "Volkswagen|Mk6 (AW FL)": [
+  "AE1",
+  "AW1",
+  "BZ1",
+  "BZ3"
+ ],
+ "Volkswagen|Mk6 FL (AW1)": [
+  "AE1",
+  "AW1",
+  "BZ1",
+  "BZ3"
+ ],
+ "Volkswagen|Mk1": [
+  "155",
+  "17",
+  "5N"
+ ],
+ "Volkswagen|Mk5 (1K)": [
+  "1K1",
+  "1K5"
+ ],
+ "Volkswagen|Mk5 (1KP)": [
+  "1K1",
+  "1K5"
+ ],
+ "Volkswagen|Mk7": [
+  "5G1",
+  "BA5",
+  "BE1",
+  "BE2",
+  "BQ1",
+  "BV5"
+ ],
+ "Volkswagen|Mk7.5": [
+  "5G1",
+  "BA5",
+  "BE1",
+  "BE2",
+  "BQ1",
+  "BV5"
+ ],
+ "Volkswagen|Mk8 (CD1)": [
+  "CD1",
+  "CG5",
+  "DA1",
+  "DB5"
+ ],
+ "Volkswagen|Mk8 Variant (CG5)": [
+  "CD1",
+  "CG5",
+  "DA1",
+  "DB5"
+ ],
+ "Volkswagen|Mk8.5 (CD1 FL)": [
+  "CD1",
+  "CG5",
+  "DA1",
+  "DB5"
+ ],
+ "Skoda|Mk1 (NS7)": [
+  "NS6",
+  "NS7",
+  "NV7"
+ ],
+ "Skoda|Mk2": [
+  "PS7"
+ ],
+ "Skoda|Mk2 (1Z)": [
+  "1Z3",
+  "1Z5"
+ ],
+ "Skoda|Mk2 (5J)": [
+  "542",
+  "545"
+ ],
+ "Skoda|Mk3 (5E)": [
+  "5E3",
+  "5E5",
+  "5E6",
+  "NL3",
+  "NR3"
+ ],
+ "Skoda|Mk4 (NX)": [
+  "NN3",
+  "NX3",
+  "NX5",
+  "PV3",
+  "PV5"
+ ],
+ "Skoda|Mk3 (NJ)": [
+  "NJ3",
+  "NJ5"
+ ],
+ "Skoda|Mk4 (PJ)": [
+  "PJ3"
+ ],
+ "Skoda|Mk2 (3T)": [
+  "3T4",
+  "3T5"
+ ],
+ "Skoda|Mk3 (3V)": [
+  "3V3",
+  "3V5"
+ ],
+ "Skoda|Mk4": [
+  "NZ3",
+  "NZ5"
+ ],
+ "Volvo|Mk2 (P1)": [
+  "544"
+ ],
+ "Volvo|Mk1 (P2)": [
+  "184",
+  "275",
+  "384"
+ ],
+ "Volvo|Mk2 (P3)": [
+  "124",
+  "134",
+  "136"
+ ],
+ "Volvo|Mk3 (SPA)": [
+  "224"
+ ],
+ "Volvo|Mk2 (SPA)": [
+  "225",
+  "234",
+  "235",
+  "236",
+  "246",
+  "256"
+ ],
+ "Volvo|Mk1 (P3)": [
+  "155",
+  "156"
+ ],
+ "Volkswagen|Mk1 FL": [
+  "1T1",
+  "1T2",
+  "1T3",
+  "5N"
+ ],
+ "Volkswagen|Mk2": [
+  "5T1",
+  "AD1",
+  "AX1"
+ ],
+ "Volkswagen|Mk2 FL (AX1)": [
+  "AD1",
+  "AX1"
+ ],
+ "Volkswagen|Mk2 FL (AD1)": [
+  "AD1",
+  "AX1"
+ ],
+ "Volkswagen|Mk2 FL (BW2)": [
+  "AD1",
+  "AX1"
+ ],
+ "Volkswagen|Mk2 (AD1)": [
+  "AD1",
+  "AX1"
+ ],
+ "Volkswagen|Mk2 FL Allspace (BW2)": [
+  "AD1",
+  "AX1"
+ ],
+ "Volkswagen|Mk2 (AD1 FL)": [
+  "AD1",
+  "AX1"
+ ],
+ "Volkswagen|Mk2 (BW2 FL)": [
+  "AD1",
+  "AX1"
+ ],
+ "Volkswagen|Mk3 (CT1)": [
+  "CT1"
+ ],
+ "Volkswagen|Mk1 (7L)": [
+  "7L6",
+  "7L7",
+  "7LA"
+ ],
+ "Volkswagen|Mk2 (5T1)": [
+  "5T1"
+ ],
+ "Volkswagen|Mk2 FL (5T1)": [
+  "5T1"
+ ],
+ "Volkswagen|Mk1 FL (C11)": [
+  "A11",
+  "D11"
+ ],
+ "Volkswagen|Mk1 (C11)": [
+  "A11",
+  "D11"
+ ],
+ "Volkswagen|Mk1 FL (D11)": [
+  "A11",
+  "D11"
+ ],
+ "Volkswagen|Mk1 FL (A11)": [
+  "A11",
+  "D11"
+ ]
+}

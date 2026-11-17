@@ -207,6 +207,44 @@ function platformAliases(c) {
 }
 const codeEqLoose = (a, b) => platformAliases(a).some(x => codeEq(x, b)) || platformAliases(b).some(y => codeEq(a, y));
 
+// ── 世代別名（DB `Mk7` ↔ BILSTEIN `5G1`）────────────────────────────
+// 根因：DB 的 Volkswagen generation 是 `Mk7` / `Mk7.5` / `Mk8 (CD1)`，
+// 而 BILSTEIN 給的是底盤碼 `5G1, BQ1, BE1, BE2`。兩邊字串毫無交集，
+// 導致 2018 Golf GTI（Mk7.5）完全連不到任何 BILSTEIN 避震器。
+// 對應關係不是猜的：由 BILSTEIN 自己的車系編號推出
+// （`Golf 7 (5G1,...)` 的「7」對應 DB 的 `Mk7`），再用家族精確配對合併。
+// 由 scripts/build_gen_alias.js 產生 → _gen_alias.json
+const GEN_ALIAS = (() => {
+  const p = path.join(__dirname, '_gen_alias.json');
+  if (!fs.existsSync(p)) return {};
+  try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return {}; }
+})();
+const ALIAS_ENTRIES = Object.entries(GEN_ALIAS);
+
+// 給定 (make, DB generation) → 該世代可接受的底盤碼集合
+function genCodes(make, generation) {
+  const mk = String(make || '');
+  const g = String(generation || '');
+  const direct = GEN_ALIAS[`${mk}|${g}`];
+  const out = new Set(direct || []);
+  // 也吃「去括號後」的版本：`Mk8 (CD1)` 同時對 `Mk8`
+  const bare = g.replace(/\s*\([^)]*\)\s*$/, '').trim();
+  const bareAlias = GEN_ALIAS[`${mk}|${bare}`];
+  for (const c of bareAlias || []) out.add(c);
+  return [...out];
+}
+
+// 兩側碼是否可互通：直接相等 → 平台別名 → 世代別名
+function codeCompatible(supplierCodes, dbMake, dbGeneration) {
+  if (!supplierCodes.length) return false;
+  const dbCodes = genCodes(dbMake, dbGeneration);
+  const all = new Set([...dbCodes, ...codesOf(dbGeneration)]);
+  for (const s of supplierCodes) {
+    for (const d of all) if (codeEqLoose(s, d)) return true;
+  }
+  return false;
+}
+
 const normModel = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
 // 家族名正規化：Mercedes 的 `A 200` / `A200`、VW 的 `Golf V` 等。
 // BILSTEIN 的 `Model_Series` 已帶世代（`Golf V (1K)`），DB 的 model 只有家族名
@@ -297,7 +335,8 @@ function modelKeys(s) {
   for (const v of dbVariants) {
     const mk = String(v.make).toLowerCase();
     if (!byMake.has(mk)) byMake.set(mk, []);
-    byMake.get(mk).push({ ...v, codes: codesOf(v.generation) });
+    // 每個 variant 要帶 make（給世代別名用），否則 codeCompatible 拿不到品牌
+    byMake.get(mk).push({ ...v, make: v.make, codes: codesOf(v.generation) });
   }
   // 家族索引：make → 車型家族（model 第一個字）→ variants
   // 少了這層，`A6` 的候選會在 1,165 個 Audi variant 裡線性掃，4,180 個 SKU 會跑到逾時
@@ -369,7 +408,11 @@ function modelKeys(s) {
         if (supCodes.length) {
           for (const c of candList) {
             if (!inYear(c)) continue;
-            if ((c.codes || []).some(d => supCodes.some(s => codeEqLoose(s, d)))) { resolved.add(c.id); hits++; }
+            // 世代別名：DB `Mk7` 可接受 BILSTEIN 的 `5G1`（見 GEN_ALIAS）
+            if (codeCompatible(supCodes, c.make, c.generation) ||
+                (c.codes || []).some(d => supCodes.some(s => codeEqLoose(s, d)))) {
+              resolved.add(c.id); hits++;
+            }
           }
           if (hits) return { hits, how: 'chassis' };
         }
@@ -443,7 +486,9 @@ function modelKeys(s) {
     const chunk = parts.slice(i, i + BATCH);
     for (const p of chunk) {
       try {
-        const existing = await prisma.part.findUnique({ where: { sku: p.sku }, select: { id: true } });
+        const existing = await prisma.part.findUnique({
+          where: { sku: p.sku }, select: { id: true, image_url: true },
+        });
         const data = {
           name: p.name,
           brand: p.brand,
@@ -454,8 +499,15 @@ function modelKeys(s) {
           distributor_stock_qty: 0,
           is_active: p.msrp > 0,
           is_universal: false,
-          image_url: p.imageOk ? `/media/parts/Suspension/BILSTEIN/${p.imgFile}` : null,
         };
+        // 圖片：原 CSV 有圖就用來源檔；沒有則保留 DB 既有 image_url
+        // （bilstein_fix_images.js 已用同產品線通用圖補齊那 236 個，
+        //  重跑匯入時不可回頭把它們清成 null）
+        if (p.imageOk) {
+          data.image_url = `/media/parts/Suspension/BILSTEIN/${p.imgFile}`;
+        } else if (existing && existing.image_url) {
+          data.image_url = existing.image_url;
+        }
         let pid;
         if (existing) {
           await prisma.part.update({ where: { id: existing.id }, data });
