@@ -23,7 +23,11 @@ const path = require('path');
 const { parse } = require('csv-parse/sync');
 
 const prisma = new PrismaClient();
-const CSV = 'C:/Users/User/Desktop/商品資料庫/AI下載/BILSTEIN/Parts_BILSTEIN_V10_final.csv';
+// CSV 來源：預設用 V11 合併版（含 V10 舊資料 + V11 新抓），可用 --csv=<path> 覆寫
+const csvArgIdx = process.argv.findIndex(a => a.startsWith('--csv='));
+const CSV = csvArgIdx >= 0
+  ? process.argv[csvArgIdx].slice('--csv='.length)
+  : 'C:/Users/User/Desktop/商品資料庫/AI下載/BILSTEIN/Parts_BILSTEIN_V11_merged.csv';
 const IMG_DIR = 'C:/Users/User/Desktop/商品資料庫/AI下載/BILSTEIN/images';
 const APPLY = process.argv.includes('--apply');
 
@@ -221,6 +225,22 @@ const GEN_ALIAS = (() => {
 })();
 const ALIAS_ENTRIES = Object.entries(GEN_ALIAS);
 
+// ── 人工維護的世代碼別名（跨命名體系，無法自動推導）─────────────
+// BILSTEIN 用車系碼（`Yaris (P21, PA1, PH1)` = Yaris IV 底盤），
+// DB 的 GR Yaris 用 `XP210`（車型引擎碼）。兩邊不同體系 → 手動對照。
+const GEN_ALIAS_MANUAL = {
+  toyota: {
+    'P21': ['XP210'], 'PA1': ['XP210'], 'PH1': ['XP210'],
+    'MXPA11': ['XP210'], 'MXPH13': ['XP210'], 'MXPH14': ['XP210'],
+    'GXPA16': ['XP210'],
+  },
+};
+function manualAliases(make, code) {
+  const mk = String(make || '').toLowerCase();
+  const tbl = GEN_ALIAS_MANUAL[mk];
+  return (tbl && tbl[code]) || [];
+}
+
 // 給定 (make, DB generation) → 該世代可接受的底盤碼集合
 function genCodes(make, generation) {
   const mk = String(make || '');
@@ -229,14 +249,22 @@ function genCodes(make, generation) {
   const out = new Set(direct || []);
   // 也吃「去括號後」的版本：`Mk8 (CD1)` 同時對 `Mk8`
   const bare = g.replace(/\s*\([^)]*\)\s*$/, '').trim();
-  const bareAlias = GEN_ALIAS[`${mk}|${bare}`];
-  for (const c of bareAlias || []) out.add(c);
+  for (const c of GEN_ALIAS[`${mk}|${bare}`] || []) out.add(c);
+  // 人工別名（跨命名體系）
+  for (const c of manualAliases(mk, g)) out.add(c);
+  for (const c of manualAliases(mk, bare)) out.add(c);
   return [...out];
 }
 
 // 兩側碼是否可互通：直接相等 → 平台別名 → 世代別名
 function codeCompatible(supplierCodes, dbMake, dbGeneration) {
   if (!supplierCodes.length) return false;
+  // 人工別名：供應商碼 → DB 世代碼（如 P21 → XP210）
+  for (const sc of supplierCodes) {
+    for (const mapped of manualAliases(dbMake, sc)) {
+      if (String(dbGeneration || '').toUpperCase().includes(mapped)) return true;
+    }
+  }
   const dbCodes = genCodes(dbMake, dbGeneration);
   const all = new Set([...dbCodes, ...codesOf(dbGeneration)]);
   for (const s of supplierCodes) {
@@ -260,6 +288,34 @@ function familyOf(s) {
     return t;
   }
   return toks[0] || '';
+}
+
+// ── 家族別名：供應商家族名 → DB 的 model 家族名 ────────────────
+// 實例：BILSTEIN `Yaris (P21...)` → DB `GR Yaris 6MT`，家族 token 是 `GR` 而非 `Yaris`
+const FAMILY_ALIAS = {
+  'yaris': ['GR Yaris', 'Yaris'],   // 兩種都要試（GR Yaris 與一般 Yaris）
+  'gr yaris': ['GR Yaris'],
+};
+function familyCandidates(fam) {
+  const k = String(fam || '').toLowerCase();
+  const mapped = FAMILY_ALIAS[k];
+  return mapped ? mapped.map(x => x.toUpperCase().split(' ')[0]) : [String(fam || '').toUpperCase()];
+}
+
+// 家族的替代 token（`GR Yaris` 的家族 token 是 GR，但供應商寫 Yaris）
+function familyTokensOfModel(model) {
+  // 回傳所有可當家族 token 的詞（包含 `GR Yaris` 的 GR 與 YARIS）
+  const toks = normModel(model).split(/\s+/).filter(Boolean);
+  const out = [];
+  for (const t of toks) {
+    if (FAMILY_STOP.has(t)) continue;
+    if (/^\d+(\.\d+)?$/.test(t)) continue;
+    if (/^\d/.test(t)) continue;
+    if (t.length < 2) continue;
+    out.push(t);
+  }
+  if (!out.length && toks.length) out.push(toks[0]);
+  return out;
 }
 
 // BILSTEIN 的 From_to 是 `MM.YY`（月.年）：`03.08 - 06.10` = 2008/03 – 2010/06，`09.74` = 1974/09。
@@ -302,7 +358,14 @@ function modelKeys(s) {
   console.log(`  mode   : ${APPLY ? 'APPLY' : 'DRY-RUN'}`);
   console.log(`  price  : EUR×${EUR_TO_TWD}×${MARKUP} → 進位 ${ROUND_TO}，批發 ×${WHOLESALE_RATIO}`);
 
-  const rows = parse(fs.readFileSync(CSV, 'utf8'), { columns: true, skip_empty_lines: true, trim: true });
+  // csv-parse 的 columns:true 對 BOM 敏感：先剝 BOM 再餵字串
+  const readCsvFile = (pth) => {
+    const raw = fs.readFileSync(pth, 'utf8');
+    const txt = raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw;
+    return parse(txt, { columns: true, skip_empty_lines: true, trim: true });
+  };
+
+  const rows = readCsvFile(CSV);
   console.log(`  rows   : ${rows.length}`);
 
   // sku → 代表列（paired / 前綴解析用）
@@ -338,19 +401,23 @@ function modelKeys(s) {
     // 每個 variant 要帶 make（給世代別名用），否則 codeCompatible 拿不到品牌
     byMake.get(mk).push({ ...v, make: v.make, codes: codesOf(v.generation) });
   }
-  // 家族索引：make → 車型家族（model 第一個字）→ variants
+  // 家族索引：make → 家族 token（model 第一個有意義字）→ variants
   // 少了這層，`A6` 的候選會在 1,165 個 Audi variant 裡線性掃，4,180 個 SKU 會跑到逾時
+  // ✅ 同一個 variant 會被放進「多個家族 token」桶（`GR Yaris 6MT` → GR、YARIS），
+  //    這樣供應商寫 `Yaris` 或 `GR Yaris` 都能找到它。
   const famIndex = new Map();
   for (const [mk, list] of byMake) {
     const fam = new Map();
     for (const v of list) {
-      const f = familyOf(v.model);
-      if (!fam.has(f)) fam.set(f, []);
-      // 注意：dbVariants 是 Prisma 回傳的 plain object，spread 只複製 enumerable 自身屬性；
-      // `codes` 是 array，這裡要確保每個元素都有自己的 codes（不要依賴原型）。
       const withCodes = Object.assign({}, v, { codes: v.codes || [] });
       if (!Array.isArray(withCodes.codes)) withCodes.codes = [];
-      fam.get(f).push(withCodes);
+      const seenTok = new Set();
+      for (const tok of familyTokensOfModel(v.model)) {
+        if (seenTok.has(tok)) continue;
+        seenTok.add(tok);
+        if (!fam.has(tok)) fam.set(tok, []);
+        fam.get(tok).push(withCodes);
+      }
     }
     famIndex.set(mk, fam);
   }
@@ -421,12 +488,19 @@ function modelKeys(s) {
 
       const fam = famIndex.get(mk);
       let famPool = (fam && fam.get(supFam)) || [];
+      // 供應商家族別名（`Yaris` → DB 的 `GR Yaris` 也歸在 YARIS 桶）
+      if (!famPool.length) {
+        for (const cand of familyCandidates(supFam)) {
+          const p2 = (fam && fam.get(cand)) || [];
+          if (p2.length) { famPool = p2; break; }
+        }
+      }
       // 家族名不同但前綴相符（`Giulietta` vs DB `Giulia`、`Corolla Estate` vs `Corolla`）
       // 只在前綴 ≥4 字元時成立，避免 `A5`/`A6` 這類 2 字家族互撞。
       if (!famPool.length && supFam.length >= 4) {
         famPool = (fam && [...fam.entries()]
           .filter(([f]) => f.length >= 4 && (f.startsWith(supFam.slice(0, 4)) || supFam.startsWith(f.slice(0, 4))))
-          .flatMap(([, v]) => v)) || [];
+          .flatMap(([, v2]) => v2)) || [];
       }
       let r = famPool.length ? tryPool(famPool) : { hits: 0, how: '' };
       if (r.hits) {
