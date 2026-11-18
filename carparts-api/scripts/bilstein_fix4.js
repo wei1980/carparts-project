@@ -56,11 +56,20 @@ for (const [s, f] of skuFile) {
   byLine.get(l).push(s);
 }
 
-const targets = ['20-353254','23-322738','24-005449','24-005555','34-000533','34-000540','34-000588','46-336491','47-353572'];
+// ✅ 自動抓「DB 裡缺圖的 BILSTEIN SKU」，不要硬編碼清單
+//    （硬編碼每次都要手動改，新抓到的 SKU 永遠補不到）
+const targets = (async () => {
+  const rows = await p.$queryRawUnsafe(
+    `SELECT sku FROM parts WHERE brand='BILSTEIN' AND image_url IS NULL ORDER BY sku`
+  );
+  return rows.map(r => String(r.sku).trim()).filter(Boolean);
+})();
 
 (async () => {
+const list = await targets;
+console.log(`DB 缺圖 SKU: ${list.length} 個`);
 const plan = [];
-for (const sku of targets) {
+for (const sku of list) {
   const l = lineOf(sku);
   let best = null, bestN = 0;
   for (const cand of (byLine.get(l) || [])) {
