@@ -6,7 +6,20 @@ const { parse } = require('csv-parse/sync');
 
 const D = 'C:/Users/User/Desktop/商品資料庫/AI下載/BILSTEIN';
 const OLD = path.join(D, 'Parts_BILSTEIN_V10_final.csv');
-const NEW_FILES = ['Parts_V11_T8.csv', 'pA.csv', 'pB.csv'];
+// 自動收集所有 V11 抓取輸出：Parts_V11_P*.csv（4 路並行）+ 各車系測試檔
+const NEW_FILES = (() => {
+  const out = [];
+  // 4 路並行輸出（依路徑序，讓數字小者优先，可預期）
+  for (const i of [1, 2, 3, 4]) {
+    const f = `Parts_V11_P${i}.csv`;
+    if (fs.existsSync(path.join(D, f))) out.push(f);
+  }
+  // 測試/單車系輸出（若存在也併入，去重由 key 負責）
+  for (const f of ['Parts_V11_T8.csv', 'Parts_V11_TEST.csv', 'pA.csv', 'pB.csv', 'pC.csv', 'pD.csv']) {
+    if (fs.existsSync(path.join(D, f))) out.push(f);
+  }
+  return out;
+})();
 const OUT = path.join(D, 'Parts_BILSTEIN_V11_merged.csv');
 
 const COLS = ['sku','name','brand','msrp_eur','description','subcategory','Model_Series',
